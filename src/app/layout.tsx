@@ -1,0 +1,39 @@
+import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import "./globals.css";
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+export const metadata: Metadata = {
+  title: "Crystal Clicker - Idle Mining Game",
+  description: "An addictive clicker game where you mine magical crystals, buy upgrades, unlock achievements, and prestige for powerful bonuses!",
+  keywords: ["clicker game", "idle game", "crystal", "mining", "incremental"],
+  icons: {
+    icon: "/crystal.png",
+  },
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        style={{ backgroundColor: '#0a0a1a' }}
+      >
+        {children}
+      </body>
+    </html>
+  );
+}

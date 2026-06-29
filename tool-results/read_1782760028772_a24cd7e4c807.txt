@@ -1,0 +1,917 @@
+     1→'use client';
+     2→
+     3→import { useEffect, useCallback, useRef, useState } from 'react';
+     4→import { motion, AnimatePresence } from 'framer-motion';
+     5→import { useGameStore, getUpgradeCost } from '@/stores/gameStore';
+     6→import type { Upgrade, FloatingText } from '@/stores/gameStore';
+     7→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+     8→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+     9→import { Button } from '@/components/ui/button';
+    10→import { Badge } from '@/components/ui/badge';
+    11→import { Progress } from '@/components/ui/progress';
+    12→import { ScrollArea } from '@/components/ui/scroll-area';
+    13→import { Separator } from '@/components/ui/separator';
+    14→import {
+    15→  Tooltip,
+    16→  TooltipContent,
+    17→  TooltipProvider,
+    18→  TooltipTrigger,
+    19→} from '@/components/ui/tooltip';
+    20→import {
+    21→  Sparkles,
+    22→  Trophy,
+    23→  BarChart3,
+    24→  RotateCcw,
+    25→  Zap,
+    26→  MousePointerClick,
+    27→  Coins,
+    28→  Flame,
+    29→  Star,
+    30→  Crown,
+    31→  Save,
+    32→  RotateCw,
+    33→  Target,
+    34→  Shield,
+    35→  Gem,
+    36→  TrendingUp,
+    37→  Clock,
+    38→} from 'lucide-react';
+    39→
+    40→function formatNumber(n: number): string {
+    41→  if (n >= 1e15) return (n / 1e15).toFixed(2) + 'Q';
+    42→  if (n >= 1e12) return (n / 1e12).toFixed(2) + 'T';
+    43→  if (n >= 1e9) return (n / 1e9).toFixed(2) + 'B';
+    44→  if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+    45→  if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+    46→  if (n >= 100) return Math.floor(n).toString();
+    47→  if (n >= 10) return n.toFixed(1);
+    48→  return n.toFixed(2);
+    49→}
+    50→
+    51→// ====== Floating Text Component ======
+    52→function FloatingTextParticle({ text }: { text: FloatingText }) {
+    53→  return (
+    54→    <motion.div
+    55→      key={text.id}
+    56→      className={`pointer-events-none fixed z-50 text-lg font-bold select-none ${
+    57→        text.isGolden
+    58→          ? 'text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.8)]'
+    59→          : text.isCombo
+    60→            ? 'text-orange-400 drop-shadow-[0_0_6px_rgba(251,146,60,0.6)]'
+    61→            : 'text-purple-300 drop-shadow-[0_0_4px_rgba(196,181,253,0.5)]'
+    62→      }`}
+    63→      initial={{ opacity: 1, y: 0, scale: 0.5 }}
+    64→      animate={{ opacity: 0, y: -80, scale: 1.2 }}
+    65→      exit={{ opacity: 0 }}
+    66→      transition={{ duration: 1, ease: 'easeOut' }}
+    67→      style={{ left: text.x, top: text.y }}
+    68→    >
+    69→      {text.isGolden && '🌟 '}{text.isCombo && '🔥 '}
+    70→      +{formatNumber(text.value)}
+    71→    </motion.div>
+    72→  );
+    73→}
+    74→
+    75→// ====== Particle Burst on Click ======
+    76→function ClickParticles({ x, y, isGolden }: { x: number; y: number; isGolden: boolean }) {
+    77→  const particles = Array.from({ length: isGolden ? 12 : 6 }, (_, i) => ({
+    78→    id: i,
+    79→    angle: (i * 360) / 12 + Math.random() * 30,
+    80→    distance: 40 + Math.random() * 60,
+    81→    size: 3 + Math.random() * 4,
+    82→  }));
+    83→
+    84→  return (
+    85→    <div className="pointer-events-none fixed z-40" style={{ left: x, top: y }}>
+    86→      {particles.map((p) => (
+    87→        <motion.div
+    88→          key={p.id}
+    89→          className={`absolute rounded-full ${
+    90→            isGolden
+    91→              ? 'bg-amber-400'
+    92→              : 'bg-purple-400'
+    93→          }`}
+    94→          style={{ width: p.size, height: p.size }}
+    95→          initial={{ opacity: 1, x: 0, y: 0, scale: 1 }}
+    96→          animate={{
+    97→            opacity: 0,
+    98→            x: Math.cos((p.angle * Math.PI) / 180) * p.distance,
+    99→            y: Math.sin((p.angle * Math.PI) / 180) * p.distance,
+   100→            scale: 0,
+   101→          }}
+   102→          transition={{ duration: 0.6, ease: 'easeOut' }}
+   103→        />
+   104→      ))}
+   105→    </div>
+   106→  );
+   107→}
+   108→
+   109→// ====== Main Crystal Button ======
+   110→function CrystalButton() {
+   111→  const { click, combo, comboTimer, goldenActive, goldenTimer, crystalPulse, screenShake } =
+   112→    useGameStore();
+   113→  const [clickPositions, setClickPositions] = useState<
+   114→    { x: number; y: number; id: number; isGolden: boolean }[]
+   115→  >([]);
+   116→  const [isPressed, setIsPressed] = useState(false);
+   117→  const clickIdRef = useRef(0);
+   118→
+   119→  const handleClick = useCallback(
+   120→    (e: React.MouseEvent) => {
+   121→      const rect = e.currentTarget.getBoundingClientRect();
+   122→      const x = e.clientX - rect.left + rect.left;
+   123→      const y = e.clientY - rect.top + rect.top;
+   124→      const isGolden = Math.random() < useGameStore.getState().goldenChance;
+   125→
+   126→      click(x, y);
+   127→
+   128→      const id = ++clickIdRef.current;
+   129→      setClickPositions((prev) => [...prev.slice(-5), { x, y, id, isGolden }]);
+   130→      setTimeout(() => {
+   131→        setClickPositions((prev) => prev.filter((p) => p.id !== id));
+   132→      }, 700);
+   133→
+   134→      setIsPressed(true);
+   135→      setTimeout(() => setIsPressed(false), 100);
+   136→    },
+   137→    [click],
+   138→  );
+   139→
+   140→  return (
+   141→    <div className="relative flex items-center justify-center">
+   142→      {/* Combo Timer Ring */}
+   143→      <div className="absolute">
+   144→        <svg width="220" height="220" className="-rotate-90">
+   145→          <circle
+   146→            cx="110"
+   147→            cy="110"
+   148→            r="105"
+   149→            fill="none"
+   150→            stroke="currentColor"
+   151→            strokeWidth="3"
+   152→            className="text-muted/20"
+   153→          />
+   154→          {combo > 0 && (
+   155→            <circle
+   156→              cx="110"
+   157→              cy="110"
+   158→              r="105"
+   159→              fill="none"
+   160→              stroke="currentColor"
+   161→              strokeWidth="3"
+   162→              strokeLinecap="round"
+   163→              className="text-orange-500"
+   164→              style={{
+   165→                strokeDasharray: `${2 * Math.PI * 105}`,
+   166→                strokeDashoffset: `${2 * Math.PI * 105 * (1 - comboTimer / 60)}`,
+   167→                transition: 'stroke-dashoffset 0.1s linear',
+   168→              }}
+   169→            />
+   170→          )}
+   171→        </svg>
+   172→      </div>
+   173→
+   174→      {/* Click Particles */}
+   175→      <AnimatePresence>
+   176→        {clickPositions.map((pos) => (
+   177→          <ClickParticles key={pos.id} x={pos.x} y={pos.y} isGolden={pos.isGolden} />
+   178→        ))}
+   179→      </AnimatePresence>
+   180→
+   181→      {/* Crystal */}
+   182→      <motion.button
+   183→        onClick={handleClick}
+   184→        className={
+   185→          `relative z-10 flex h-48 w-48 cursor-pointer items-center justify-center rounded-full transition-shadow duration-150 sm:h-56 sm:w-56 lg:h-64 lg:w-64 ${
+   186→            goldenActive
+   187→              ? 'shadow-[0_0_60px_rgba(251,191,36,0.6),0_0_120px_rgba(251,191,36,0.3)]'
+   188→              : 'shadow-[0_0_40px_rgba(168,85,247,0.4),0_0_80px_rgba(168,85,247,0.2)]'
+   189→          } ${screenShake ? 'animate-shake' : ''}`
+   190→        }
+   191→        animate={{
+   192→          scale: isPressed ? 0.9 : crystalPulse > 0 ? 1 + crystalPulse * 0.03 : 1,
+   193→        }}
+   194→        transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+   195→        whileHover={{
+   196→          scale: 1.05,
+   197→          boxShadow: goldenActive
+   198→            ? '0 0 80px rgba(251,191,36,0.7), 0 0 160px rgba(251,191,36,0.4)'
+   199→            : '0 0 60px rgba(168,85,247,0.5), 0 0 120px rgba(168,85,247,0.3)',
+   200→        }}
+   201→        aria-label="Click the crystal to earn crystals"
+   202→      >
+   203→        <div className="relative h-full w-full overflow-hidden rounded-full">
+   204→          <div
+   205→            className={`absolute inset-0 rounded-full ${
+   206→              goldenActive
+   207→                ? 'bg-gradient-to-br from-amber-300 via-yellow-400 to-orange-500'
+   208→                : 'bg-gradient-to-br from-purple-400 via-violet-500 to-fuchsia-600'
+   209→            }`}
+   210→          />
+   211→          <div className="absolute inset-0 flex items-center justify-center">
+   212→            {goldenActive ? (
+   213→              <motion.span
+   214→                className="text-7xl sm:text-8xl lg:text-9xl select-none drop-shadow-lg"
+   215→                animate={{ rotate: [0, -5, 5, 0], scale: [1, 1.05, 1] }}
+   216→                transition={{ repeat: Infinity, duration: 1.5 }}
+   217→              >
+   218→                🌟
+   219→              </motion.span>
+   220→            ) : (
+   221→              <motion.img
+   222→                src="/crystal.png"
+   223→                alt="Magic Crystal"
+   224→                className="h-32 w-32 object-contain drop-shadow-2xl sm:h-40 sm:w-40 lg:h-48 lg:w-48"
+   225→                animate={{ y: [0, -5, 0] }}
+   226→                transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
+   227→                draggable={false}
+   228→              />
+   229→            )}
+   230→          </div>
+   231→          {/* Shine effect */}
+   232→          <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-transparent via-white/20 to-transparent" />
+   233→          {/* Golden timer bar */}
+   234→          {goldenActive && (
+   235→            <div className="absolute bottom-2 left-2 right-2 h-2 overflow-hidden rounded-full bg-black/30">
+   236→              <motion.div
+   237→                className="h-full rounded-full bg-amber-300"
+   238→                initial={{ width: '100%' }}
+   239→                animate={{ width: `${(goldenTimer / 300) * 100}%` }}
+   240→                transition={{ duration: 0.1 }}
+   241→              />
+   242→            </div>
+   243→          )}
+   244→        </div>
+   245→      </motion.button>
+   246→
+   247→      {/* Combo indicator */}
+   248→      <AnimatePresence>
+   249→        {combo > 1 && (
+   250→          <motion.div
+   251→            className="absolute -right-2 top-0 sm:-right-4"
+   252→            initial={{ opacity: 0, scale: 0, x: 20 }}
+   253→            animate={{ opacity: 1, scale: 1, x: 0 }}
+   254→            exit={{ opacity: 0, scale: 0 }}
+   255→          >
+   256→            <Badge
+   257→              className="bg-gradient-to-r from-orange-500 to-red-500 text-white border-0 text-sm sm:text-base px-2.5 py-1 shadow-lg"
+   258→              variant="outline"
+   259→            >
+   260→              <Flame className="mr-1 h-3.5 w-3.5" />
+   261→              {combo}x COMBO
+   262→            </Badge>
+   263→          </motion.div>
+   264→        )}
+   265→      </AnimatePresence>
+   266→    </div>
+   267→  );
+   268→}
+   269→
+   270→// ====== Upgrade Card ======
+   271→function UpgradeCard({ upgrade }: { upgrade: Upgrade }) {
+   272→  const crystals = useGameStore((s) => s.crystals);
+   273→  const buyUpgrade = useGameStore((s) => s.buyUpgrade);
+   274→  const cost = getUpgradeCost(upgrade);
+   275→  const canAfford = crystals >= cost;
+   276→  const isMaxed = upgrade.maxLevel ? upgrade.level >= upgrade.maxLevel : false;
+   277→
+   278→  return (
+   279→    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+   280→      <Card
+   281→        className={`border transition-all duration-200 ${
+   282→          canAfford && !isMaxed
+   283→            ? 'border-purple-500/50 bg-purple-950/30 hover:border-purple-400/70 hover:bg-purple-950/50'
+   284→            : 'border-muted/30 bg-card/50'
+   285→        }`}
+   286→      >
+   287→        <CardContent className="p-3">
+   288→          <div className="flex items-start gap-3">
+   289→            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted/50 text-xl">
+   290→              {upgrade.icon}
+   291→            </div>
+   292→            <div className="min-w-0 flex-1">
+   293→              <div className="flex items-center justify-between gap-2">
+   294→                <h4 className="truncate text-sm font-semibold text-foreground">
+   295→                  {upgrade.name}
+   296→                </h4>
+   297→                <Badge variant="secondary" className="shrink-0 text-xs">
+   298→                  Lv.{upgrade.level}
+   299→                </Badge>
+   300→              </div>
+   301→              <p className="mt-0.5 text-xs text-muted-foreground">{upgrade.description}</p>
+   302→              <div className="mt-2 flex items-center justify-between">
+   303→                <Button
+   304→                  size="sm"
+   305→                  disabled={!canAfford || isMaxed}
+   306→                  onClick={() => buyUpgrade(upgrade.id)}
+   307→                  className={`h-7 text-xs ${
+   308→                    canAfford && !isMaxed
+   309→                      ? 'bg-purple-600 hover:bg-purple-500 text-white'
+   310→                      : ''
+   311→                  }`}
+   312→                >
+   313→                  <Coins className="mr-1 h-3 w-3" />
+   314→                  {isMaxed ? 'MAX' : formatNumber(cost)}
+   315→                </Button>
+   316→                {upgrade.maxLevel && (
+   317→                  <span className="text-xs text-muted-foreground">
+   318→                    {upgrade.level}/{upgrade.maxLevel}
+   319→                  </span>
+   320→                )}
+   321→              </div>
+   322→            </div>
+   323→          </div>
+   324→        </CardContent>
+   325→      </Card>
+   326→    </motion.div>
+   327→  );
+   328→}
+   329→
+   330→// ====== Achievement Card ======
+   331→function AchievementCard({
+   332→  achievement,
+   333→}: {
+   334→  achievement: { id: string; name: string; description: string; icon: string; unlocked: boolean };
+   335→}) {
+   336→  return (
+   337→    <motion.div
+   338→      whileHover={{ scale: 1.02 }}
+   339→      className={unlocked ? '' : 'opacity-50 grayscale' }
+   340→    >
+   341→      <Card
+   342→        className={`border transition-all duration-200 ${
+   343→          unlocked
+   344→            ? 'border-amber-500/50 bg-amber-950/20'
+   345→            : 'border-muted/30 bg-card/30'
+   346→        }`}
+   347→      >
+   348→        <CardContent className="flex items-center gap-3 p-3">
+   349→          <div
+   350→            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xl ${
+   351→              unlocked
+   352→                ? 'bg-amber-500/20 shadow-[0_0_12px_rgba(245,158,11,0.3)]'
+   353→                : 'bg-muted/50'
+   354→            }`}
+   355→          >
+   356→            {unlocked ? achievement.icon : '🔒'}
+   357→          </div>
+   358→          <div className="min-w-0 flex-1">
+   359→            <h4 className="truncate text-sm font-semibold">{achievement.name}</h4>
+   360→            <p className="text-xs text-muted-foreground">{achievement.description}</p>
+   361→          </div>
+   362→          {unlocked && <Star className="h-4 w-4 shrink-0 text-amber-400" />}
+   363→        </CardContent>
+   364→      </Card>
+   365→    </motion.div>
+   366→  );
+   367→}
+   368→
+   369→// ====== Stats Panel ======
+   370→function StatsPanel() {
+   371→  const stats = useGameStore((s) => ({
+   372→    totalClicks: s.totalClicks,
+   373→    totalEarned: s.totalEarned,
+   374→    clickPower: s.clickPower,
+   375→    autoRate: s.autoRate,
+   376→    multiplier: s.multiplier,
+   377→    prestige: s.prestige,
+   378→    prestigePoints: s.prestigePoints,
+   379→    maxCombo: s.maxCombo,
+   380→    goldenClicks: s.goldenClicks,
+   381→    achievements: s.achievements.filter((a) => a.unlocked).length,
+   382→    totalAchievements: s.achievements.length,
+   383→    upgrades: s.upgrades.reduce((sum, u) => sum + u.level, 0),
+   384→  }));
+   385→
+   386→  const statItems = [
+   387→    { icon: MousePointerClick, label: 'Total Clicks', value: formatNumber(stats.totalClicks), color: 'text-purple-400' },
+   388→    { icon: Coins, label: 'Total Earned', value: formatNumber(stats.totalEarned), color: 'text-amber-400' },
+   389→    { icon: Zap, label: 'Click Power', value: formatNumber(stats.clickPower), color: 'text-yellow-400' },
+   390→    { icon: TrendingUp, label: 'Auto Rate', value: `${formatNumber(stats.autoRate)}/s`, color: 'text-green-400' },
+   391→    { icon: Sparkles, label: 'Multiplier', value: `x${stats.multiplier.toFixed(1)}`, color: 'text-pink-400' },
+   392→    { icon: Flame, label: 'Max Combo', value: `${stats.maxCombo}x`, color: 'text-orange-400' },
+   393→    { icon: Star, label: 'Golden Clicks', value: formatNumber(stats.goldenClicks), color: 'text-amber-300' },
+   394→    { icon: Crown, label: 'Prestige Level', value: stats.prestige.toString(), color: 'text-violet-400' },
+   395→    { icon: Shield, label: 'Prestige Points', value: stats.prestigePoints.toString(), color: 'text-cyan-400' },
+   396→    { icon: Target, label: 'Upgrades Bought', value: stats.upgrades.toString(), color: 'text-emerald-400' },
+   397→    { icon: Trophy, label: 'Achievements', value: `${stats.achievements}/${stats.totalAchievements}`, color: 'text-amber-400' },
+   398→  ];
+   399→
+   400→  return (
+   401→    <div className="grid grid-cols-2 gap-2 sm:grid-cols-2 lg:grid-cols-1">
+   402→      {statItems.map((item) => (
+   403→        <div
+   404→          key={item.label}
+   405→          className="flex items-center gap-2 rounded-lg border border-muted/30 bg-card/30 p-2.5"
+   406→        >
+   407→          <item.icon className={`h-4 w-4 shrink-0 ${item.color}`} />
+   408→          <div className="min-w-0 flex-1">
+   409→            <p className="text-[10px] text-muted-foreground">{item.label}</p>
+   410→            <p className="text-sm font-bold">{item.value}</p>
+   411→          </div>
+   412→        </div>
+   413→      ))}
+   414→    </div>
+   415→  );
+   416→}
+   417→
+   418→// ====== Prestige Panel ======
+   419→function PrestigePanel() {
+   420→  const { totalEarned, prestige, prestigePoints, performPrestige } = useGameStore();
+   421→  const canPrestige = totalEarned >= 1000;
+   422→  const newPoints = canPrestige ? Math.floor(Math.sqrt(totalEarned / 1000)) : 0;
+   423→  const progress = Math.min((totalEarned / 1000) * 100, 100);
+   424→  const prestigeMultiplier = 1 + prestigePoints * 0.1;
+   425→
+   426→  return (
+   427→    <div className="space-y-4">
+   428→      <div className="rounded-xl border border-violet-500/30 bg-violet-950/20 p-4">
+   429→        <div className="mb-3 flex items-center gap-2">
+   430→          <Crown className="h-5 w-5 text-violet-400" />
+   431→          <h3 className="text-lg font-bold text-violet-300">Prestige System</h3>
+   432→        </div>
+   433→        <p className="mb-4 text-sm text-muted-foreground">
+   434→          Reset your progress to earn permanent Prestige Points that boost all crystal gains!
+   435→        </p>
+   436→
+   437→        <div className="mb-4 space-y-2">
+   438→          <div className="flex justify-between text-sm">
+   439→            <span className="text-muted-foreground">Current Prestige</span>
+   440→            <span className="font-semibold text-violet-300">Level {prestige}</span>
+   441→          </div>
+   442→          <div className="flex justify-between text-sm">
+   443→            <span className="text-muted-foreground">Prestige Points</span>
+   444→            <span className="font-semibold text-cyan-300">{prestigePoints}</span>
+   445→          </div>
+   446→          <div className="flex justify-between text-sm">
+   447→            <span className="text-muted-foreground">Global Multiplier</span>
+   448→            <span className="font-semibold text-emerald-300">x{prestigeMultiplier.toFixed(1)}</span>
+   449→          </div>
+   450→        </div>
+   451→
+   452→        <Separator className="mb-4 bg-muted/20" />
+   453→
+   454→        <div className="mb-4">
+   455→          <div className="mb-1 flex justify-between text-xs text-muted-foreground">
+   456→            <span>Next Prestige</span>
+   457→            <span>{formatNumber(totalEarned)} / 1,000</span>
+   458→          </div>
+   459→          <Progress value={progress} className="h-2" />
+   460→          {canPrestige && (
+   461→            <p className="mt-2 text-xs text-amber-400">
+   462→              🎉 You&apos;ll earn <strong>+{newPoints} Prestige Points</strong>!
+   463→            </p>
+   464→          )}
+   465→        </div>
+   466→
+   467→        <TooltipProvider>
+   468→          <Tooltip>
+   469→            <TooltipTrigger asChild>
+   470→              <Button
+   471→                className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white hover:from-violet-500 hover:to-fuchsia-500"
+   472→                disabled={!canPrestige}
+   473→                onClick={performPrestige}
+   474→              >
+   475→                <RotateCcw className="mr-2 h-4 w-4" />
+   476→                Prestige Now
+   477→              </Button>
+   478→            </TooltipTrigger>
+   479→            {!canPrestige && (
+   480→              <TooltipContent>
+   481→                <p>Earn 1,000 total crystals to prestige</p>
+   482→              </TooltipContent>
+   483→            )}
+   484→          </Tooltip>
+   485→        </TooltipProvider>
+   486→      </div>
+   487→    </div>
+   488→  );
+   489→}
+   490→
+   491→// ====== Main Game Component ======
+   492→export default function CrystalClickerPage() {
+   493→  const {
+   494→    crystals,
+   495→    clickPower,
+   496→    autoRate,
+   497→    multiplier,
+   498→    prestige,
+   499→    prestigePoints,
+   500→    upgrades,
+   501→    achievements,
+   502→    combo,
+   503→    comboTimer,
+   504→    floatingTexts,
+   505→    goldenActive,
+   506→    activeTab,
+   507→    setActiveTab,
+   508→    updateCombo,
+   509→    updateGolden,
+   510→    getSaveData,
+   511→    loadSave,
+   512→    resetGame,
+   513→  } = useGameStore();
+   514→
+   515→  const [saveStatus, setSaveStatus] = useState<string>('');
+   516→  const [loaded, setLoaded] = useState(false);
+   517→
+   518→  // Load save on mount
+   519→  useEffect(() => {
+   520→    fetch('/api/clicker/load')
+   521→      .then((res) => res.json())
+   522→      .then((data) => {
+   523→        if (data.success && data.data) {
+   524→          loadSave(data.data);
+   525→        }
+   526→        setLoaded(true);
+   527→      })
+   528→      .catch(() => setLoaded(true));
+   529→  }, [loadSave]);
+   530→
+   531→  const saveGame = useCallback(async () => {
+   532→    try {
+   533→      const data = getSaveData();
+   534→      await fetch('/api/clicker/save', {
+   535→        method: 'POST',
+   536→        headers: { 'Content-Type': 'application/json' },
+   537→        body: JSON.stringify(data),
+   538→      });
+   539→      setSaveStatus('Saved!');
+   540→      setTimeout(() => setSaveStatus(''), 2000);
+   541→    } catch {
+   542→      // silently fail
+   543→    }
+   544→  }, [getSaveData]);
+   545→
+   546→  const handleReset = useCallback(() => {
+   547→    resetGame();
+   548→    setSaveStatus('Reset!');
+   549→    setTimeout(() => setSaveStatus(''), 2000);
+   550→  }, [resetGame]);
+   551→
+   552→  // Auto-save every 15 seconds
+   553→  useEffect(() => {
+   554→    const interval = setInterval(() => {
+   555→      saveGame();
+   556→    }, 15000);
+   557→    return () => clearInterval(interval);
+   558→  }, [saveGame]);
+   559→
+   560→  // Game tick - auto income, combo timer, golden crystal
+   561→  useEffect(() => {
+   562→    const tickRate = 100; // 10 ticks per second
+   563→    const interval = setInterval(() => {
+   564→      const state = useGameStore.getState();
+   565→      if (state.autoRate > 0) {
+   566→        useGameStore.setState({
+   567→          crystals: Math.round((state.crystals + (state.autoRate * tickRate) / 1000) * 100) / 100,
+   568→          totalEarned: Math.round((state.totalEarned + (state.autoRate * tickRate) / 1000) * 100) / 100,
+   569→        });
+   570→      }
+   571→      state.updateCombo();
+   572→      state.updateGolden();
+   573→    }, tickRate);
+   574→    return () => clearInterval(interval);
+   575→  }, [updateCombo, updateGolden]);
+   576→
+   577→  // Reset screen shake
+   578→  useEffect(() => {
+   579→    const state = useGameStore.getState();
+   580→    if (state.screenShake) {
+   581→      const timer = setTimeout(() => {
+   582→        useGameStore.setState({ screenShake: false, crystalPulse: 0 });
+   583→      }, 200);
+   584→      return () => clearTimeout(timer);
+   585→    }
+   586→  });
+   587→
+   588→  const prestigeMultiplier = 1 + prestigePoints * 0.1;
+   589→  const comboMultiplier = combo > 0 ? 1 + (combo - 1) * 0.1 : 1;
+   590→  const totalMultiplier = multiplier * prestigeMultiplier * comboMultiplier;
+   591→  const unlockedCount = achievements.filter((a) => a.unlocked).length;
+   592→
+   593→  if (!loaded) {
+   594→    return (
+   595→      <div className="flex min-h-screen items-center justify-center bg-[#0a0a1a]">
+   596→        <motion.div
+   597→          className="text-center"
+   598→          initial={{ opacity: 0, scale: 0.8 }}
+   599→          animate={{ opacity: 1, scale: 1 }}
+   600→        >
+   601→          <motion.div
+   602→            className="text-6xl"
+   603→            animate={{ rotate: 360 }}
+   604→            transition={{ repeat: Infinity, duration: 2, ease: 'linear' }}
+   605→          >
+   606→            💎
+   607→          </motion.div>
+   608→          <p className="mt-4 text-lg text-purple-300">Loading Crystal Clicker...</p>
+   609→        </motion.div>
+   610→      </div>
+   611→    );
+   612→  }
+   613→
+   614→  return (
+   615→    <TooltipProvider>
+   616→      <div className="relative flex min-h-screen flex-col bg-[#0a0a1a] text-foreground overflow-hidden">
+   617→        {/* Background effects */}
+   618→        <div className="pointer-events-none fixed inset-0 z-0">
+   619→          <div className="absolute left-1/4 top-1/4 h-96 w-96 rounded-full bg-purple-600/10 blur-3xl" />
+   620→          <div className="absolute bottom-1/4 right-1/4 h-96 w-96 rounded-full bg-fuchsia-600/10 blur-3xl" />
+   621→          <div className="absolute left-1/2 top-1/2 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full bg-violet-600/5 blur-3xl" />
+   622→        </div>
+   623→
+   624→        {/* Floating texts */}
+   625→        <AnimatePresence>
+   626→          {floatingTexts.map((text) => (
+   627→            <FloatingTextParticle key={text.id} text={text} />
+   628→          ))}
+   629→        </AnimatePresence>
+   630→
+   631→        {/* Header */}
+   632→        <header className="relative z-10 border-b border-white/5 bg-black/20 px-4 py-3 backdrop-blur-sm">
+   633→          <div className="mx-auto flex max-w-7xl items-center justify-between">
+   634→            <div className="flex items-center gap-3">
+   635→              <motion.div
+   636→                animate={{ rotate: [0, 10, -10, 0] }}
+   637→                transition={{ repeat: Infinity, duration: 4, ease: 'easeInOut' }}
+   638→              >
+   639→                <Gem className="h-6 w-6 text-purple-400" />
+   640→              </motion.div>
+   641→              <h1 className="bg-gradient-to-r from-purple-400 via-fuchsia-400 to-pink-400 bg-clip-text text-xl font-bold tracking-tight text-transparent sm:text-2xl">
+   642→                Crystal Clicker
+   643→              </h1>
+   644→            </div>
+   645→
+   646→            <div className="flex items-center gap-2 sm:gap-3">
+   647→              {prestige > 0 && (
+   648→                <Badge
+   649→                  variant="outline"
+   650→                  className="border-violet-500/50 bg-violet-950/50 text-violet-300 text-xs sm:text-sm"
+   651→                >
+   652→                  <Crown className="mr-1 h-3 w-3" />
+   653→                  P{prestige}
+   654→                </Badge>
+   655→              )}
+   656→              <div className="flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-950/50 px-3 py-1.5">
+   657→                <Sparkles className="h-4 w-4 text-amber-400" />
+   658→                <span className="min-w-[4rem] text-right text-base font-bold text-amber-300 sm:text-lg">
+   659→                  {formatNumber(crystals)}
+   660→                </span>
+   661→              </div>
+   662→            </div>
+   663→
+   664→            <div className="flex items-center gap-1.5">
+   665→              <Tooltip>
+   666→                <TooltipTrigger asChild>
+   667→                  <Button
+   668→                    variant="ghost"
+   669→                    size="icon"
+   670→                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
+   671→                    onClick={saveGame}
+   672→                  >
+   673→                    <Save className="h-4 w-4" />
+   674→                  </Button>
+   675→                </TooltipTrigger>
+   676→                <TooltipContent>Save Game</TooltipContent>
+   677→              </Tooltip>
+   678→              <Tooltip>
+   679→                <TooltipTrigger asChild>
+   680→                  <Button
+   681→                    variant="ghost"
+   682→                    size="icon"
+   683→                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
+   684→                    onClick={handleReset}
+   685→                  >
+   686→                    <RotateCw className="h-4 w-4" />
+   687→                  </Button>
+   688→                </TooltipTrigger>
+   689→                <TooltipContent>Reset Game</TooltipContent>
+   690→              </Tooltip>
+   691→              {saveStatus && (
+   692→                <motion.span
+   693→                  className="text-xs text-emerald-400"
+   694→                  initial={{ opacity: 0, y: 5 }}
+   695→                  animate={{ opacity: 1, y: 0 }}
+   696→                  exit={{ opacity: 0 }}
+   697→                >
+   698→                  {saveStatus}
+   699→                </motion.span>
+   700→              )}
+   701→            </div>
+   702→          </div>
+   703→        </header>
+   704→
+   705→        {/* Main Content */}
+   706→        <main className="relative z-10 flex flex-1 flex-col lg:flex-row">
+   707→          {/* Left: Crystal Area */}
+   708→          <div className="flex flex-1 flex-col items-center justify-center px-4 py-8 lg:py-12">
+   709→            {/* Stats Bar */}
+   710→            <div className="mb-6 flex flex-wrap items-center justify-center gap-3 sm:gap-4">
+   711→              <div className="flex items-center gap-1.5 rounded-lg border border-white/5 bg-white/5 px-3 py-1.5 text-xs sm:text-sm">
+   712→                <Zap className="h-3.5 w-3.5 text-yellow-400" />
+   713→                <span className="text-muted-foreground">Power</span>
+   714→                <span className="font-semibold text-yellow-300">{formatNumber(clickPower)}</span>
+   715→              </div>
+   716→              <div className="flex items-center gap-1.5 rounded-lg border border-white/5 bg-white/5 px-3 py-1.5 text-xs sm:text-sm">
+   717→                <TrendingUp className="h-3.5 w-3.5 text-green-400" />
+   718→                <span className="text-muted-foreground">Auto</span>
+   719→                <span className="font-semibold text-green-300">{formatNumber(autoRate)}/s</span>
+   720→              </div>
+   721→              <div className="flex items-center gap-1.5 rounded-lg border border-white/5 bg-white/5 px-3 py-1.5 text-xs sm:text-sm">
+   722→                <Sparkles className="h-3.5 w-3.5 text-pink-400" />
+   723→                <span className="text-muted-foreground">Multi</span>
+   724→                <span className="font-semibold text-pink-300">x{totalMultiplier.toFixed(1)}</span>
+   725→              </div>
+   726→            </div>
+   727→
+   728→            {/* Crystal Button */}
+   729→            <CrystalButton />
+   730→
+   731→            {/* Click hint */}
+   732→            <motion.p
+   733→              className="mt-6 text-sm text-muted-foreground"
+   734→              animate={{ opacity: [0.4, 0.8, 0.4] }}
+   735→              transition={{ repeat: Infinity, duration: 3 }}
+   736→            >
+   737→              Click the crystal to mine! {combo > 1 && `🔥 ${combo}x combo!`}
+   738→            </motion.p>
+   739→
+   740→            {/* Golden crystal notification */}
+   741→            <AnimatePresence>
+   742→              {goldenActive && (
+   743→                <motion.div
+   744→                  className="mt-4"
+   745→                  initial={{ opacity: 0, y: 20, scale: 0.8 }}
+   746→                  animate={{ opacity: 1, y: 0, scale: 1 }}
+   747→                  exit={{ opacity: 0, y: -10, scale: 0.8 }}
+   748→                >
+   749→                  <Badge className="bg-gradient-to-r from-amber-500 to-yellow-400 text-black border-0 px-4 py-1.5 text-sm font-bold shadow-[0_0_20px_rgba(251,191,36,0.5)]">
+   750→                    <Star className="mr-1.5 h-4 w-4 animate-spin" />
+   751→                    GOLDEN CRYSTAL ACTIVE! x10 BONUS!
+   752→                  </Badge>
+   753→                </motion.div>
+   754→              )}
+   755→            </AnimatePresence>
+   756→
+   757→            {/* Quick Achievements */}
+   758→            <div className="mt-8 flex gap-2">
+   759→              <div className="flex items-center gap-1.5 rounded-full border border-amber-500/20 bg-amber-950/20 px-3 py-1 text-xs">
+   760→                <Trophy className="h-3 w-3 text-amber-400" />
+   761→                <span className="text-amber-300">
+   762→                  {unlockedCount}/{achievements.length}
+   763→                </span>
+   764→              </div>
+   765→              <div className="flex items-center gap-1.5 rounded-full border border-purple-500/20 bg-purple-950/20 px-3 py-1 text-xs">
+   766→                <Clock className="h-3 w-3 text-purple-400" />
+   767→                <span className="text-purple-300">Auto-saves</span>
+   768→              </div>
+   769→            </div>
+   770→          </div>
+   771→
+   772→          {/* Right: Upgrades & Tabs */}
+   773→          <div className="w-full border-t border-white/5 bg-black/10 backdrop-blur-sm lg:w-[420px] lg:border-l lg:border-t-0">
+   774→            <Tabs
+   775→              value={activeTab}
+   776→              onValueChange={(v) => setActiveTab(v as typeof activeTab)}
+   777→              className="flex h-full flex-col"
+   778→            >
+   779→              <TabsList className="mx-3 mt-3 grid w-auto grid-cols-4 rounded-lg bg-white/5 p-0.5">
+   780→                <TabsTrigger
+   781→                  value="upgrades"
+   782→                  className="rounded-md text-xs data-[state=active]:bg-purple-600 data-[state=active]:text-white sm:text-sm"
+   783→                >
+   784→                  <Zap className="mr-1 h-3.5 w-3.5 hidden sm:inline-block" />
+   785→                  Upgrades
+   786→                </TabsTrigger>
+   787→                <TabsTrigger
+   788→                  value="achievements"
+   789→                  className="rounded-md text-xs data-[state=active]:bg-amber-600 data-[state=active]:text-white sm:text-sm relative"
+   790→                >
+   791→                  <Trophy className="mr-1 h-3.5 w-3.5 hidden sm:inline-block" />
+   792→                  Awards
+   793→                  {unlockedCount > 0 && (
+   794→                    <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[10px] text-white">
+   795→                      {unlockedCount}
+   796→                    </span>
+   797→                  )}
+   798→                </TabsTrigger>
+   799→                <TabsTrigger
+   800→                  value="stats"
+   801→                  className="rounded-md text-xs data-[state=active]:bg-emerald-600 data-[state=active]:text-white sm:text-sm"
+   802→                >
+   803→                  <BarChart3 className="mr-1 h-3.5 w-3.5 hidden sm:inline-block" />
+   804→                  Stats
+   805→                </TabsTrigger>
+   806→                <TabsTrigger
+   807→                  value="prestige"
+   808→                  className="rounded-md text-xs data-[state=active]:bg-violet-600 data-[state=active]:text-white sm:text-sm"
+   809→                >
+   810→                  <Crown className="mr-1 h-3.5 w-3.5 hidden sm:inline-block" />
+   811→                  Prestige
+   812→                </TabsTrigger>
+   813→              </TabsList>
+   814→
+   815→              <TabsContent value="upgrades" className="flex-1 overflow-hidden p-3">
+   816→                <ScrollArea className="h-[calc(100vh-280px)] sm:h-[calc(100vh-240px)]">
+   817→                  <div className="space-y-2 pb-4">
+   818→                    {/* Click Upgrades */}
+   819→                    <div className="mb-1">
+   820→                      <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-purple-400">
+   821→                        <MousePointerClick className="h-3.5 w-3.5" />
+   822→                        Click Power
+   823→                      </h3>
+   824→                      <div className="space-y-2">
+   825→                        {upgrades
+   826→                          .filter((u) => u.effect === 'clickPower')
+   827→                          .map((u) => (
+   828→                            <UpgradeCard key={u.id} upgrade={u} />
+   829→                          ))}
+   830→                      </div>
+   831→                    </div>
+   832→
+   833→                    {/* Auto Upgrades */}
+   834→                    <div className="mb-1">
+   835→                      <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-green-400">
+   836→                        <TrendingUp className="h-3.5 w-3.5" />
+   837→                        Auto Mining
+   838→                      </h3>
+   839→                      <div className="space-y-2">
+   840→                        {upgrades
+   841→                          .filter((u) => u.effect === 'autoRate')
+   842→                          .map((u) => (
+   843→                            <UpgradeCard key={u.id} upgrade={u} />
+   844→                          ))}
+   845→                      </div>
+   846→                    </div>
+   847→
+   848→                    {/* Multiplier Upgrades */}
+   849→                    <div className="mb-1">
+   850→                      <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-pink-400">
+   851→                        <Sparkles className="h-3.5 w-3.5" />
+   852→                        Multipliers
+   853→                      </h3>
+   854→                      <div className="space-y-2">
+   855→                        {upgrades
+   856→                          .filter((u) => u.effect === 'multiplier' || u.effect === 'goldenChance')
+   857→                          .map((u) => (
+   858→                            <UpgradeCard key={u.id} upgrade={u} />
+   859→                          ))}
+   860→                      </div>
+   861→                    </div>
+   862→                  </div>
+   863→                </ScrollArea>
+   864→              </TabsContent>
+   865→
+   866→              <TabsContent value="achievements" className="flex-1 overflow-hidden p-3">
+   867→                <ScrollArea className="h-[calc(100vh-280px)] sm:h-[calc(100vh-240px)]">
+   868→                  <div className="space-y-2 pb-4">
+   869→                    <div className="mb-3 flex items-center justify-between">
+   870→                      <h3 className="text-sm font-semibold text-amber-300">
+   871→                        🏆 Achievements ({unlockedCount}/{achievements.length})
+   872→                      </h3>
+   873→                      <Progress
+   874→                        value={(unlockedCount / achievements.length) * 100}
+   875→                        className="h-1.5 w-24"
+   876→                      />
+   877→                    </div>
+   878→                    {achievements.map((a) => (
+   879→                      <AchievementCard key={a.id} achievement={a} />
+   880→                    ))}
+   881→                  </div>
+   882→                </ScrollArea>
+   883→              </TabsContent>
+   884→
+   885→              <TabsContent value="stats" className="flex-1 overflow-hidden p-3">
+   886→                <ScrollArea className="h-[calc(100vh-280px)] sm:h-[calc(100vh-240px)]">
+   887→                  <div className="pb-4">
+   888→                    <h3 className="mb-3 text-sm font-semibold text-emerald-300">
+   889→                      📊 Game Statistics
+   890→                    </h3>
+   891→                    <StatsPanel />
+   892→                  </div>
+   893→                </ScrollArea>
+   894→              </TabsContent>
+   895→
+   896→              <TabsContent value="prestige" className="flex-1 overflow-hidden p-3">
+   897→                <ScrollArea className="h-[calc(100vh-280px)] sm:h-[calc(100vh-240px)]">
+   898→                  <div className="pb-4">
+   899→                    <PrestigePanel />
+   900→                  </div>
+   901→                </ScrollArea>
+   902→              </TabsContent>
+   903→            </Tabs>
+   904→          </div>
+   905→        </main>
+   906→
+   907→        {/* Footer */}
+   908→        <footer className="relative z-10 mt-auto border-t border-white/5 bg-black/20 px-4 py-2.5 text-center">
+   909→          <p className="text-xs text-muted-foreground">
+   910→            💎 Crystal Clicker — Click, Upgrade, Prestige, Repeat!
+   911→          </p>
+   912→        </footer>
+   913→      </div>
+   914→    </TooltipProvider>
+   915→  );
+   916→}
+   917→

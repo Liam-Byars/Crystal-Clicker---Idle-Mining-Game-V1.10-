@@ -1,0 +1,44 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Post {
+  id        String   @id @default(cuid())
+  title     String
+  content   String?
+  published Boolean  @default(false)
+  authorId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ClickerSave {
+  id          String   @id @default(cuid())
+  crystals    Float    @default(0)
+  totalClicks Int      @default(0)
+  totalEarned Float    @default(0)
+  clickPower  Float    @default(1)
+  multiplier  Float    @default(1)
+  autoRate    Float    @default(0)
+  prestige    Int      @default(0)
+  prestigePoints Float @default(0)
+  upgrades    String   @default("{}")
+  achievements String  @default("[]")
+  goldenClicks Int     @default(0)
+  maxCombo    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
