@@ -24,6 +24,7 @@ export async function GET() {
         achievements: JSON.parse(save.achievements),
         goldenClicks: save.goldenClicks,
         maxCombo: save.maxCombo,
+        lastOnlineTime: save.lastOnlineTime,
       },
     });
   } catch (error) {

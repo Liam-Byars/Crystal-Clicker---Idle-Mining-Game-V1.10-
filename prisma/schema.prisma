@@ -26,19 +26,20 @@ model Post {
 }
 
 model ClickerSave {
-  id          String   @id @default(cuid())
-  crystals    Float    @default(0)
-  totalClicks Int      @default(0)
-  totalEarned Float    @default(0)
-  clickPower  Float    @default(1)
-  multiplier  Float    @default(1)
-  autoRate    Float    @default(0)
-  prestige    Int      @default(0)
-  prestigePoints Float @default(0)
-  upgrades    String   @default("{}")
-  achievements String  @default("[]")
-  goldenClicks Int     @default(0)
-  maxCombo    Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String   @id @default(cuid())
+  crystals      Float    @default(0)
+  totalClicks   Int      @default(0)
+  totalEarned   Float    @default(0)
+  clickPower    Float    @default(1)
+  multiplier    Float    @default(1)
+  autoRate      Float    @default(0)
+  prestige      Int      @default(0)
+  prestigePoints Float   @default(0)
+  upgrades      String   @default("{}")
+  achievements  String   @default("[]")
+  goldenClicks  Int      @default(0)
+  maxCombo      Int      @default(0)
+  lastOnlineTime Float   @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }

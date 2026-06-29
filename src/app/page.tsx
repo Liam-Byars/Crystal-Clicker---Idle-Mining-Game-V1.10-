@@ -3,6 +3,7 @@
 import { useEffect, useCallback, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore, getUpgradeCost } from '@/stores/gameStore';
+import { useShallow } from 'zustand/react/shallow';
 import type { Upgrade, FloatingText, Achievement } from '@/stores/gameStore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
@@ -446,15 +447,15 @@ function AchievementCard({ achievement }: { achievement: Achievement }) {
 
 // ====== Stats Panel ======
 function StatsPanel() {
-  const s = useGameStore((s) => ({
+  const s = useGameStore(useShallow((s) => ({
     totalClicks: s.totalClicks, totalEarned: s.totalEarned, clickPower: s.clickPower,
     autoRate: s.autoRate, multiplier: s.multiplier, prestige: s.prestige,
     prestigePoints: s.prestigePoints, maxCombo: s.maxCombo, goldenClicks: s.goldenClicks,
     totalCrits: s.totalCrits, clicksPerSecond: s.clicksPerSecond, critChance: s.critChance,
-    achievements: s.achievements.filter((a) => a.unlocked).length,
+    unlockedAchievements: s.achievements.filter((a) => a.unlocked).length,
     totalAchievements: s.achievements.length,
-    upgrades: s.upgrades.reduce((sum, u) => sum + u.level, 0),
-  }));
+    totalUpgradeLevels: s.upgrades.reduce((sum, u) => sum + u.level, 0),
+  })));
 
   const items = [
     { icon: MousePointerClick, label: 'Total Clicks', value: formatNumber(s.totalClicks), color: 'text-purple-400', bg: 'bg-purple-400/10' },
@@ -469,8 +470,8 @@ function StatsPanel() {
     { icon: Star, label: 'Golden Clicks', value: formatNumber(s.goldenClicks), color: 'text-amber-300', bg: 'bg-amber-300/10' },
     { icon: Crown, label: 'Prestige Level', value: s.prestige.toString(), color: 'text-violet-400', bg: 'bg-violet-400/10' },
     { icon: Shield, label: 'Prestige Points', value: s.prestigePoints.toString(), color: 'text-cyan-300', bg: 'bg-cyan-300/10' },
-    { icon: Target, label: 'Upgrades', value: s.upgrades.toString(), color: 'text-emerald-400', bg: 'bg-emerald-400/10' },
-    { icon: Trophy, label: 'Achievements', value: `${s.achievements}/${s.totalAchievements}`, color: 'text-amber-400', bg: 'bg-amber-400/10' },
+    { icon: Target, label: 'Upgrades', value: s.totalUpgradeLevels.toString(), color: 'text-emerald-400', bg: 'bg-emerald-400/10' },
+    { icon: Trophy, label: 'Achievements', value: `${s.unlockedAchievements}/${s.totalAchievements}`, color: 'text-amber-400', bg: 'bg-amber-400/10' },
   ];
 
   return (

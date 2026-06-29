@@ -28,7 +28,7 @@ export interface FloatingText {
   value: number;
   x: number;
   y: number;
-  type: 'normal' | 'golden' | 'combo' | 'crit' | 'powerup';
+  type: 'normal' | 'golden' | 'combo' | 'crit' | 'powerup' | 'event' | 'offline';
 }
 
 export interface PowerUp {
@@ -40,6 +40,50 @@ export interface PowerUp {
   timer: number;
   value: number;
 }
+
+export interface GameEvent {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  effect: 'doubleAuto' | 'doubleClick' | 'tripleGolden' | 'crystalStorm' | 'luckyHour';
+  duration: number;
+  timer: number;
+  value: number;
+}
+
+export interface Milestone {
+  id: number;
+  value: number;
+  label: string;
+  icon: string;
+  celebrated: boolean;
+}
+
+export interface GameSettings {
+  soundEnabled: boolean;
+  particlesEnabled: boolean;
+ screenShakeEnabled: boolean;
+ numberFormatting: 'standard' | 'scientific' | 'engineering';
+}
+
+export interface DailyReward {
+  day: number;
+  crystals: number;
+  claimed: boolean;
+}
+
+export interface GameStats {
+ totalPlayTimeSeconds: number;
+ crystalsPerSecond: number;
+ crystalsPerClick: number;
+ effectiveAutoRate: number;
+ unlockedAchievements: number;
+ totalAchievements: number;
+ totalUpgradeLevels: number;
+}
+
+export type BuyQuantity = 1 | 10 | 'max';
 
 export interface GameState {
   // Core resources
@@ -80,6 +124,27 @@ export interface GameState {
   activePowerUp: PowerUp | null;
   powerUpTimer: number;
 
+  // Game Events
+  activeEvent: GameEvent | null;
+  eventTimer: number;
+
+  // Buy quantity
+  buyQuantity: BuyQuantity;
+
+  // Session tracking
+  sessionStartTime: number;
+  sessionClicks: number;
+  sessionEarned: number;
+
+  // Milestones
+  milestones: Milestone[];
+  lastMilestoneCelebration: number;
+
+  // Offline earnings
+  lastOnlineTime: number;
+  offlineEarned: number;
+  showOfflineBonus: boolean;
+
   // Floating texts
   floatingTexts: FloatingText[];
   floatingTextId: number;
@@ -88,6 +153,10 @@ export interface GameState {
   achievementQueue: Achievement[];
   currentNotification: Achievement | null;
   notificationTimer: number;
+
+  // Click ripples
+  ripples: { id: number; x: number; y: number; type: FloatingText['type'] }[];
+  rippleId: number;
 
   // Upgrades
   upgrades: Upgrade[];
@@ -99,16 +168,29 @@ export interface GameState {
   activeTab: 'upgrades' | 'achievements' | 'stats' | 'prestige';
   totalPlayTime: number;
 
+  // Game settings
+  settings: GameSettings;
+
+  // Daily reward system
+  dailyStreak: number;
+  lastDailyClaimDate: string | null;
+  dailyRewards: DailyReward[];
+  showDailyRewardModal: boolean;
+
   // Actions
   click: (x: number, y: number) => void;
   clickGolden: (x: number, y: number) => void;
   buyUpgrade: (upgradeId: string) => boolean;
+  buyUpgradeMultiple: (upgradeId: string, count: number) => number;
   performPrestige: () => void;
+  setBuyQuantity: (q: BuyQuantity) => void;
   updateCombo: () => void;
   updateGolden: () => void;
   updatePowerUp: () => void;
+  updateEvent: () => void;
   updateNotification: () => void;
   updateClickSpeed: () => void;
+  checkMilestones: () => void;
   addFloatingText: (x: number, y: number, value: number, type?: FloatingText['type']) => void;
   removeFloatingText: (id: number) => void;
   setActiveTab: (tab: 'upgrades' | 'achievements' | 'stats' | 'prestige') => void;
@@ -116,6 +198,18 @@ export interface GameState {
   resetGame: () => void;
   loadSave: (data: Record<string, unknown>) => void;
   getSaveData: () => Record<string, unknown>;
+  calculateOfflineEarnings: (elapsedMs: number) => number;
+  claimOfflineEarnings: () => void;
+  dismissOfflineBonus: () => void;
+  collectAutoEarnings: () => void;
+  updatePlayTime: () => void;
+  updateSettings: (partial: Partial<GameSettings>) => void;
+  getEffectiveAutoRate: () => number;
+  getPrestigePreview: () => { points: number; prestigeMultiplier: number };
+  getStats: () => GameStats;
+  claimDailyReward: () => DailyReward | null;
+  checkDailyReward: () => void;
+  dismissDailyRewardModal: () => void;
 }
 
 const DEFAULT_UPGRADES: Upgrade[] = [
@@ -130,6 +224,10 @@ const DEFAULT_UPGRADES: Upgrade[] = [
   {
     id: 'crystal_sword', name: 'Crystal Sword', description: '+10 click power per level',
     icon: '🗡️', baseCost: 500, costMultiplier: 1.6, level: 0, effect: 'clickPower', value: 10,
+  },
+  {
+    id: 'crystal_blade', name: 'Crystal Blade', description: '+25 click power per level',
+    icon: '⚔️', baseCost: 5000, costMultiplier: 1.7, level: 0, effect: 'clickPower', value: 25,
   },
   {
     id: 'apprentice_miner', name: 'Apprentice Miner', description: '+0.5 crystals/sec per level',
@@ -190,6 +288,8 @@ const ACHIEVEMENT_DEFS: Omit<Achievement, 'unlocked' | 'unlockedAt' | 'condition
   { id: 'auto_100', name: 'Factory Owner', description: 'Have 100+ auto crystals/sec', icon: '🏭' },
   { id: 'speed_5', name: 'Speed Demon', description: 'Reach 5+ clicks per second', icon: '⚡' },
   { id: 'speed_10', name: 'Click Machine', description: 'Reach 10+ clicks per second', icon: '🤖' },
+  { id: 'event_first', name: 'Eventful', description: 'Experience your first event', icon: '🎉' },
+  { id: 'event_10', name: 'Event Veteran', description: 'Experience 10 events total', icon: '🎊' },
 ];
 
 function buildAchievementConditions(achievements: Omit<Achievement, 'unlocked' | 'unlockedAt' | 'condition'>[]): Achievement[] {
@@ -226,6 +326,8 @@ function buildAchievementConditions(achievements: Omit<Achievement, 'unlocked' |
         case 'auto_100': return state.autoRate >= 100;
         case 'speed_5': return state.clicksPerSecond >= 5;
         case 'speed_10': return state.clicksPerSecond >= 10;
+        case 'event_first': return state.totalClicks > 0 && false; // placeholder
+        case 'event_10': return false; // placeholder
         default: return false;
       }
     },
@@ -236,11 +338,68 @@ export const getUpgradeCost = (upgrade: Upgrade): number => {
   return Math.floor(upgrade.baseCost * Math.pow(upgrade.costMultiplier, upgrade.level));
 };
 
+export const getUpgradeCostForLevel = (upgrade: Upgrade, level: number): number => {
+  return Math.floor(upgrade.baseCost * Math.pow(upgrade.costMultiplier, level));
+};
+
+export const getMaxBuyCount = (upgrade: Upgrade, availableCrystals: number): number => {
+  if (upgrade.maxLevel) {
+    const remaining = upgrade.maxLevel - upgrade.level;
+    if (remaining <= 0) return 0;
+    let totalCost = 0;
+    let count = 0;
+    for (let i = 0; i < remaining; i++) {
+      const cost = getUpgradeCostForLevel(upgrade, upgrade.level + i);
+      if (totalCost + cost > availableCrystals) break;
+      totalCost += cost;
+      count++;
+    }
+    return count;
+  }
+  let totalCost = 0;
+  let count = 0;
+  for (let i = 0; i < 10000; i++) { // safety limit
+    const cost = getUpgradeCostForLevel(upgrade, upgrade.level + i);
+    if (totalCost + cost > availableCrystals) break;
+    totalCost += cost;
+    count++;
+  }
+  return count;
+};
+
+export const getTotalCostForN = (upgrade: Upgrade, count: number): number => {
+  let total = 0;
+  for (let i = 0; i < count; i++) {
+    total += getUpgradeCostForLevel(upgrade, upgrade.level + i);
+  }
+  return total;
+};
+
 const POWER_UP_DEFS: Omit<PowerUp, 'timer'>[] = [
   { id: 'double_click', name: 'Double Power!', icon: '💪', effect: 'doubleClick', duration: 300, value: 2 },
   { id: 'triple_auto', name: 'Triple Auto!', icon: '⚡', effect: 'tripleAuto', duration: 300, value: 3 },
   { id: 'instant_bonus', name: 'Crystal Rain!', icon: '🌧️', effect: 'instantBonus', duration: 0, value: 0 },
 ];
+
+const EVENT_DEFS: Omit<GameEvent, 'timer'>[] = [
+  { id: 'crystal_storm', name: 'Crystal Storm', description: 'Auto income doubled!', icon: '🌩️', effect: 'doubleAuto', duration: 600, value: 2 },
+  { id: 'lucky_hour', name: 'Lucky Hour', description: 'All clicks deal double damage!', icon: '🍀', effect: 'doubleClick', duration: 600, value: 2 },
+  { id: 'golden_fever', name: 'Golden Fever', description: '3x golden crystal spawn rate!', icon: '🌟', effect: 'tripleGolden', duration: 600, value: 3 },
+];
+
+const MILESTONE_DEFS: Omit<Milestone, 'celebrated'>[] = [
+  { id: 1, value: 100, label: '100 Crystals!', icon: '💎' },
+  { id: 2, value: 1000, label: '1,000 Crystals!', icon: '💰' },
+  { id: 3, value: 10000, label: '10K Crystals!', icon: '🏆' },
+  { id: 4, value: 100000, label: '100K Crystals!', icon: '🏰' },
+  { id: 5, value: 1000000, label: '1M Crystals!', icon: '👑' },
+  { id: 6, value: 10000000, label: '10M Crystals!', icon: '🌍' },
+  { id: 7, value: 100000000, label: '100M Crystals!', icon: '🪐' },
+  { id: 8, value: 1000000000, label: '1B Crystals!', icon: '⭐' },
+];
+
+// Track total events experienced for achievements
+let totalEventsExperienced = 0;
 
 export const useGameStore = create<GameState>((set, get) => ({
   crystals: 0,
@@ -267,17 +426,35 @@ export const useGameStore = create<GameState>((set, get) => ({
   goldenClickValue: 0,
   activePowerUp: null,
   powerUpTimer: 0,
+  activeEvent: null,
+  eventTimer: 0,
+  buyQuantity: 1 as BuyQuantity,
+  sessionStartTime: Date.now(),
+  sessionClicks: 0,
+  sessionEarned: 0,
+  milestones: MILESTONE_DEFS.map(m => ({ ...m, celebrated: false })),
+  lastMilestoneCelebration: 0,
+  lastOnlineTime: Date.now(),
+  offlineEarned: 0,
+  showOfflineBonus: false,
   floatingTexts: [],
   floatingTextId: 0,
   achievementQueue: [],
   currentNotification: null,
   notificationTimer: 0,
+  ripples: [],
+  rippleId: 0,
   upgrades: DEFAULT_UPGRADES.map(u => ({ ...u })),
   achievements: buildAchievementConditions(ACHIEVEMENT_DEFS),
   screenShake: false,
   crystalPulse: 0,
   activeTab: 'upgrades',
   totalPlayTime: 0,
+  settings: { ...DEFAULT_SETTINGS },
+  dailyStreak: 0,
+  lastDailyClaimDate: null,
+  dailyRewards: DAILY_REWARD_DEFS.map(r => ({ ...r, claimed: false })),
+  showDailyRewardModal: false,
 
   click: (x: number, y: number) => {
     const state = get();
@@ -298,7 +475,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     const comboMultiplier = 1 + (newCombo - 1) * 0.1;
     const prestigeMultiplier = 1 + state.prestigePoints * 0.1;
     const powerUpMultiplier = state.activePowerUp?.effect === 'doubleClick' ? state.activePowerUp.value : 1;
-    let value = state.clickPower * state.multiplier * comboMultiplier * prestigeMultiplier * powerUpMultiplier;
+    const eventMultiplier = state.activeEvent?.effect === 'doubleClick' ? state.activeEvent.value : 1;
+    let value = state.clickPower * state.multiplier * comboMultiplier * prestigeMultiplier * powerUpMultiplier * eventMultiplier;
 
     // Critical hit
     let isCrit = false;
@@ -310,10 +488,15 @@ export const useGameStore = create<GameState>((set, get) => ({
     const roundedValue = Math.round(value * 10) / 10;
     const textType: FloatingText['type'] = isCrit ? 'crit' : newCombo > 1 ? 'combo' : 'normal';
 
+    // Add ripple
+    const newRippleId = state.rippleId + 1;
+
     set({
       crystals: Math.round((state.crystals + roundedValue) * 100) / 100,
       totalClicks: state.totalClicks + 1,
       totalEarned: Math.round((state.totalEarned + roundedValue) * 100) / 100,
+      sessionClicks: state.sessionClicks + 1,
+      sessionEarned: Math.round((state.sessionEarned + roundedValue) * 100) / 100,
       combo: newCombo,
       comboTimer: 60,
       maxCombo: newMaxCombo,
@@ -324,10 +507,13 @@ export const useGameStore = create<GameState>((set, get) => ({
       floatingTextId: state.floatingTextId + 1,
       clickTimestamps: recentClicks,
       clicksPerSecond: recentClicks.length,
+      ripples: [...state.ripples.slice(-5), { id: newRippleId, x, y, type: textType }],
+      rippleId: newRippleId,
     });
 
     get().addFloatingText(x, y, roundedValue, textType);
     get().checkAchievements();
+    get().checkMilestones();
   },
 
   clickGolden: (x: number, y: number) => {
@@ -335,12 +521,14 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (!state.goldenActive) return;
 
     const prestigeMultiplier = 1 + state.prestigePoints * 0.1;
-    const value = state.goldenClickValue * prestigeMultiplier;
+    const eventMultiplier = state.activeEvent?.effect === 'tripleGolden' ? state.activeEvent.value : 1;
+    const value = state.goldenClickValue * prestigeMultiplier * eventMultiplier;
     const roundedValue = Math.round(value * 10) / 10;
 
     set({
       crystals: Math.round((state.crystals + roundedValue) * 100) / 100,
       totalEarned: Math.round((state.totalEarned + roundedValue) * 100) / 100,
+      sessionEarned: Math.round((state.sessionEarned + roundedValue) * 100) / 100,
       goldenClicks: state.goldenClicks + 1,
       goldenActive: false,
       goldenTimer: 0,
@@ -350,6 +538,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     get().addFloatingText(x, y, roundedValue, 'golden');
     get().checkAchievements();
+    get().checkMilestones();
   },
 
   buyUpgrade: (upgradeId: string) => {
@@ -366,11 +555,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     const newUpgrades = [...state.upgrades];
     newUpgrades[upgradeIndex] = { ...upgrade, level: upgrade.level + 1 };
 
-    let newClickPower = 1;
-    let newAutoRate = 0;
-    let newMultiplier = 1;
-    let newGoldenChance = 0.03;
-    let newCritChance = 0.05;
+    let newClickPower = 1; let newAutoRate = 0; let newMultiplier = 1;
+    let newGoldenChance = 0.03; let newCritChance = 0.05;
 
     for (const u of newUpgrades) {
       for (let i = 0; i < u.level; i++) {
@@ -387,9 +573,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     set({
       crystals: Math.round((state.crystals - cost) * 100) / 100,
       upgrades: newUpgrades,
-      clickPower: newClickPower,
-      autoRate: newAutoRate,
-      multiplier: newMultiplier,
+      clickPower: newClickPower, autoRate: newAutoRate, multiplier: newMultiplier,
       goldenChance: Math.min(newGoldenChance, 0.5),
       critChance: Math.min(newCritChance, 0.8),
     });
@@ -398,6 +582,21 @@ export const useGameStore = create<GameState>((set, get) => ({
     return true;
   },
 
+  buyUpgradeMultiple: (upgradeId: string, count: number) => {
+    const state = get();
+    let bought = 0;
+    for (let i = 0; i < count; i++) {
+      if (get().buyUpgrade(upgradeId)) {
+        bought++;
+      } else {
+        break;
+      }
+    }
+    return bought;
+  },
+
+  setBuyQuantity: (q: BuyQuantity) => set({ buyQuantity: q }),
+
   performPrestige: () => {
     const state = get();
     if (state.totalEarned < 1000) return;
@@ -405,29 +604,21 @@ export const useGameStore = create<GameState>((set, get) => ({
     const newPrestigePoints = Math.floor(Math.sqrt(state.totalEarned / 1000));
 
     set({
-      crystals: 0,
-      totalClicks: 0,
-      totalEarned: 0,
-      clickPower: 1,
-      multiplier: 1,
-      autoRate: 0,
+      crystals: 0, totalClicks: 0, totalEarned: 0,
+      clickPower: 1, multiplier: 1, autoRate: 0,
       prestige: state.prestige + 1,
       prestigePoints: state.prestigePoints + newPrestigePoints,
-      combo: 0,
-      comboTimer: 0,
-      maxCombo: 0,
-      goldenClicks: 0,
-      goldenChance: 0.03,
-      critChance: 0.05,
-      totalCrits: 0,
-      goldenActive: false,
-      goldenTimer: 0,
-      activePowerUp: null,
-      powerUpTimer: 0,
+      combo: 0, comboTimer: 0, maxCombo: 0,
+      goldenClicks: 0, goldenChance: 0.03, critChance: 0.05, totalCrits: 0,
+      goldenActive: false, goldenTimer: 0,
+      activePowerUp: null, powerUpTimer: 0,
+      activeEvent: null, eventTimer: 0,
       upgrades: DEFAULT_UPGRADES.map(u => ({ ...u })),
-      floatingTexts: [],
-      screenShake: true,
-      crystalPulse: 5,
+      milestones: MILESTONE_DEFS.map(m => ({ ...m, celebrated: false })),
+      floatingTexts: [], ripples: [],
+      screenShake: true, crystalPulse: 5,
+      sessionClicks: 0, sessionEarned: 0,
+      // Keep settings, daily rewards, and play time across prestiges
     });
 
     get().checkAchievements();
@@ -450,14 +641,50 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
     } else {
       // Spawn golden crystal randomly
-      if (Math.random() < 0.001) {
+      let goldenChanceTick = 0.001;
+      if (state.activeEvent?.effect === 'tripleGolden') {
+        goldenChanceTick *= state.activeEvent.value;
+      }
+      goldenChanceTick *= (state.goldenChance / 0.03); // Scale with upgrade
+      if (Math.random() < goldenChanceTick) {
         const baseValue = state.clickPower * state.multiplier * 10 * (1 + state.prestigePoints * 0.1);
         set({
-          goldenActive: true,
-          goldenTimer: 400,
+          goldenActive: true, goldenTimer: 400,
           goldenClickValue: Math.round(baseValue * 10) / 10,
         });
       }
+    }
+  },
+
+  updateEvent: () => {
+    const state = get();
+    if (state.activeEvent) {
+      if (state.eventTimer > 0) {
+        set({ eventTimer: state.eventTimer - 1 });
+      } else {
+        set({ activeEvent: null, eventTimer: 0 });
+      }
+    } else if (state.totalClicks > 50 && Math.random() < 0.0003) {
+      const template = EVENT_DEFS[Math.floor(Math.random() * EVENT_DEFS.length)];
+      totalEventsExperienced++;
+      set({ activeEvent: { ...template, timer: template.duration }, eventTimer: template.duration });
+      // The event achievements
+      const currentAchievements = get().achievements;
+      const updatedAchievements = currentAchievements.map(a => {
+        if (a.id === 'event_first' && !a.unlocked) return { ...a, unlocked: true, unlockedAt: Date.now() };
+        if (a.id === 'event_10' && totalEventsExperienced >= 10 && !a.unlocked) return { ...a, unlocked: true, unlockedAt: Date.now() };
+        return a;
+      });
+      set({ achievements: updatedAchievements });
+      // Queue notification for event
+      const eventTemplate = EVENT_DEFS[Math.floor(Math.random() * EVENT_DEFS.length)];
+      const queue = [...get().achievementQueue];
+      const fakeAchievement: Achievement = {
+        id: `event_${Date.now()}`, name: template.name, description: template.description,
+        icon: template.icon, unlocked: true, unlockedAt: Date.now(), condition: () => false,
+      };
+      queue.push(fakeAchievement);
+      set({ achievementQueue: queue });
     }
   },
 
@@ -470,7 +697,6 @@ export const useGameStore = create<GameState>((set, get) => ({
         set({ activePowerUp: null, powerUpTimer: 0 });
       }
     } else if (state.totalClicks > 20 && Math.random() < 0.0008) {
-      // Random power-up spawn
       const template = POWER_UP_DEFS[Math.floor(Math.random() * POWER_UP_DEFS.length)];
       if (template.effect === 'instantBonus') {
         const bonus = state.autoRate * 30 + state.clickPower * 5;
@@ -478,6 +704,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         set({
           crystals: Math.round((state.crystals + roundedBonus) * 100) / 100,
           totalEarned: Math.round((state.totalEarned + roundedBonus) * 100) / 100,
+          sessionEarned: Math.round((state.sessionEarned + roundedBonus) * 100) / 100,
           crystalPulse: 2,
         });
       } else {
@@ -505,6 +732,25 @@ export const useGameStore = create<GameState>((set, get) => ({
     const now = Date.now();
     const recent = state.clickTimestamps.filter(t => now - t < 1000);
     set({ clickTimestamps: recent, clicksPerSecond: recent.length });
+  },
+
+  checkMilestones: () => {
+    const state = get();
+    const newMilestones = state.milestones.map(m => {
+      if (!m.celebrated && state.totalEarned >= m.value) {
+        return { ...m, celebrated: true };
+      }
+      return m;
+    });
+    const justReached = newMilestones.find((m, i) => m.celebrated && !state.milestones[i].celebrated);
+    if (justReached) {
+      set({
+        milestones: newMilestones,
+        screenShake: true,
+        crystalPulse: 5,
+        lastMilestoneCelebration: Date.now(),
+      });
+    }
   },
 
   addFloatingText: (x: number, y: number, value: number, type: FloatingText['type'] = 'normal') => {
@@ -545,12 +791,41 @@ export const useGameStore = create<GameState>((set, get) => ({
       goldenClicks: 0, goldenChance: 0.03,
       goldenActive: false, goldenTimer: 0, goldenClickValue: 0,
       activePowerUp: null, powerUpTimer: 0,
+      activeEvent: null, eventTimer: 0,
+      buyQuantity: 1 as BuyQuantity,
+      sessionStartTime: Date.now(), sessionClicks: 0, sessionEarned: 0,
+      milestones: MILESTONE_DEFS.map(m => ({ ...m, celebrated: false })),
+      lastMilestoneCelebration: 0,
+      lastOnlineTime: Date.now(), offlineEarned: 0, showOfflineBonus: false,
       floatingTexts: [], floatingTextId: 0,
       achievementQueue: [], currentNotification: null, notificationTimer: 0,
+      ripples: [], rippleId: 0,
       upgrades: DEFAULT_UPGRADES.map(u => ({ ...u })),
       achievements: buildAchievementConditions(ACHIEVEMENT_DEFS),
       screenShake: false, crystalPulse: 0, totalPlayTime: 0,
     });
+  },
+
+  calculateOfflineEarnings: (elapsedMs: number) => {
+    const state = get();
+    if (state.autoRate <= 0 || elapsedMs < 60000) return 0; // Min 1 minute offline
+    // Cap at 8 hours of offline earnings
+    const cappedMs = Math.min(elapsedMs, 8 * 60 * 60 * 1000);
+    const efficiency = 0.5; // 50% offline efficiency
+    return Math.round(state.autoRate * (cappedMs / 1000) * efficiency * 100) / 100;
+  },
+
+  claimOfflineEarnings: () => {
+    const state = get();
+    if (state.offlineEarned <= 0) return;
+    set({
+      crystals: Math.round((state.crystals + state.offlineEarned) * 100) / 100,
+      totalEarned: Math.round((state.totalEarned + state.offlineEarned) * 100) / 100,
+      offlineEarned: 0,
+      showOfflineBonus: false,
+    });
+    get().checkAchievements();
+    get().checkMilestones();
   },
 
   loadSave: (data: Record<string, unknown>) => {
@@ -584,6 +859,14 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
     }
 
+    // Calculate offline earnings
+    const lastOnline = (data.lastOnlineTime as number) || Date.now();
+    const elapsed = Date.now() - lastOnline;
+    const savedAutoRate = autoRate;
+    const offlineEarned = savedAutoRate > 0 && elapsed >= 60000
+      ? Math.round(savedAutoRate * (Math.min(elapsed, 8 * 60 * 60 * 1000) / 1000) * 0.5 * 100) / 100
+      : 0;
+
     set({
       crystals: (data.crystals as number) ?? 0,
       totalClicks: (data.totalClicks as number) ?? 0,
@@ -596,6 +879,13 @@ export const useGameStore = create<GameState>((set, get) => ({
       maxCombo: (data.maxCombo as number) ?? 0,
       goldenChance, critChance,
       upgrades, achievements,
+      lastOnlineTime: Date.now(),
+      offlineEarned,
+      showOfflineBonus: offlineEarned > 0,
+      totalPlayTime: (data.totalPlayTime as number) ?? 0,
+      settings: (data.settings as GameSettings) ?? { ...DEFAULT_SETTINGS },
+      dailyStreak: (data.dailyStreak as number) ?? 0,
+      lastDailyClaimDate: (data.lastDailyClaimDate as string) ?? null,
     });
   },
 
@@ -615,6 +905,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       goldenClicks: state.goldenClicks,
       totalCrits: state.totalCrits,
       maxCombo: state.maxCombo,
+      lastOnlineTime: Date.now(),
     };
   },
 }));

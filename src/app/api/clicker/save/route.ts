@@ -17,6 +17,7 @@ export async function POST(request: NextRequest) {
       achievements,
       goldenClicks,
       maxCombo,
+      lastOnlineTime,
     } = body;
 
     const existing = await db.clickerSave.findFirst();
@@ -25,35 +26,23 @@ export async function POST(request: NextRequest) {
       await db.clickerSave.update({
         where: { id: existing.id },
         data: {
-          crystals,
-          totalClicks,
-          totalEarned,
-          clickPower,
-          multiplier,
-          autoRate,
-          prestige,
-          prestigePoints,
+          crystals, totalClicks, totalEarned, clickPower, multiplier, autoRate,
+          prestige, prestigePoints,
           upgrades: JSON.stringify(upgrades),
           achievements: JSON.stringify(achievements),
-          goldenClicks,
-          maxCombo,
+          goldenClicks, maxCombo,
+          lastOnlineTime: lastOnlineTime ?? Date.now(),
         },
       });
     } else {
       await db.clickerSave.create({
         data: {
-          crystals,
-          totalClicks,
-          totalEarned,
-          clickPower,
-          multiplier,
-          autoRate,
-          prestige,
-          prestigePoints,
+          crystals, totalClicks, totalEarned, clickPower, multiplier, autoRate,
+          prestige, prestigePoints,
           upgrades: JSON.stringify(upgrades),
           achievements: JSON.stringify(achievements),
-          goldenClicks,
-          maxCombo,
+          goldenClicks, maxCombo,
+          lastOnlineTime: lastOnlineTime ?? Date.now(),
         },
       });
     }
