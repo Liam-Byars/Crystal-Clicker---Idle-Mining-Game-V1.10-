@@ -4,49 +4,20 @@ import { db } from '@/lib/db';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const {
-      crystals,
-      totalClicks,
-      totalEarned,
-      clickPower,
-      multiplier,
-      autoRate,
-      prestige,
-      prestigePoints,
-      upgrades,
-      achievements,
-      goldenClicks,
-      maxCombo,
-      lastOnlineTime,
-    } = body;
-
+    const data = {
+      crystals: body.crystals, totalClicks: body.totalClicks, totalEarned: body.totalEarned,
+      clickPower: body.clickPower, multiplier: body.multiplier, autoRate: body.autoRate,
+      prestige: body.prestige, prestigePoints: body.prestigePoints,
+      upgrades: JSON.stringify(body.upgrades), achievements: JSON.stringify(body.achievements),
+      goldenClicks: body.goldenClicks, maxCombo: body.maxCombo,
+      lastOnlineTime: body.lastOnlineTime ?? Date.now(), totalEvents: body.totalEvents ?? 0,
+    };
     const existing = await db.clickerSave.findFirst();
-
     if (existing) {
-      await db.clickerSave.update({
-        where: { id: existing.id },
-        data: {
-          crystals, totalClicks, totalEarned, clickPower, multiplier, autoRate,
-          prestige, prestigePoints,
-          upgrades: JSON.stringify(upgrades),
-          achievements: JSON.stringify(achievements),
-          goldenClicks, maxCombo,
-          lastOnlineTime: lastOnlineTime ?? Date.now(),
-        },
-      });
+      await db.clickerSave.update({ where: { id: existing.id }, data });
     } else {
-      await db.clickerSave.create({
-        data: {
-          crystals, totalClicks, totalEarned, clickPower, multiplier, autoRate,
-          prestige, prestigePoints,
-          upgrades: JSON.stringify(upgrades),
-          achievements: JSON.stringify(achievements),
-          goldenClicks, maxCombo,
-          lastOnlineTime: lastOnlineTime ?? Date.now(),
-        },
-      });
+      await db.clickerSave.create({ data });
     }
-
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Save error:', error);
