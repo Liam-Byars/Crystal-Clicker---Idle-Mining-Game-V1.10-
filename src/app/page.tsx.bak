@@ -2,6 +2,7 @@
 
 import React, { useEffect, useCallback, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useShallow } from 'zustand/react/shallow';
 import { useGameStore, getUpgradeCost, getCostForLevel, getMaxBuyCount, getTotalCostN } from '@/stores';
 import type { BuyQuantity, FloatingText, Upgrade } from '@/stores';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -12,7 +13,14 @@ import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 // ====== Sound Engine ======
 const audioCtx = typeof window !== 'undefined'
@@ -146,7 +154,9 @@ export default function CrystalClickerPage() {
   const sessionClicks = useGameStore(s => s.sessionClicks);
 
   const upgrades = useGameStore(s => s.upgrades);
-  const achievements = useGameStore(s => s.achievements);
+  const achievements = useGameStore(
+    useShallow(s => s.achievements.map(a => ({ id: a.id, name: a.name, description: a.description, icon: a.icon, unlocked: a.unlocked })))
+  );
 
   const click = useGameStore(s => s.click);
   const clickGolden = useGameStore(s => s.clickGolden);
