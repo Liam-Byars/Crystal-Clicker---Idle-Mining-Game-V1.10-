@@ -13,6 +13,54 @@ import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Switch } from '@/components/ui/switch';
+
+// ====== Sound Engine (Web Audio API) ======
+const audioCtx = typeof window !== 'undefined' ? new (window.AudioContext || (window as unknown as Record<string, unknown>).webkitAudioContext)() : null;
+let soundEnabled = true;
+
+function playTone(freq: number, duration: number, type: OscillatorType = 'sine', vol = 0.1) {
+  if (!soundEnabled || !audioCtx) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+  gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start();
+  osc.stop(audioCtx.currentTime + duration);
+}
+
+export const sfx = {
+  click: () => playTone(600 + Math.random() * 200, 0.08, 'sine', 0.06),
+  crit: () => { playTone(800, 0.1, 'square', 0.08); playTone(1200, 0.15, 'sine', 0.06); },
+  golden: () => { playTone(880, 0.1, 'sine', 0.08); setTimeout(() => playTone(1100, 0.1, 'sine', 0.08), 80); setTimeout(() => playTone(1320, 0.15, 'sine', 0.07), 160); },
+  buy: () => playTone(400, 0.06, 'triangle', 0.05),
+  achieve: () => { playTone(523, 0.1, 'sine', 0.07); setTimeout(() => playTone(659, 0.1, 'sine', 0.07), 100); setTimeout(() => playTone(784, 0.2, 'sine', 0.08), 200); },
+  prestige: () => { [523,659,784,1047].forEach((f,i) => setTimeout(() => playTone(f, 0.2, 'sine', 0.08), i*100)); },
+  error: () => playTone(200, 0.15, 'square', 0.04),
+};
+
+// ====== Settings State ======
+let settingsState = { sound: true, particles: true, shake: true };
+const settingsListeners = new Set<() => void>();
+export function getSettings() { return settingsState; }
+export function setSettings(partial: Partial<typeof settingsState>) {
+  settingsState = { ...settingsState, ...partial };
+  soundEnabled = settingsState.sound;
+  settingsListeners.forEach(l => l());
+}
+export function useSettings() {
+  const [, forceRender] = useState(0);
+  useEffect(() => {
+    const listener = () => forceRender(n => n + 1);
+    settingsListeners.add(listener);
+    return () => { settingsListeners.delete(listener); };
+  }, []);
+  return settingsState;
+}
 
 // ====== Formatters ======
 function fmt(n: number): string {
@@ -505,34 +553,36 @@ function StatsPanel() {
   const sessionTime = Date.now() - stats.sessionStartTime;
 
   const statItems = [
-    { label: 'Crystals', value: fmt(stats.crystals), color: 'text-purple-300' },
-    { label: 'Total Earned', value: fmt(stats.totalEarned), color: 'text-purple-200' },
-    { label: 'Total Clicks', value: stats.totalClicks.toLocaleString(), color: 'text-cyan-300' },
-    { label: 'Click Power', value: fmt(stats.clickPower), color: 'text-red-300' },
-    { label: 'Auto Rate', value: `${fmt(stats.autoRate)}/s`, color: 'text-green-300' },
-    { label: 'Multiplier', value: `x${stats.multiplier.toFixed(1)}`, color: 'text-amber-300' },
-    { label: 'Prestige', value: `${stats.prestige} (${stats.prestigePoints} pts)`, color: 'text-pink-300' },
-    { label: 'Max Combo', value: `${stats.maxCombo}x`, color: 'text-orange-300' },
-    { label: 'Critical Hits', value: stats.totalCrits.toLocaleString(), color: 'text-red-400' },
-    { label: 'Crit Chance', value: `${(stats.critChance * 100).toFixed(1)}%`, color: 'text-red-300' },
-    { label: 'Golden Clicks', value: stats.goldenClicks.toLocaleString(), color: 'text-yellow-300' },
-    { label: 'Golden Chance', value: `${(stats.goldenChance * 100).toFixed(1)}%`, color: 'text-yellow-200' },
-    { label: 'Events Experienced', value: stats.totalEvents.toString(), color: 'text-purple-400' },
-    { label: 'Click Speed', value: `${stats.clicksPerSecond} CPS`, color: 'text-cyan-400' },
-    { label: 'Upgrade Levels', value: stats.totalUpgradeLevels.toString(), color: 'text-blue-300' },
-    { label: 'Achievements', value: `${stats.unlockedAchievements}/30`, color: 'text-amber-300' },
-    { label: 'Session Clicks', value: stats.sessionClicks.toLocaleString(), color: 'text-gray-300' },
-    { label: 'Session Earned', value: fmt(stats.sessionEarned), color: 'text-gray-300' },
-    { label: 'Session Time', value: fmtDuration(sessionTime), color: 'text-gray-400' },
+    { label: 'Crystals', value: fmt(stats.crystals), color: 'text-purple-300', icon: '💎', border: 'border-l-purple-500/50' },
+    { label: 'Total Earned', value: fmt(stats.totalEarned), color: 'text-purple-200', icon: '💰', border: 'border-l-purple-400/40' },
+    { label: 'Total Clicks', value: stats.totalClicks.toLocaleString(), color: 'text-cyan-300', icon: '👆', border: 'border-l-cyan-500/40' },
+    { label: 'Click Power', value: fmt(stats.clickPower), color: 'text-red-300', icon: '⚔️', border: 'border-l-red-500/40' },
+    { label: 'Auto Rate', value: `${fmt(stats.autoRate)}/s`, color: 'text-green-300', icon: '⛏️', border: 'border-l-green-500/40' },
+    { label: 'Multiplier', value: `x${stats.multiplier.toFixed(1)}`, color: 'text-amber-300', icon: '✨', border: 'border-l-amber-500/40' },
+    { label: 'Prestige', value: `${stats.prestige} (${stats.prestigePoints} pts)`, color: 'text-pink-300', icon: '🔄', border: 'border-l-pink-500/40' },
+    { label: 'Max Combo', value: `${stats.maxCombo}x`, color: 'text-orange-300', icon: '🔥', border: 'border-l-orange-500/40' },
+    { label: 'Critical Hits', value: stats.totalCrits.toLocaleString(), color: 'text-red-400', icon: '💥', border: 'border-l-red-400/40' },
+    { label: 'Crit Chance', value: `${(stats.critChance * 100).toFixed(1)}%`, color: 'text-red-300', icon: '🎯', border: 'border-l-red-500/30' },
+    { label: 'Golden Clicks', value: stats.goldenClicks.toLocaleString(), color: 'text-yellow-300', icon: '🌟', border: 'border-l-yellow-500/40' },
+    { label: 'Golden Chance', value: `${(stats.goldenChance * 100).toFixed(1)}%`, color: 'text-yellow-200', icon: '⭐', border: 'border-l-yellow-400/30' },
+    { label: 'Events Done', value: stats.totalEvents.toString(), color: 'text-purple-400', icon: '🎉', border: 'border-l-purple-400/40' },
+    { label: 'Click Speed', value: `${stats.clicksPerSecond} CPS`, color: 'text-cyan-400', icon: '⚡', border: 'border-l-cyan-400/40' },
+    { label: 'Upgrade Lvl', value: stats.totalUpgradeLevels.toString(), color: 'text-blue-300', icon: '⬆️', border: 'border-l-blue-500/40' },
+    { label: 'Achievements', value: `${stats.unlockedAchievements}/30`, color: 'text-amber-300', icon: '🏆', border: 'border-l-amber-500/40' },
+    { label: 'Session Clicks', value: stats.sessionClicks.toLocaleString(), color: 'text-gray-300', icon: '🖱️', border: 'border-l-gray-500/30' },
+    { label: 'Session Earned', value: fmt(stats.sessionEarned), color: 'text-emerald-300', icon: '💵', border: 'border-l-emerald-500/30' },
+    { label: 'Session Time', value: fmtDuration(sessionTime), color: 'text-gray-400', icon: '⏱️', border: 'border-l-gray-500/30' },
   ];
 
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-bold text-purple-300">📊 Statistics</h3>
+      <h3 className="text-sm font-bold text-cyan-300">📊 Statistics</h3>
+      <IncomeSparkline />
       <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
         {statItems.map(item => (
-          <div key={item.label} className="flex items-center justify-between rounded-lg border border-gray-800/30 bg-gray-900/20 px-3 py-2">
-            <span className="text-xs text-gray-500">{item.label}</span>
+          <div key={item.label} className={`flex items-center gap-2 rounded-lg border-l-2 px-3 py-2 ${item.border} bg-gray-900/20`)}>
+            <span className="text-sm w-5 text-center">{item.icon}</span>
+            <span className="text-[11px] text-gray-500 flex-1">{item.label}</span>
             <span className={`text-xs font-bold ${item.color}`}>{item.value}</span>
           </div>
         ))}
@@ -613,6 +663,125 @@ function PrestigePanel() {
   );
 }
 
+// ====== Income Sparkline ======
+function IncomeSparkline() {
+  const [history, setHistory] = useState<number[]>(() => Array(60).fill(0));
+  const prevCrystals = useRef(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const crystals = useGameStore.getState().crystals;
+      const income = Math.max(0, crystals - prevCrystals.current);
+      prevCrystals.current = crystals;
+      setHistory(h => [...h.slice(1), income]);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const maxVal = Math.max(1, ...history);
+  const width = 200;
+  const height = 40;
+  const points = history.map((v, i) => {
+    const x = (i / (history.length - 1)) * width;
+    const y = height - (v / maxVal) * (height - 4) - 2;
+    return `${x},${y}`;
+  }).join(' ');
+  const areaPath = `M0,${height} L${points.split(' ').map((p, i) => {
+    const [x, y] = p.split(',');
+    return i === 0 ? `${x},${y}` : `L${x},${y}`;
+  }).join(' ')} L${width},${height} Z`;
+
+  return (
+    <div className="rounded-lg border border-gray-800/30 bg-gray-900/20 p-3">
+      <div className="mb-1 flex items-center justify-between">
+        <span className="text-xs text-gray-500">📈 Income/Sec (60s)</span>
+        <span className="text-xs font-bold text-green-300">{fmt(history[history.length - 1])}/s</span>
+      </div>
+      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-10" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="rgb(74, 222, 128)" stopOpacity="0.3" />
+            <stop offset="100%" stopColor="rgb(74, 222, 128)" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path d={areaPath} fill="url(#sparkGrad)" />
+        <polyline points={points} fill="none" stroke="rgb(74, 222, 128)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </div>
+  );
+}
+
+// ====== Settings Panel ======
+function SettingsPanel() {
+  const settings = useSettings();
+  const resetGame = useGameStore(useShallow(s => s.resetGame));
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  const toggle = (key: 'sound' | 'particles' | 'shake') => {
+    setSettings({ [key]: !settings[key] });
+  };
+
+  return (
+    <div className="space-y-4">
+      <h3 className="text-sm font-bold text-purple-300">⚙️ Settings</h3>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between rounded-lg border border-gray-800/30 bg-gray-900/20 px-3 py-2.5">
+          <div className="flex items-center gap-2">
+            <span className="text-sm">🔊</span>
+            <div>
+              <div className="text-xs font-medium text-gray-300">Sound Effects</div>
+              <div className="text-[10px] text-gray-500">Click, crit, golden, achievement sounds</div>
+            </div>
+          </div>
+          <Switch checked={settings.sound} onCheckedChange={() => toggle('sound')} />
+        </div>
+        <div className="flex items-center justify-between rounded-lg border border-gray-800/30 bg-gray-900/20 px-3 py-2.5">
+          <div className="flex items-center gap-2">
+            <span className="text-sm">✨</span>
+            <div>
+              <div className="text-xs font-medium text-gray-300">Ambient Particles</div>
+              <div className="text-[10px] text-gray-500">Floating particle effects in background</div>
+            </div>
+          </div>
+          <Switch checked={settings.particles} onCheckedChange={() => toggle('particles')} />
+        </div>
+        <div className="flex items-center justify-between rounded-lg border border-gray-800/30 bg-gray-900/20 px-3 py-2.5">
+          <div className="flex items-center gap-2">
+            <span className="text-sm">📳</span>
+            <div>
+              <div className="text-xs font-medium text-gray-300">Screen Shake</div>
+              <div className="text-[10px] text-gray-500">Screen shake on crits and combos</div>
+            </div>
+          </div>
+          <Switch checked={settings.shake} onCheckedChange={() => toggle('shake')} />
+        </div>
+        <Separator className="bg-gray-800/30" />
+        <div className="space-y-2">
+          <p className="text-xs text-gray-500">⌨️ <strong>Keyboard Shortcuts:</strong></p>
+          <div className="grid grid-cols-2 gap-1 text-[10px] text-gray-500">
+            <span><kbd className="rounded border border-gray-700 bg-gray-800 px-1.5 py-0.5 text-gray-400">1</kbd>-<kbd className="rounded border border-gray-700 bg-gray-800 px-1.5 py-0.5 text-gray-400">9</kbd> Buy upgrades</span>
+            <span><kbd className="rounded border border-gray-700 bg-gray-800 px-1.5 py-0.5 text-gray-400">Space</kbd> Click crystal</span>
+          </div>
+        </div>
+        <Separator className="bg-gray-800/30" />
+        <div className="text-center">
+          {!showConfirm ? (
+            <Button onClick={() => setShowConfirm(true)} variant="outline" size="sm" className="border-red-500/20 text-red-400/60 hover:text-red-300 hover:border-red-500/40">
+              🗑️ Reset All Progress
+            </Button>
+          ) : (
+            <div className="flex items-center justify-center gap-2">
+              <span className="text-xs text-red-400">Are you sure?</span>
+              <Button onClick={() => { resetGame(); setShowConfirm(false); }} size="sm" className="bg-red-600 text-white hover:bg-red-500">Yes</Button>
+              <Button onClick={() => setShowConfirm(false)} variant="outline" size="sm" className="border-gray-600 text-gray-400">No</Button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ====== Main Game Component ======
 export default function CrystalClicker() {
   const crystalRef = useRef<HTMLDivElement>(null);
@@ -660,6 +829,29 @@ export default function CrystalClicker() {
   const click = useGameStore(useShallow(s => s.click));
   const clickGolden = useGameStore(useShallow(s => s.clickGolden));
   const setActiveTab = useGameStore(useShallow(s => s.setActiveTab));
+  const buyUpgrade = useGameStore(useShallow(s => s.buyUpgrade));
+  const upgrades = useGameStore(useShallow(s => s.upgrades));
+  const settings = useSettings();
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      const num = parseInt(e.key);
+      if (num >= 1 && num <= 9) {
+        const u = upgrades[num - 1];
+        if (u) { buyUpgrade(u.id); sfx.buy(); }
+      }
+      if (e.code === 'Space') {
+        e.preventDefault();
+        const rect = crystalRef.current?.getBoundingClientRect();
+        if (rect) click(rect.width / 2, rect.height / 2);
+        sfx.click();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [upgrades, buyUpgrade, click]);
 
   // Derived values
   // We read activeEvent/activePowerUp directly in tick, so effectiveAuto only for display
@@ -710,6 +902,7 @@ export default function CrystalClicker() {
       y = e.clientY - rect.top;
     }
     click(x, y);
+    sfx.click();
   }, [click]);
 
   const handleGoldenClick = useCallback((e: React.MouseEvent | React.TouchEvent) => {
@@ -725,6 +918,7 @@ export default function CrystalClicker() {
       y = e.clientY - rect.top;
     }
     clickGolden(x, y);
+    sfx.golden();
   }, [clickGolden]);
 
   // Load save on mount
@@ -779,7 +973,7 @@ export default function CrystalClicker() {
   return (
     <TooltipProvider>
       <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-[#0a0a1a] via-[#0d0b2e] to-[#0a0a1a] text-white bg-grid-pattern">
-        <AmbientParticles />
+        {settings.particles && <AmbientParticles />}
         <FloatingTexts />
         <RippleEffects />
         <EventBanner />
@@ -814,7 +1008,7 @@ export default function CrystalClicker() {
 
             {/* Crystal Click Area */}
             <div
-              className={`relative ${screenShake ? 'animate-shake' : ''}`}
+              className={`relative ${screenShake && settings.shake ? 'animate-shake' : ''}`}
             >
               {/* Combo Ring */}
               <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
@@ -978,7 +1172,7 @@ export default function CrystalClicker() {
           {/* ====== Right: Tabs Panel ====== */}
           <div className="w-full lg:w-[420px] xl:w-[460px]">
             <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="w-full">
-              <TabsList className="grid w-full grid-cols-4 bg-purple-950/50 border border-purple-500/15">
+              <TabsList className="grid w-full grid-cols-5 bg-purple-950/50 border border-purple-500/15">
                 <TabsTrigger value="upgrades" className="text-xs data-[state=active]:bg-purple-600/80 data-[state=active]:text-white text-purple-300/60">
                   ⬆️ Upgrades
                 </TabsTrigger>
@@ -990,6 +1184,9 @@ export default function CrystalClicker() {
                 </TabsTrigger>
                 <TabsTrigger value="prestige" className="text-xs data-[state=active]:bg-pink-600/80 data-[state=active]:text-white text-pink-300/60">
                   🔄 Prestige
+                </TabsTrigger>
+                <TabsTrigger value="settings" className="text-xs data-[state=active]:bg-gray-600/80 data-[state=active]:text-white text-gray-400/60">
+                  ⚙️ Settings
                 </TabsTrigger>
               </TabsList>
 
@@ -1005,6 +1202,9 @@ export default function CrystalClicker() {
                 </TabsContent>
                 <TabsContent value="prestige" className="mt-0 pr-3">
                   <PrestigePanel />
+                </TabsContent>
+                <TabsContent value="settings" className="mt-0 pr-3">
+                  <SettingsPanel />
                 </TabsContent>
               </ScrollArea>
             </Tabs>
