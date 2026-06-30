@@ -129,6 +129,26 @@
   20%, 40%, 60%, 80% { transform: translateX(4px); }
 }
 
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.05); }
+}
+
+@keyframes float-up {
+  0% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-120px) scale(0.6); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes border-glow {
+  0%, 100% { border-color: rgba(168, 85, 247, 0.2); }
+  50% { border-color: rgba(168, 85, 247, 0.5); }
+}
+
 /* Custom scrollbar for the game */
 ::-webkit-scrollbar {
   width: 6px;
@@ -156,4 +176,61 @@
 .select-none {
   -webkit-user-select: none;
   user-select: none;
+}
+
+/* Game-specific styles */
+.crystal-glow {
+  filter: drop-shadow(0 0 20px rgba(168, 85, 247, 0.4)) drop-shadow(0 0 60px rgba(168, 85, 247, 0.15));
+}
+
+.crystal-glow:hover {
+  filter: drop-shadow(0 0 30px rgba(168, 85, 247, 0.6)) drop-shadow(0 0 80px rgba(168, 85, 247, 0.25));
+}
+
+.upgrade-card-hover {
+  transition: all 0.2s ease;
+}
+
+.upgrade-card-hover:hover {
+  transform: translateX(2px);
+}
+
+.tab-glow-upgrades { box-shadow: inset 0 -2px 0 rgba(168, 85, 247, 0.6); }
+.tab-glow-achievements { box-shadow: inset 0 -2px 0 rgba(245, 158, 11, 0.6); }
+.tab-glow-stats { box-shadow: inset 0 -2px 0 rgba(6, 182, 212, 0.6); }
+.tab-glow-prestige { box-shadow: inset 0 -2px 0 rgba(236, 72, 153, 0.6); }
+
+/* Gradient text helper */
+.text-gradient-purple {
+  background: linear-gradient(135deg, #c084fc, #a855f7, #7c3aed);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gradient-gold {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b, #d97706);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Subtle grid pattern overlay */
+.bg-grid-pattern {
+  background-image: 
+    linear-gradient(rgba(168, 85, 247, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(168, 85, 247, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Auto income pulse indicator */
+.auto-income-pulse {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Shimmer effect for premium items */
+.shimmer-bg {
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.05) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: shimmer 3s linear infinite;
 }
