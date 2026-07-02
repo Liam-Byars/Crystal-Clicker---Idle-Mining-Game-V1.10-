@@ -14,6 +14,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useAuth } from '@/lib/auth-context';
+import { SignInScreen } from '@/components/sign-in-screen';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { LogOut, UserCircle, Volume2, VolumeX } from 'lucide-react';
 
 // ====== Helpers ======
 function fmt(n: number): string {
@@ -104,6 +109,9 @@ export default function GamePage() {
   const crystalRef = useRef<HTMLDivElement>(null);
   const [sessionTime, setSessionTime] = useState(0);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+
+  // ====== Auth ======
+  const { user, loading: authLoading, isGuest, logout, userId, displayName, photoURL } = useAuth();
 
   // ====== Store Selectors (useShallow for all!) ======
   const crystals = useGameStore(s => s.crystals);
@@ -215,11 +223,16 @@ export default function GamePage() {
       try {
         setSaveStatus('saving');
         const data = getSaveData();
-        await fetch('/api/clicker/save', {
+        const payload = { ...data, userId };
+        const savePromise = fetch('/api/clicker/save', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data),
+          body: JSON.stringify(payload),
         });
+        if (isGuest) {
+          try { localStorage.setItem('crystal_clicker_save', JSON.stringify(data)); } catch { /* ignore */ }
+        }
+        await savePromise;
         setSaveStatus('saved');
         setTimeout(() => setSaveStatus('idle'), 2000);
       } catch {
@@ -228,20 +241,28 @@ export default function GamePage() {
       }
     }, 15000);
     return () => clearInterval(iv);
-  }, [getSaveData]);
+  }, [getSaveData, userId, isGuest]);
 
   // ====== Load Save on Mount ======
   useEffect(() => {
+    if (!userId) return;
     (async () => {
       try {
-        const res = await fetch('/api/clicker/load');
+        const res = await fetch(`/api/clicker/load?userId=${encodeURIComponent(userId)}`);
         if (res.ok) {
-          const data = await res.json();
-          if (data && data.crystals !== undefined) loadSave(data);
+          const json = await res.json();
+          if (json.data && json.data.crystals !== undefined) {
+            loadSave(json.data);
+          } else if (isGuest) {
+            try {
+              const local = localStorage.getItem('crystal_clicker_save');
+              if (local) { const d = JSON.parse(local); if (d.crystals !== undefined) loadSave(d); }
+            } catch { /* ignore */ }
+          }
         }
       } catch { /* no save exists yet */ }
     })();
-  }, [loadSave]);
+  }, [loadSave, userId, isGuest]);
 
   // ====== Achievement sound on unlock ======
   useEffect(() => {
@@ -312,6 +333,20 @@ export default function GamePage() {
   }, []);
 
   // ====== Render ======
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#0a0a1a' }}>
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
+          <span className="text-purple-400/60 text-sm">Loading...</span>
+        </div>
+      </div>
+    );
+  }
+  if (!userId) {
+    return <SignInScreen />;
+  }
+
   return (
     <TooltipProvider delayDuration={200}>
       <div
@@ -320,6 +355,64 @@ export default function GamePage() {
       >
         {/* Grid pattern background */}
         <div className="fixed inset-0 bg-grid-pattern pointer-events-none" />
+
+        {/* ====== USER BAR ====== */}
+        <div className="relative z-40 flex items-center justify-between px-3 py-1.5 bg-gray-950/60 backdrop-blur-sm border-b border-gray-800/50">
+          <div className="flex items-center gap-2">
+            <Avatar className="w-7 h-7">
+              {photoURL && <AvatarImage src={photoURL} alt={displayName || ''} />}
+              <AvatarFallback className="bg-purple-600/30 text-purple-300 text-xs font-semibold">
+                {(displayName || 'G')[0].toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <span className="text-sm text-gray-300 font-medium max-w-[140px] truncate">
+              {displayName || 'Guest'}
+            </span>
+            {isGuest && (
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-gray-700 text-gray-500">
+                Guest
+              </Badge>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {/* Save status */}
+            <span className="text-[10px] text-gray-600">
+              {saveStatus === 'saving' && 'Saving...'}
+              {saveStatus === 'saved' && 'Saved ✓'}
+              {saveStatus === 'error' && 'Save failed'}
+            </span>
+            {/* Sound toggle */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0 text-gray-500 hover:text-gray-300 hover:bg-gray-800/50"
+              onClick={() => { soundOn = !soundOn; }}
+            >
+              {soundOn ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+            </Button>
+            {/* User menu */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0 text-gray-500 hover:text-gray-300 hover:bg-gray-800/50"
+                >
+                  <UserCircle className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-gray-900 border-gray-700">
+                <DropdownMenuItem
+                  className="text-red-400 focus:text-red-300 focus:bg-red-500/10 cursor-pointer"
+                  onClick={logout}
+                >
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Log out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
 
         {/* ====== EVENT BANNER ====== */}
         <AnimatePresence>

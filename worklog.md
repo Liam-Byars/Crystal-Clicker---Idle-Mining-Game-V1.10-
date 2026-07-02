@@ -2,62 +2,60 @@
 
 ## Current Project Status
 
-**Status: ✅ Fully Functional — Game is playable, page.tsx completely rewritten and verified.**
+**Status: ✅ Fully Functional — Auth system rebuilt, login screen working, game fully playable.**
 
-### Session 6 Work (Current)
-- **Complete rewrite of `src/app/page.tsx`** (872 lines) to match the current gameStore.ts API
-- Fixed critical syntax error (mismatched parenthesis in template literal from old code)
-- Fixed `useShallow` crash — replaced with simple selector to avoid client-side hydration error
-- Removed unused `Switch` import
-- All features implemented: buy quantity toggle (x1/x10/xMax), offline earnings dialog, event banner, power-up display, achievement notifications, click ripples, floating text, combo bar, session timer, sound effects, prestige system, milestones, auto-save
-- Lint passes clean (0 errors)
-- Server returns 200 with 45KB HTML
-- Browser QA verified: crystal clicking, combo system, achievement unlocking, tab switching, session timer all working
-- Dev server requires `setsid -f bun run dev` to stay alive (standard `& disown` causes premature death in this environment)
+### Session 7 Work (Current)
+- **Rebuilt entire auth system from scratch** (previous session's auth files were lost)
+- **Files created:**
+  - `src/lib/firebase.ts` — Firebase config with env var support, `isFirebaseConfigured` flag
+  - `src/lib/auth-context.tsx` — AuthProvider with guest mode + Google sign-in, localStorage persistence
+  - `src/components/sign-in-screen.tsx` — Beautiful themed sign-in screen with "Play as Guest" and "Sign in with Google" buttons
+- **Files modified:**
+  - `src/app/layout.tsx` — Wrapped children with `<AuthProvider>`
+  - `src/app/page.tsx` — Added auth gate, user bar (avatar, name, guest badge, save status, sound toggle, logout dropdown), updated save/load to use userId, localStorage backup for guests
+  - `src/app/api/clicker/save/route.ts` — Now requires `userId` in body, uses `findUnique/upsert` by userId
+  - `src/app/api/clicker/load/route.ts` — Now requires `userId` query param, returns `{ data: ... }` structure
+  - `prisma/schema.prisma` — Added `userId String @unique` to ClickerSave model (force-reset DB)
+- **Installed:** `firebase@12.15.0`
+- **Lint:** Passes clean (0 errors)
+- **Browser QA verified:**
+  - Sign-in screen appears on first visit (no auth state)
+  - "Play as Guest" button works → enters game
+  - User bar shows: avatar ("G"), "Guest Miner", "Guest" badge, save status, sound toggle, user menu
+  - Crystal clicking works, combo system works, achievements unlock
+  - Logout dropdown → "Log out" → returns to sign-in screen
+  - Zero console errors throughout
 
 ### Key Files
-- `src/app/page.tsx` — Complete rewrite, 872 lines, all features working
-- `src/stores/gameStore.ts` — 601 lines, stable (not modified this session)
-- `src/stores/index.ts` — Clean re-exports including getCostForLevel
-- `src/app/globals.css` — Custom animations, scrollbars, crystal glow effects
-- `src/app/api/clicker/save/route.ts` and `load/route.ts` — Save/load working
-- `prisma/schema.prisma` — ClickerSave model
+- `src/lib/firebase.ts` — Firebase initialization (reads NEXT_PUBLIC_FIREBASE_* env vars)
+- `src/lib/auth-context.tsx` — Auth state management with localStorage persistence
+- `src/components/sign-in-screen.tsx` — Sign-in screen UI
+- `src/app/page.tsx` — Game page with auth gate and user bar (~1060 lines)
+- `src/stores/gameStore.ts` — 601 lines, stable
+- `src/app/api/clicker/save/route.ts` — Save API (userId-based)
+- `src/app/api/clicker/load/route.ts` — Load API (userId-based)
+- `prisma/schema.prisma` — ClickerSave with userId @unique
 
-### Architecture
-- Next.js 16 App Router + `'use client'` page component
-- Zustand state management with individual selectors (no useShallow — causes hydration crash)
-- 100ms game tick interval for auto income, combo decay, golden crystal spawning, events, power-ups
-- 15-second auto-save to Prisma/SQLite via API routes
-- Web Audio API for sound effects (click, crit, golden, buy, achievement, prestige)
-- Framer Motion for animations (floating text, ripples, achievement notifications, event banners)
-- shadcn/ui components: Tabs, Card, Button, Badge, Progress, ScrollArea, Tooltip, Separator, Dialog
+### Auth Architecture
+- **Guest mode:** Generates `guest_<random>` ID, persisted to localStorage (`crystal_clicker_auth`), saves to both server (by userId) and localStorage (`crystal_clicker_save`) as backup
+- **Google sign-in:** Uses Firebase Auth popup, stores Firebase UID as userId, persisted to localStorage
+- **Firebase config:** Read from `NEXT_PUBLIC_FIREBASE_*` env vars. If not configured, Google sign-in button is hidden, only "Play as Guest" shown
+- **Auto-restore:** On page reload, reads localStorage to restore guest/Google session without re-login
+- **Logout:** Clears localStorage, Firebase signOut, resets to sign-in screen
 
-## Completed Modifications
-- page.tsx: Full rewrite matching all gameStore APIs
-- Fix: useShallow hydration crash → simple selector
-- Fix: Unused Switch import removed
-- Fix: getCostForLevel import added
-- Fix: handlePrestige indentation
-- QA: Clicking crystal works, crystals accumulate
-- QA: Combo system works (1x to 15x+ with progress bar)
-- QA: Achievements unlock (First Spark, Dedicated Clicker, Combo Starter, etc.)
-- QA: Tab switching works (Upgrades, Achievements 0/30→4/30, Stats, Prestige)
-- QA: Session timer running
-- QA: Sound toggle works
-- QA: Reset button present
+## Previous Sessions
+### Session 6
+- Complete rewrite of `src/app/page.tsx` (872 lines)
+- All features: buy quantity toggle, offline earnings, events, power-ups, achievements, combos, sound effects, prestige
 
 ## Unresolved Issues / Risks
-- Dev server stability: `setsid -f bun run dev` needed (not `& disown`) — likely environment-specific
-- agent-browser had severe stability issues in this session (zombie processes, connection refused) — may need cleanup before each QA session
-- The page has ~40 individual useGameStore selectors which could be optimized into grouped selectors with useMemo for better performance
-- No visual screenshot verification done (screenshot saved but not viewed)
+- Firebase Google sign-in not testable in sandbox (no authorized domain) — user needs to add their Firebase config to `.env.local` and add the domain to Firebase Console
+- Hydration mismatch possible: SSR renders sign-in screen, client may restore guest session from localStorage (mitigated by suppressHydrationWarning on body)
+- Guest logout creates new guest ID — old progress only recoverable via localStorage backup
 
 ## Recommended Next Phase Priorities
-1. **Visual polish**: Add particle effects, better crystal animation, gradient backgrounds for upgrade categories
-2. **Numbers tab redesign**: Current stats use plain lists — add visual bars/sparklines
-3. **Buy quantity x10/xMax**: Verify multi-buy works correctly for all upgrade types
-4. **Golden crystal**: Test golden crystal spawning and clicking (random, hard to test automatically)
-5. **Events**: Test random event spawning (requires 50+ clicks)
-6. **Prestige**: Test full prestige flow (requires 1,000+ total earned)
-7. **Offline earnings**: Test offline bonus dialog (requires save, wait, reload)
-8. **Performance**: Consider batching store selectors to reduce re-renders
+1. **Firebase config:** User provides env vars and tests Google sign-in
+2. **Guest→Google migration:** When a guest signs in with Google, migrate their localStorage save to the server under the Google userId
+3. **Visual polish:** Add particle effects, better crystal animation
+4. **Stats tab redesign:** Visual bars/sparklines instead of plain lists
+5. **Performance:** Batch store selectors to reduce re-renders

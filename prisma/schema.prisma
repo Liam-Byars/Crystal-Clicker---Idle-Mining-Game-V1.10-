@@ -27,6 +27,7 @@ model Post {
 
 model ClickerSave {
   id            String   @id @default(cuid())
+  userId        String   @unique
   crystals      Float    @default(0)
   totalClicks   Int      @default(0)
   totalEarned   Float    @default(0)
