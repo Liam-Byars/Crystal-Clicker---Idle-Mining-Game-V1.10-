@@ -58,4 +58,73 @@
 2. **Guest→Google migration:** When a guest signs in with Google, migrate their localStorage save to the server under the Google userId
 3. **Visual polish:** Add particle effects, better crystal animation
 4. **Stats tab redesign:** Visual bars/sparklines instead of plain lists
-5. **Performance:** Batch store selectors to reduce re-renders
+5. **Performance:** Batch store selectors to reduce re-renders## Visual Polish & New Features - Work Record
+
+### Changes Made
+
+**1. globals.css - Added CSS Animations**
+- `sparkle-float` keyframes + `.crystal-sparkle` class for floating particle effects around the crystal
+- `crit-flash` keyframes + `.crit-flash-overlay` for screen flash on critical hits
+- `golden-pulse` keyframes + `.golden-pulse` for golden crystal glow animation
+- `upgrade-bought` keyframes + `.upgrade-bought` for purchase feedback animation
+- `cps-glow` keyframes + `.cps-glow` for CPS counter glow effect
+
+**2. page.tsx - Sparkle Particles**
+- Added `sparkles` state and `sparkleIdRef` ref for managing particle IDs
+- Added `useEffect` that spawns sparkle particles every 300ms (max 12 at a time, auto-removed after 2s)
+- Rendered sparkle elements inside the crystal button div, with golden color override when golden mode is active
+- Added `golden-pulse` class to crystal div when goldenActive is true
+
+**3. page.tsx - Critical Hit Flash**
+- Added `critFlash` state
+- Modified `handleCrystalClick` to trigger red screen flash overlay on crit hits
+- Added fixed overlay div with `crit-flash-overlay` animation class
+
+**4. page.tsx - Manual Save Button**
+- Added "💾 Save" button in the session info bar next to the sound toggle
+- Saves to both localStorage and server API on click
+- Shows save status feedback (saving/saved/error)
+
+**5. page.tsx - CPS Display Glow**
+- Footer CPS counter now uses `cps-glow` class and `text-cyan-400` when autoRate > 0
+- Creates a pulsing cyan glow effect on the CPS text when auto-income is active
+
+### Lint Result
+- All changes pass ESLint with zero errors.
+
+---
+Task ID: 2
+Agent: main
+Task: Fix data persistence to survive app republishes
+
+Work Log:
+- Changed auto-save (15s interval) to always save to localStorage with user-specific key `crystal_clicker_save_${userId}` (was only for guests with generic key)
+- Changed beforeunload save to always save to localStorage (was only for guests)
+- Rewrote load logic to: (1) read both localStorage and server saves, (2) compare timestamps, (3) use the most recent, (4) sync the winner to the other storage
+- Migration data (guest→Google) still handled with priority over both
+- Manual save button (added by visual polish agent) already uses correct user-specific key
+
+Stage Summary:
+- Progress now survives DB wipes because localStorage is the fallback for ALL users
+- On next load after DB wipe, localStorage data is loaded and automatically re-uploaded to server
+- Timestamp comparison ensures the most recent save is always used
+- Old `crystal_clicker_save` generic key is harmless; new key is user-specific
+
+---
+Task ID: 3-4
+Agent: full-stack-developer subagent + main
+Task: Add visual polish and new features
+
+Work Log:
+- Added 5 CSS animations to globals.css: sparkle-float, crit-flash, golden-pulse, upgrade-bought, cps-glow
+- Added floating sparkle particles around crystal (12 max, 300ms spawn, 2s lifetime, golden color in golden mode)
+- Added critical hit red screen flash overlay (300ms duration)
+- Added golden-pulse glow class to crystal during golden mode
+- Added manual "💾 Save" button in session info bar
+- Added CPS counter cyan glow animation when auto-income is active
+
+Stage Summary:
+- Game now has rich visual feedback: sparkles, crit flashes, golden glow
+- Manual save gives users explicit control
+- All animations are CSS-based for performance
+- Lint passes clean, browser QA verified

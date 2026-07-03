@@ -234,3 +234,63 @@
   background-size: 200% 100%;
   animation: shimmer 3s linear infinite;
 }
+
+/* Crystal sparkle particles */
+@keyframes sparkle-float {
+  0% { transform: translateY(0) scale(0); opacity: 0; }
+  20% { opacity: 1; transform: translateY(-10px) scale(1); }
+  100% { transform: translateY(-80px) scale(0.3); opacity: 0; }
+}
+
+.crystal-sparkle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: #c084fc;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: sparkle-float 2s ease-out infinite;
+  box-shadow: 0 0 6px #c084fc, 0 0 12px rgba(192, 132, 252, 0.3);
+}
+
+/* Screen flash on critical hit */
+@keyframes crit-flash {
+  0% { opacity: 0.15; }
+  100% { opacity: 0; }
+}
+
+.crit-flash-overlay {
+  animation: crit-flash 0.3s ease-out forwards;
+  pointer-events: none;
+}
+
+/* Golden glow pulse */
+@keyframes golden-pulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(251, 191, 36, 0.3), 0 0 60px rgba(251, 191, 36, 0.1); }
+  50% { box-shadow: 0 0 30px rgba(251, 191, 36, 0.5), 0 0 80px rgba(251, 191, 36, 0.2); }
+}
+
+.golden-pulse {
+  animation: golden-pulse 1s ease-in-out infinite;
+}
+
+/* Upgrade purchase animation */
+@keyframes upgrade-bought {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); border-color: rgba(168, 85, 247, 0.6); }
+  100% { transform: scale(1); }
+}
+
+.upgrade-bought {
+  animation: upgrade-bought 0.4s ease-out;
+}
+
+/* CPS counter glow */
+@keyframes cps-glow {
+  0%, 100% { text-shadow: 0 0 4px rgba(34, 211, 238, 0.3); }
+  50% { text-shadow: 0 0 8px rgba(34, 211, 238, 0.6); }
+}
+
+.cps-glow {
+  animation: cps-glow 2s ease-in-out infinite;
+}

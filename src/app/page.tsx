@@ -109,6 +109,8 @@ export default function GamePage() {
   const crystalRef = useRef<HTMLDivElement>(null);
   const [sessionTime, setSessionTime] = useState(0);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [sparkles, setSparkles] = useState<{id: number; x: number; y: number; delay: number}[]>([]);
+  const sparkleIdRef = useRef(0);
 
   // ====== Auth ======
   const { user, loading: authLoading, isGuest, logout, signInWithGoogle, userId, displayName, photoURL } = useAuth();
@@ -190,6 +192,20 @@ export default function GamePage() {
     return () => clearInterval(iv);
   }, [sessionStartTime]);
 
+  // ====== Sparkle Particles ======
+  useEffect(() => {
+    if (!userId) return;
+    const iv = setInterval(() => {
+      const id = sparkleIdRef.current++;
+      const x = 20 + Math.random() * 160;
+      const y = 20 + Math.random() * 160;
+      const delay = Math.random() * 0.5;
+      setSparkles(prev => [...prev.slice(-12), { id, x, y, delay }]);
+      setTimeout(() => setSparkles(prev => prev.filter(s => s.id !== id)), 2000);
+    }, 300);
+    return () => clearInterval(iv);
+  }, [userId]);
+
   // ====== Auto-save (15s) ======
   useEffect(() => {
     const iv = setInterval(async () => {
@@ -197,14 +213,13 @@ export default function GamePage() {
         setSaveStatus('saving');
         const data = getSaveData();
         const payload = { ...data, userId };
+        // Always save to localStorage as fallback (survives DB wipes)
+        try { localStorage.setItem(`crystal_clicker_save_${userId}`, JSON.stringify(data)); } catch { /* ignore */ }
         const savePromise = fetch('/api/clicker/save', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
-        if (isGuest) {
-          try { localStorage.setItem('crystal_clicker_save', JSON.stringify(data)); } catch { /* ignore */ }
-        }
         await savePromise;
         setSaveStatus('saved');
         setTimeout(() => setSaveStatus('idle'), 2000);
@@ -214,44 +229,73 @@ export default function GamePage() {
       }
     }, 15000);
     return () => clearInterval(iv);
-  }, [getSaveData, userId, isGuest]);
+  }, [getSaveData, userId]);
 
   // ====== Load Save on Mount ======
   useEffect(() => {
     if (!userId) return;
     (async () => {
       try {
-        const res = await fetch(`/api/clicker/load?userId=${encodeURIComponent(userId)}`);
-        if (res.ok) {
-          const json = await res.json();
-          if (json.data && json.data.crystals !== undefined) {
-            loadSave(json.data);
-          } else {
-            // No server save found — check for guest migration data
+        // Read both server and localStorage saves, use the most recent
+        let localData: Record<string, unknown> | null = null;
+        try {
+          const raw = localStorage.getItem(`crystal_clicker_save_${userId}`);
+          if (raw) localData = JSON.parse(raw);
+        } catch { /* ignore */ }
+
+        let serverData: Record<string, unknown> | null = null;
+        try {
+          const res = await fetch(`/api/clicker/load?userId=${encodeURIComponent(userId)}`);
+          if (res.ok) {
+            const json = await res.json();
+            if (json.data && (json.data as Record<string, unknown>).crystals !== undefined) {
+              serverData = json.data as Record<string, unknown>;
+            }
+          }
+        } catch { /* ignore */ }
+
+        // Check for guest→Google migration data
+        const migration = localStorage.getItem('crystal_clicker_migration');
+        let migrationData: Record<string, unknown> | null = null;
+        if (migration) {
+          try { migrationData = JSON.parse(migration); } catch { /* ignore */ }
+          localStorage.removeItem('crystal_clicker_migration');
+        }
+
+        // Pick the best save: migration > compare server vs local by timestamp
+        let bestData: Record<string, unknown> | null = null;
+        if (migrationData && migrationData.crystals !== undefined) {
+          bestData = migrationData;
+        } else if (serverData && localData) {
+          const sTime = (serverData.lastOnlineTime as number) || 0;
+          const lTime = (localData.lastOnlineTime as number) || 0;
+          bestData = sTime >= lTime ? serverData : localData;
+        } else if (serverData) {
+          bestData = serverData;
+        } else if (localData) {
+          bestData = localData;
+        }
+
+        if (bestData && bestData.crystals !== undefined) {
+          loadSave(bestData);
+          // Sync: upload best data to server if it came from localStorage/migration
+          if (bestData !== serverData) {
             try {
-              const migration = localStorage.getItem('crystal_clicker_migration');
-              if (migration) {
-                localStorage.removeItem('crystal_clicker_migration');
-                const data = JSON.parse(migration);
-                if (data.crystals !== undefined) {
-                  loadSave(data);
-                  // Upload migrated data to server under new userId
-                  await fetch('/api/clicker/save', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ...data, userId }),
-                  });
-                }
-              } else if (isGuest) {
-                const local = localStorage.getItem('crystal_clicker_save');
-                if (local) { const d = JSON.parse(local); if (d.crystals !== undefined) loadSave(d); }
-              }
+              await fetch('/api/clicker/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...bestData, userId }),
+              });
             } catch { /* ignore */ }
+          }
+          // Also update localStorage if it came from server/migration
+          if (bestData !== localData) {
+            try { localStorage.setItem(`crystal_clicker_save_${userId}`, JSON.stringify(bestData)); } catch { /* ignore */ }
           }
         }
       } catch { /* no save exists yet */ }
     })();
-  }, [loadSave, userId, isGuest]);
+  }, [loadSave, userId]);
 
   // ====== Achievement sound on unlock ======
   useEffect(() => {
@@ -264,15 +308,14 @@ export default function GamePage() {
     const handleUnload = () => {
       const data = getSaveData();
       const payload = { ...data, userId };
-      if (isGuest) {
-        try { localStorage.setItem('crystal_clicker_save', JSON.stringify(data)); } catch { /* ignore */ }
-      }
+      // Always save to localStorage as fallback
+      try { localStorage.setItem(`crystal_clicker_save_${userId}`, JSON.stringify(data)); } catch { /* ignore */ }
       // Use sendBeacon for reliable save on page close
       navigator.sendBeacon('/api/clicker/save', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
     };
     window.addEventListener('beforeunload', handleUnload);
     return () => window.removeEventListener('beforeunload', handleUnload);
-  }, [getSaveData, userId, isGuest]);
+  }, [getSaveData, userId]);
 
   // ====== Click Handler ======
   const handleCrystalClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -288,7 +331,11 @@ export default function GamePage() {
       const y = e.clientY - rect.top;
       const isCrit = Math.random() < critChance;
       click(x, y);
-      if (isCrit) sfxCrit(); else sfxClick();
+      if (isCrit) {
+        sfxCrit();
+      } else {
+        sfxClick();
+      }
     }
     // Resume audio context on first interaction
     if (audioCtx?.state === 'suspended') audioCtx.resume();
@@ -579,7 +626,7 @@ export default function GamePage() {
                 transition={{ duration: 0.2 }}
                 className={`w-full h-full flex items-center justify-center rounded-full transition-all duration-200 ${
                   goldenActive
-                    ? 'crystal-glow bg-gradient-to-br from-yellow-400 via-amber-400 to-orange-500 shadow-lg shadow-amber-500/30'
+                    ? 'crystal-glow golden-pulse bg-gradient-to-br from-yellow-400 via-amber-400 to-orange-500 shadow-lg shadow-amber-500/30'
                     : 'crystal-glow bg-gradient-to-br from-purple-500 via-violet-600 to-indigo-700 shadow-lg shadow-purple-500/20'
                 } hover:brightness-110 active:scale-95`}
               >
@@ -604,6 +651,23 @@ export default function GamePage() {
                   />
                 </svg>
               )}
+
+              {/* Sparkle Particles */}
+              {sparkles.map(s => (
+                <div
+                  key={s.id}
+                  className="crystal-sparkle"
+                  style={{
+                    left: s.x,
+                    top: s.y,
+                    animationDelay: `${s.delay}s`,
+                    background: goldenActive ? '#fbbf24' : undefined,
+                    boxShadow: goldenActive
+                      ? '0 0 6px #fbbf24, 0 0 12px rgba(251, 191, 36, 0.3)'
+                      : undefined,
+                  }}
+                />
+              ))}
             </div>
 
             {/* Golden crystal value hint */}
@@ -684,6 +748,31 @@ export default function GamePage() {
                   }}
                 >
                   {soundOn ? '🔊' : '🔇'}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-xs h-7 text-gray-500 hover:text-green-400"
+                  onClick={async () => {
+                    try {
+                      setSaveStatus('saving');
+                      const data = getSaveData();
+                      const payload = { ...data, userId };
+                      try { localStorage.setItem(`crystal_clicker_save_${userId}`, JSON.stringify(data)); } catch {}
+                      await fetch('/api/clicker/save', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload),
+                      });
+                      setSaveStatus('saved');
+                      setTimeout(() => setSaveStatus('idle'), 2000);
+                    } catch {
+                      setSaveStatus('error');
+                      setTimeout(() => setSaveStatus('idle'), 3000);
+                    }
+                  }}
+                >
+                  💾 Save
                 </Button>
               </div>
             </div>
@@ -1031,7 +1120,9 @@ export default function GamePage() {
           <div className="flex items-center justify-between text-xs text-gray-600 max-w-5xl mx-auto">
             <span>Crystal Clicker v1.0</span>
             <div className="flex items-center gap-3">
-              <span>⚡ {clicksPerSecond} cps</span>
+              <span className={autoRate > 0 ? 'cps-glow text-cyan-400' : ''}>
+                ⚡ {clicksPerSecond} cps
+              </span>
               <span>🏆 {unlockedCount}/{achievements.length}</span>
               {prestige > 0 && <span className="text-pink-500">✨ P{prestige}</span>}
             </div>
