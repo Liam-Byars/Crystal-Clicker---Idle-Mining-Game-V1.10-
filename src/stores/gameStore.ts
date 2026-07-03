@@ -487,7 +487,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       else set({ currentNotification: null, notificationTimer: 0 });
     } else if (s.achievementQueue.length > 0) {
       const [next, ...rest] = s.achievementQueue;
-      set({ currentNotification: next, notificationTimer: 120, achievementQueue: rest });
+      set({ currentNotification: next, notificationTimer: 30, achievementQueue: rest });
     }
   },
 
@@ -495,6 +495,103 @@ export const useGameStore = create<GameState>((set, get) => ({
     const s = get(); const now = Date.now();
     const r = s.clickTimestamps.filter(t => now - t < 1000);
     set({ clickTimestamps: r, clicksPerSecond: r.length });
+  },
+
+  // Batched tick — all 100ms updates in a single setState for performance
+  tick: () => {
+    const s = get();
+    const updates: Partial<GameState> = {};
+
+    // Auto income
+    if (s.autoRate > 0) {
+      let rate = s.autoRate;
+      const puBonus = s.activePowerUp?.effect === 'tripleAuto' ? s.activePowerUp.value : 1;
+      const evBonus = s.activeEvent?.effect === 'doubleAuto' ? s.activeEvent.value : 1;
+      rate *= puBonus * evBonus;
+      const prestMult = 1 + s.prestigePoints * 0.1;
+      const income = rate * prestMult * 0.1;
+      updates.crystals = Math.round((s.crystals + income) * 100) / 100;
+      updates.totalEarned = Math.round((s.totalEarned + income) * 100) / 100;
+      updates.sessionEarned = Math.round((s.sessionEarned + income) * 100) / 100;
+    }
+
+    // Combo decay
+    if (s.comboTimer > 0) {
+      updates.comboTimer = s.comboTimer - 1;
+      if (s.comboTimer <= 1) updates.combo = 0;
+    }
+
+    // Golden crystal
+    if (s.goldenActive) {
+      if (s.goldenTimer > 0) updates.goldenTimer = s.goldenTimer - 1;
+      else { updates.goldenActive = false; updates.goldenTimer = 0; }
+    } else {
+      let chance = 0.001;
+      if (s.activeEvent?.effect === 'tripleGolden') chance *= s.activeEvent.value;
+      chance *= (s.goldenChance / 0.03);
+      if (Math.random() < chance) {
+        const bv = s.clickPower * s.multiplier * 10 * (1 + s.prestigePoints * 0.1);
+        updates.goldenActive = true;
+        updates.goldenTimer = 400;
+        updates.goldenClickValue = Math.round(bv * 10) / 10;
+      }
+    }
+
+    // Event timer
+    if (s.activeEvent) {
+      if (s.eventTimer > 0) updates.eventTimer = s.eventTimer - 1;
+      else { updates.activeEvent = null; updates.eventTimer = 0; }
+    } else if (s.totalClicks > 50 && Math.random() < 0.0003) {
+      const t = EVENT_DEFS[Math.floor(Math.random() * EVENT_DEFS.length)];
+      updates.activeEvent = { ...t, timer: t.duration };
+      updates.eventTimer = t.duration;
+      updates.totalEvents = s.totalEvents + 1;
+      const q = [...s.achievementQueue];
+      q.push({ id: `evt_${Date.now()}`, name: t.name, description: t.description, icon: t.icon, unlocked: true, unlockedAt: Date.now(), condition: () => false });
+      updates.achievementQueue = q;
+      // Schedule achievement check after this set
+      setTimeout(() => get().checkAchievements(), 0);
+    }
+
+    // Power-up timer
+    if (s.activePowerUp) {
+      if (s.powerUpTimer > 0) updates.powerUpTimer = s.powerUpTimer - 1;
+      else { updates.activePowerUp = null; updates.powerUpTimer = 0; }
+    } else if (s.totalClicks > 20 && Math.random() < 0.0008) {
+      const t = POWER_UP_DEFS[Math.floor(Math.random() * POWER_UP_DEFS.length)];
+      if (t.effect === 'instantBonus') {
+        const b = Math.round((s.autoRate * 30 + s.clickPower * 5) * 10) / 10;
+        updates.crystals = Math.round(((updates.crystals ?? s.crystals) + b) * 100) / 100;
+        updates.totalEarned = Math.round(((updates.totalEarned ?? s.totalEarned) + b) * 100) / 100;
+        updates.crystalPulse = 2;
+      } else {
+        updates.activePowerUp = { ...t, timer: t.duration };
+        updates.powerUpTimer = t.duration;
+      }
+    }
+
+    // Notification timer
+    if (s.currentNotification) {
+      if (s.notificationTimer > 0) updates.notificationTimer = s.notificationTimer - 1;
+      else { updates.currentNotification = null; updates.notificationTimer = 0; }
+    } else if (s.achievementQueue.length > 0) {
+      const [next, ...rest] = s.achievementQueue;
+      updates.currentNotification = next;
+      updates.notificationTimer = 30;
+      updates.achievementQueue = rest;
+    }
+
+    // Click speed
+    const now = Date.now();
+    const r = s.clickTimestamps.filter(t => now - t < 1000);
+    updates.clickTimestamps = r;
+    updates.clicksPerSecond = r.length;
+
+    // Screen shake / crystal pulse clear
+    if (s.screenShake) setTimeout(() => set({ screenShake: false }), 150);
+    if (s.crystalPulse > 0) setTimeout(() => set({ crystalPulse: 0 }), 200);
+
+    if (Object.keys(updates).length > 0) set(updates);
   },
 
   checkMilestones: () => {

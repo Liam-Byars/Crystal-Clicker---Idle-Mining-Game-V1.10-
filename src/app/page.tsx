@@ -18,7 +18,7 @@ import { useAuth } from '@/lib/auth-context';
 import { SignInScreen } from '@/components/sign-in-screen';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { LogOut, UserCircle, Volume2, VolumeX } from 'lucide-react';
+import { LogOut, UserCircle, Volume2, VolumeX, LogIn } from 'lucide-react';
 
 // ====== Helpers ======
 function fmt(n: number): string {
@@ -111,7 +111,7 @@ export default function GamePage() {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
   // ====== Auth ======
-  const { user, loading: authLoading, isGuest, logout, userId, displayName, photoURL } = useAuth();
+  const { user, loading: authLoading, isGuest, logout, signInWithGoogle, userId, displayName, photoURL } = useAuth();
 
   // ====== Store Selectors (useShallow for all!) ======
   const crystals = useGameStore(s => s.crystals);
@@ -166,12 +166,7 @@ export default function GamePage() {
   const dismissOfflineBonus = useGameStore(s => s.dismissOfflineBonus);
   const getSaveData = useGameStore(s => s.getSaveData);
   const loadSave = useGameStore(s => s.loadSave);
-  const updateCombo = useGameStore(s => s.updateCombo);
-  const updateGolden = useGameStore(s => s.updateGolden);
-  const updatePowerUp = useGameStore(s => s.updatePowerUp);
-  const updateEvent = useGameStore(s => s.updateEvent);
-  const updateNotification = useGameStore(s => s.updateNotification);
-  const updateClickSpeed = useGameStore(s => s.updateClickSpeed);
+  const tick = useGameStore(s => s.tick);
 
   // ====== Derived ======
   const unlockedCount = achievements.filter(a => a.unlocked).length;
@@ -184,32 +179,10 @@ export default function GamePage() {
   // ====== Game Tick (100ms) ======
   useEffect(() => {
     const iv = setInterval(() => {
-      const st = useGameStore.getState();
-      // Auto income
-      if (st.autoRate > 0) {
-        let rate = st.autoRate;
-        const puBonus = st.activePowerUp?.effect === 'tripleAuto' ? st.activePowerUp.value : 1;
-        const evBonus = st.activeEvent?.effect === 'doubleAuto' ? st.activeEvent.value : 1;
-        rate *= puBonus * evBonus;
-        const prestMult = 1 + st.prestigePoints * 0.1;
-        const income = rate * prestMult * 0.1; // 100ms tick
-        useGameStore.setState({
-          crystals: Math.round((st.crystals + income) * 100) / 100,
-          totalEarned: Math.round((st.totalEarned + income) * 100) / 100,
-          sessionEarned: Math.round((st.sessionEarned + income) * 100) / 100,
-        });
-      }
-      updateCombo();
-      updateGolden();
-      updatePowerUp();
-      updateEvent();
-      updateNotification();
-      updateClickSpeed();
-      if (st.screenShake) setTimeout(() => useGameStore.setState({ screenShake: false }), 150);
-      if (st.crystalPulse > 0) setTimeout(() => useGameStore.setState({ crystalPulse: 0 }), 200);
+      tick();
     }, 100);
     return () => clearInterval(iv);
-  }, [updateCombo, updateGolden, updatePowerUp, updateEvent, updateNotification, updateClickSpeed]);
+  }, [tick]);
 
   // ====== Session Timer ======
   useEffect(() => {
@@ -268,6 +241,22 @@ export default function GamePage() {
   useEffect(() => {
     if (currentNotification) sfxAchieve();
   }, [currentNotification]);
+
+  // ====== Save on page close/refresh ======
+  useEffect(() => {
+    if (!userId) return;
+    const handleUnload = () => {
+      const data = getSaveData();
+      const payload = { ...data, userId };
+      if (isGuest) {
+        try { localStorage.setItem('crystal_clicker_save', JSON.stringify(data)); } catch { /* ignore */ }
+      }
+      // Use sendBeacon for reliable save on page close
+      navigator.sendBeacon('/api/clicker/save', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
+    };
+    window.addEventListener('beforeunload', handleUnload);
+    return () => window.removeEventListener('beforeunload', handleUnload);
+  }, [getSaveData, userId, isGuest]);
 
   // ====== Click Handler ======
   const handleCrystalClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -402,6 +391,22 @@ export default function GamePage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="bg-gray-900 border-gray-700">
+                {isGuest && (
+                  <DropdownMenuItem
+                    className="text-blue-400 focus:text-blue-300 focus:bg-blue-500/10 cursor-pointer"
+                    onClick={async () => {
+                      const result = await signInWithGoogle();
+                      if (!result.success) {
+                        // Show error briefly via save status
+                        setSaveStatus('error');
+                        setTimeout(() => setSaveStatus('idle'), 3000);
+                      }
+                    }}
+                  >
+                    <LogIn className="w-4 h-4 mr-2" />
+                    Sign in with Google
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem
                   className="text-red-400 focus:text-red-300 focus:bg-red-500/10 cursor-pointer"
                   onClick={logout}
@@ -469,7 +474,7 @@ export default function GamePage() {
               <div className="w-16 h-1.5 bg-yellow-900/50 rounded-full ml-3 overflow-hidden">
                 <div
                   className="h-full bg-yellow-400 rounded-full transition-all duration-100"
-                  style={{ width: `${((120 - notificationTimer) / 120) * 100}%` }}
+                  style={{ width: `${((30 - notificationTimer) / 30) * 100}%` }}
                 />
               </div>
             </motion.div>
