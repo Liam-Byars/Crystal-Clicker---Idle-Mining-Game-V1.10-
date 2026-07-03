@@ -226,10 +226,26 @@ export default function GamePage() {
           const json = await res.json();
           if (json.data && json.data.crystals !== undefined) {
             loadSave(json.data);
-          } else if (isGuest) {
+          } else {
+            // No server save found — check for guest migration data
             try {
-              const local = localStorage.getItem('crystal_clicker_save');
-              if (local) { const d = JSON.parse(local); if (d.crystals !== undefined) loadSave(d); }
+              const migration = localStorage.getItem('crystal_clicker_migration');
+              if (migration) {
+                localStorage.removeItem('crystal_clicker_migration');
+                const data = JSON.parse(migration);
+                if (data.crystals !== undefined) {
+                  loadSave(data);
+                  // Upload migrated data to server under new userId
+                  await fetch('/api/clicker/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ...data, userId }),
+                  });
+                }
+              } else if (isGuest) {
+                const local = localStorage.getItem('crystal_clicker_save');
+                if (local) { const d = JSON.parse(local); if (d.crystals !== undefined) loadSave(d); }
+              }
             } catch { /* ignore */ }
           }
         }
@@ -395,9 +411,13 @@ export default function GamePage() {
                   <DropdownMenuItem
                     className="text-blue-400 focus:text-blue-300 focus:bg-blue-500/10 cursor-pointer"
                     onClick={async () => {
+                      // Save current guest progress for migration
+                      const data = getSaveData();
+                      try { localStorage.setItem('crystal_clicker_migration', JSON.stringify(data)); } catch { /* ignore */ }
+
                       const result = await signInWithGoogle();
                       if (!result.success) {
-                        // Show error briefly via save status
+                        try { localStorage.removeItem('crystal_clicker_migration'); } catch { /* ignore */ }
                         setSaveStatus('error');
                         setTimeout(() => setSaveStatus('idle'), 3000);
                       }
