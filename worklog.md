@@ -127,4 +127,49 @@ Stage Summary:
 - Game now has rich visual feedback: sparkles, crit flashes, golden glow
 - Manual save gives users explicit control
 - All animations are CSS-based for performance
-- Lint passes clean, browser QA verified
+
+---
+Task ID: 1
+Agent: main
+Task: Add 7 real-world gem mining areas with per-area upgrades, world map, and dynamic crystal visuals
+
+Work Log:
+- Added `Area` interface and `AREAS` constant with 7 areas: Naica (Selenite, Mexico), Ratnapura (Sapphires, Sri Lanka), Muzo Valley (Emeralds, Colombia), Coober Pedy (Opals, Australia), Ilakaka (Rare Gems, Madagascar), Mogok Valley (Rubies, Myanmar), Skeleton Coast (Diamonds, Namibia)
+- Added `AREA_UPGRADES` record with 5 themed upgrades per area (30 total for areas 2-7), each with: click power, auto rate, multiplier, golden/crit chance, and special upgrade
+- Added `getUpgradesForArea(areaId, allUpgrades)` helper to filter upgrades by area prefix
+- Added `currentArea`, `unlockedAreas`, `switchArea()`, `checkAreaUnlocks()` to GameState
+- `checkAreaUnlocks()` called inside `checkMilestones()`, `buyUpgrade()`, and `loadSave()`
+- Updated `loadSave()` to handle both old saves (naica-only) and new saves (with area data)
+- Updated `getSaveData()` to persist `currentArea` and `unlockedAreas`
+- Updated `performPrestige()` and `resetGame()` to include all area upgrades
+- Updated `stores/index.ts` to export `Area` type, `AREAS`, and `getUpgradesForArea`
+- Created `/src/components/world-map.tsx` — responsive area selection with horizontal scroll on mobile, 2-3 column grid on desktop, locked area progress bars, current area highlighting
+- Updated `page.tsx`: added 5th tab "🗺️ Map", upgrades tab now filters by current area, crystal gradient/glow/icon changes dynamically based on current area, area name/gem shown below crystal count
+
+Stage Summary:
+- 7 mining areas with unique themes, unlock thresholds, gradients, and 30 new area upgrades (41 total)
+- World Map tab for area selection with progress indicators on locked areas
+- Crystal appearance changes per area (gradient, glow color, icon)
+- Upgrade tab shows only current area's upgrades (all stack globally)
+- Save/load backward compatible with old saves
+- ESLint passes clean, dev server compiles without errors
+
+---
+Task ID: 1-fix
+Agent: main
+Task: Fix runtime bugs in area system integration
+
+Work Log:
+- Fixed duplicate `const now` in gameStore.ts tick() (line 1085) causing build error
+- Fixed mobile tab icons — were backwards (icons hidden on mobile, text always shown). Now: icons always visible, text on sm:+
+- Fixed `currentArea` used before declaration in page.tsx (line 149 used it, declared at line 174). Moved declaration up.
+- Fixed shadcn Progress component — `value` prop was destructured out and never passed to Radix Root, causing all progress bars to show indeterminate/loading state. Added `value={value}` to Root.
+- Added `opacity-0` to Progress indicator when value is 0 to hide the Radix "loading" animation
+- Verified all 7 areas render on mobile (375px) and desktop (1280px)
+- Verified 5-tab layout works on mobile with icons-only display
+
+Stage Summary:
+- All runtime errors resolved, game renders and plays correctly
+- 7 areas visible in Map tab: Naica (MX), Ratnapura (LK), Muzo (CO), Coober Pedy (AU), Ilakaka (MG), Mogok (MM), Skeleton Coast (NA)
+- Mobile tabs: ⬆️ 🗺️ 🏆 📊 🔄 (icons only), Desktop: ⬆️ Upgrades, 🗺️ Map, 🏆 Achieve, 📊 Stats, 🔄 Prestige
+- Lint clean, dev server stable

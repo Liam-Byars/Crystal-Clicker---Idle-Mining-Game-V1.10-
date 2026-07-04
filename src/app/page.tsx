@@ -3,8 +3,9 @@
 import React, { useEffect, useCallback, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useShallow } from 'zustand/react/shallow';
-import { useGameStore, getUpgradeCost, getMaxBuyCount, getTotalCostN } from '@/stores';
-import type { BuyQuantity, FloatingText, Upgrade, Achievement } from '@/stores';
+import { useGameStore, getUpgradeCost, getMaxBuyCount, getTotalCostN, AREAS, getUpgradesForArea } from '@/stores';
+import type { BuyQuantity, FloatingText, Upgrade, Achievement, Area } from '@/stores';
+import { WorldMap } from '@/components/world-map';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -144,7 +145,10 @@ export default function GamePage() {
   const milestones = useGameStore(s => s.milestones);
   const floatingTexts = useGameStore(s => s.floatingTexts);
   const ripples = useGameStore(s => s.ripples);
-  const upgrades = useGameStore(s => s.upgrades);
+  const allUpgrades = useGameStore(s => s.upgrades);
+  const currentArea = useGameStore(s => s.currentArea);
+  const unlockedAreas = useGameStore(s => s.unlockedAreas);
+  const areaUpgrades = getUpgradesForArea(currentArea, allUpgrades);
   const achievements = useGameStore(s => s.achievements);
   const currentNotification = useGameStore(s => s.currentNotification);
   const notificationTimer = useGameStore(s => s.notificationTimer);
@@ -172,7 +176,7 @@ export default function GamePage() {
 
   // ====== Derived ======
   const unlockedCount = achievements.filter(a => a.unlocked).length;
-  const totalUpgrades = upgrades.reduce((s, u) => s + u.level, 0);
+  const totalUpgrades = allUpgrades.reduce((s, u) => s + u.level, 0);
   const nextMilestone = milestones.find(m => !m.celebrated);
   const milestoneProgress = nextMilestone
     ? Math.min((totalEarned / nextMilestone.value) * 100, 100)
@@ -564,6 +568,9 @@ export default function GamePage() {
                   {fmt(crystals)}
                 </div>
                 <div className="text-sm text-purple-300/60 mt-1">crystals</div>
+              <div className="text-xs text-gray-500 mt-0.5 flex items-center justify-center gap-1">
+                {(() => { const a = AREAS.find(ar => ar.id === currentArea); return a ? `${a.icon} ${a.name} — ${a.gem}` : ''; })()}
+              </div>
               </motion.div>
             </div>
 
@@ -624,14 +631,17 @@ export default function GamePage() {
               <motion.div
                 animate={crystalPulse > 0 ? { scale: [1, 1 + crystalPulse * 0.05, 1] } : {}}
                 transition={{ duration: 0.2 }}
-                className={`w-full h-full flex items-center justify-center rounded-full transition-all duration-200 ${
+                className={`w-full h-full flex items-center justify-center rounded-full transition-all duration-500 ${
                   goldenActive
-                    ? 'crystal-glow golden-pulse bg-gradient-to-br from-yellow-400 via-amber-400 to-orange-500 shadow-lg shadow-amber-500/30'
-                    : 'crystal-glow bg-gradient-to-br from-purple-500 via-violet-600 to-indigo-700 shadow-lg shadow-purple-500/20'
+                    ? 'golden-pulse bg-gradient-to-br from-yellow-400 via-amber-400 to-orange-500 shadow-lg shadow-amber-500/30'
+                    : `bg-gradient-to-br ${(() => { const a = AREAS.find(ar => ar.id === currentArea); return a ? a.gradient : 'from-gray-200 via-white to-cyan-100'; })()} shadow-lg`
                 } hover:brightness-110 active:scale-95`}
+                style={goldenActive ? undefined : {
+                  boxShadow: `0 10px 30px ${(() => { const a = AREAS.find(ar => ar.id === currentArea); return a ? a.glowColor : 'rgba(200, 230, 255, 0.6)'; })()}`,
+                }}
               >
                 <span className="text-7xl sm:text-8xl drop-shadow-lg" role="img" aria-label="crystal">
-                  {goldenActive ? '✨' : '💎'}
+                  {goldenActive ? '✨' : (() => { const a = AREAS.find(ar => ar.id === currentArea); return a ? a.icon : '💎'; })()}
                 </span>
               </motion.div>
 
@@ -803,9 +813,10 @@ export default function GamePage() {
               onValueChange={(v) => setActiveTab(v as typeof activeTab)}
               className="flex-1 flex flex-col min-h-0"
             >
-              <TabsList className="bg-gray-900/60 border border-gray-800/50 w-full grid grid-cols-4 mb-3">
+              <TabsList className="bg-gray-900/60 border border-gray-800/50 w-full grid grid-cols-5 mb-3">
                 {[
                   { val: 'upgrades' as const, label: 'Upgrades', icon: '⬆️', cls: 'tab-glow-upgrades' },
+                  { val: 'map' as const, label: 'Map', icon: '🗺️', cls: 'tab-glow-map' },
                   { val: 'achievements' as const, label: 'Achieve', icon: '🏆', cls: 'tab-glow-achievements' },
                   { val: 'stats' as const, label: 'Stats', icon: '📊', cls: 'tab-glow-stats' },
                   { val: 'prestige' as const, label: 'Prestige', icon: '🔄', cls: 'tab-glow-prestige' },
@@ -830,8 +841,11 @@ export default function GamePage() {
               <TabsContent value="upgrades" className="flex-1 min-h-0 mt-0">
                 <ScrollArea className="h-[calc(100vh-340px)] lg:h-[calc(100vh-320px)]">
                   <div className="space-y-2 pr-3 pb-4">
+                    <div className="mb-2 text-xs text-gray-500 flex items-center gap-1">
+                      {(() => { const a = AREAS.find(ar => ar.id === currentArea); return a ? `${a.icon} ${a.name} — ${a.gem}` : ''; })()} upgrades
+                    </div>
                     {['clickPower', 'autoRate', 'multiplier', 'goldenChance', 'critChance'].map(effect => {
-                      const categoryUpgrades = upgrades.filter(u => u.effect === effect);
+                      const categoryUpgrades = areaUpgrades.filter(u => u.effect === effect);
                       if (categoryUpgrades.length === 0) return null;
                       return (
                         <div key={effect} className="mb-4">
@@ -900,6 +914,11 @@ export default function GamePage() {
                     })}
                   </div>
                 </ScrollArea>
+              </TabsContent>
+
+              {/* ====== MAP TAB ====== */}
+              <TabsContent value="map" className="flex-1 min-h-0 mt-0">
+                <WorldMap />
               </TabsContent>
 
               {/* ====== ACHIEVEMENTS TAB ====== */}

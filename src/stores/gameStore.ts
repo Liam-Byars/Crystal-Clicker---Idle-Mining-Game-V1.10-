@@ -61,6 +61,20 @@ export interface Milestone {
   celebrated: boolean;
 }
 
+export interface Area {
+  id: string;
+  name: string;
+  location: string;
+  flag: string;
+  gem: string;
+  description: string;
+  icon: string;
+  unlockAt: number;
+  gradient: string;
+  glowColor: string;
+  bgAccent: string;
+}
+
 export type BuyQuantity = 1 | 10 | 'max';
 
 export interface GameState {
@@ -140,10 +154,14 @@ export interface GameState {
   upgrades: Upgrade[];
   achievements: Achievement[];
 
+  // Area system
+  currentArea: string;
+  unlockedAreas: string[];
+
   // UI state
   screenShake: boolean;
   crystalPulse: number;
-  activeTab: 'upgrades' | 'achievements' | 'stats' | 'prestige';
+  activeTab: 'upgrades' | 'achievements' | 'stats' | 'prestige' | 'map';
 
   // Actions
   click: (x: number, y: number) => void;
@@ -160,7 +178,9 @@ export interface GameState {
   checkMilestones: () => void;
   addFloatingText: (x: number, y: number, value: number, type?: FloatingText['type']) => void;
   removeFloatingText: (id: number) => void;
-  setActiveTab: (tab: 'upgrades' | 'achievements' | 'stats' | 'prestige') => void;
+  setActiveTab: (tab: 'upgrades' | 'achievements' | 'stats' | 'prestige' | 'map') => void;
+  switchArea: (areaId: string) => void;
+  checkAreaUnlocks: () => void;
   checkAchievements: () => void;
   resetGame: () => void;
   loadSave: (data: Record<string, unknown>) => void;
@@ -183,6 +203,121 @@ const DEFAULT_UPGRADES: Upgrade[] = [
   { id: 'golden_lens', name: 'Golden Lens', description: '+2% golden chance per level', icon: '🌟', baseCost: 1000, costMultiplier: 2.0, level: 0, effect: 'goldenChance', value: 0.02, maxLevel: 25 },
   { id: 'crit_eye', name: 'Critical Eye', description: '+3% crit chance per level', icon: '👁️', baseCost: 800, costMultiplier: 1.8, level: 0, effect: 'critChance', value: 0.03, maxLevel: 20 },
 ];
+
+// ====== Area Definitions ======
+export const AREAS: Area[] = [
+  {
+    id: 'naica', name: 'Naica Crystal Cave', location: 'Mexico', flag: '🇲🇽',
+    gem: 'Selenite', description: 'Giant gypsum crystals in an underground cavern', icon: '🪨',
+    unlockAt: 0,
+    gradient: 'from-gray-200 via-white to-cyan-100',
+    glowColor: 'rgba(200, 230, 255, 0.6)',
+    bgAccent: 'bg-cyan-950/20',
+  },
+  {
+    id: 'ratnapura', name: 'Ratnapura', location: 'Sri Lanka', flag: '🇱🇰',
+    gem: 'Sapphires', description: 'The City of Gems, famed for blue sapphires', icon: '💙',
+    unlockAt: 1000,
+    gradient: 'from-blue-400 via-blue-600 to-indigo-800',
+    glowColor: 'rgba(96, 165, 250, 0.6)',
+    bgAccent: 'bg-blue-950/20',
+  },
+  {
+    id: 'muzo', name: 'Muzo Valley', location: 'Colombia', flag: '🇨🇴',
+    gem: 'Emeralds', description: 'The world\'s finest emerald mining region', icon: '💚',
+    unlockAt: 50000,
+    gradient: 'from-green-400 via-emerald-500 to-green-800',
+    glowColor: 'rgba(52, 211, 153, 0.6)',
+    bgAccent: 'bg-green-950/20',
+  },
+  {
+    id: 'coober_pedy', name: 'Coober Pedy', location: 'Australia', flag: '🇦🇺',
+    gem: 'Opals', description: 'The opal capital of the world, underground mining town', icon: '🌈',
+    unlockAt: 500000,
+    gradient: 'from-pink-300 via-orange-300 to-yellow-200',
+    glowColor: 'rgba(251, 146, 60, 0.5)',
+    bgAccent: 'bg-orange-950/20',
+  },
+  {
+    id: 'ilakaka', name: 'Ilakaka', location: 'Madagascar', flag: '🇲🇬',
+    gem: 'Rare Gems', description: 'A mining boomtown producing rare sapphires and tourmalines', icon: '🌸',
+    unlockAt: 5000000,
+    gradient: 'from-pink-400 via-fuchsia-500 to-purple-600',
+    glowColor: 'rgba(232, 121, 249, 0.5)',
+    bgAccent: 'bg-fuchsia-950/20',
+  },
+  {
+    id: 'mogok', name: 'Mogok Valley', location: 'Myanmar', flag: '🇲🇲',
+    gem: 'Rubies', description: 'The legendary Valley of Rubies, source of the finest pigeon\'s blood rubies', icon: '❤️',
+    unlockAt: 50000000,
+    gradient: 'from-red-400 via-red-600 to-rose-900',
+    glowColor: 'rgba(248, 113, 113, 0.5)',
+    bgAccent: 'bg-red-950/20',
+  },
+  {
+    id: 'skeleton_coast', name: 'Skeleton Coast', location: 'Namibia', flag: '🇳🇦',
+    gem: 'Diamonds', description: 'Diamonds washed from the interior to the desolate Atlantic coast', icon: '💠',
+    unlockAt: 500000000,
+    gradient: 'from-white via-cyan-100 to-blue-200',
+    glowColor: 'rgba(224, 242, 254, 0.8)',
+    bgAccent: 'bg-sky-950/20',
+  },
+];
+
+// ====== Area Upgrades (areas 2-7) ======
+const AREA_UPGRADES: Record<string, Upgrade[]> = {
+  ratnapura: [
+    { id: 'ratnapura_gem_cutter', name: 'Gem Cutter', description: '+50 click power per level', icon: '💎', baseCost: 2000, costMultiplier: 1.6, level: 0, effect: 'clickPower', value: 50 },
+    { id: 'ratnapura_mining_team', name: 'Mining Team', description: '+20 crystals/sec', icon: '👷', baseCost: 5000, costMultiplier: 1.6, level: 0, effect: 'autoRate', value: 20 },
+    { id: 'ratnapura_blue_aura', name: 'Blue Aura', description: 'x1.3 multiplier per level', icon: '🔵', baseCost: 3000, costMultiplier: 1.8, level: 0, effect: 'multiplier', value: 0.3 },
+    { id: 'ratnapura_star_sapphire', name: 'Star Sapphire', description: '+2% golden chance per level', icon: '⭐', baseCost: 8000, costMultiplier: 2.0, level: 0, effect: 'goldenChance', value: 0.02, maxLevel: 25 },
+    { id: 'ratnapura_cavern_heart', name: 'Cavern Heart', description: 'x2 click power, x1.5 auto rate', icon: '🌊', baseCost: 50000, costMultiplier: 2.2, level: 0, effect: 'multiplier', value: 0.5 },
+  ],
+  muzo: [
+    { id: 'muzo_emerald_golem', name: 'Emerald Golem', description: '+200 click power per level', icon: '🤖', baseCost: 100000, costMultiplier: 1.6, level: 0, effect: 'clickPower', value: 200 },
+    { id: 'muzo_jungle_expedition', name: 'Jungle Expedition', description: '+100 crystals/sec', icon: '🌴', baseCost: 200000, costMultiplier: 1.6, level: 0, effect: 'autoRate', value: 100 },
+    { id: 'muzo_emerald_amplifier', name: 'Emerald Amplifier', description: 'x1.5 multiplier per level', icon: '💚', baseCost: 150000, costMultiplier: 1.8, level: 0, effect: 'multiplier', value: 0.5 },
+    { id: 'muzo_lucky_mine', name: 'Lucky Mine', description: '+2% crit chance per level', icon: '🍀', baseCost: 250000, costMultiplier: 2.0, level: 0, effect: 'critChance', value: 0.02, maxLevel: 25 },
+    { id: 'muzo_chivor_vein', name: 'Chivor Vein', description: 'Massive x2 multiplier per level', icon: '🏔️', baseCost: 1000000, costMultiplier: 2.5, level: 0, effect: 'multiplier', value: 1.0 },
+  ],
+  coober_pedy: [
+    { id: 'coober_pedy_opal_pick', name: 'Opal Pickaxe', description: '+800 click power per level', icon: '⛏️', baseCost: 1000000, costMultiplier: 1.6, level: 0, effect: 'clickPower', value: 800 },
+    { id: 'coober_pedy_digger_fleet', name: 'Digger Fleet', description: '+500 crystals/sec', icon: '🚜', baseCost: 2000000, costMultiplier: 1.6, level: 0, effect: 'autoRate', value: 500 },
+    { id: 'coober_pedy_iridescent_lens', name: 'Iridescent Lens', description: 'x1.5 multiplier per level', icon: '🌈', baseCost: 1500000, costMultiplier: 1.8, level: 0, effect: 'multiplier', value: 0.5 },
+    { id: 'coober_pedy_flash_fire', name: 'Flash Fire Opal', description: '+1.5% golden chance per level', icon: '🔥', baseCost: 3000000, costMultiplier: 2.0, level: 0, effect: 'goldenChance', value: 0.015, maxLevel: 20 },
+    { id: 'coober_pedy_underground_city', name: 'Underground City', description: 'x3 multiplier, +1000 auto rate', icon: '🏘️', baseCost: 20000000, costMultiplier: 2.5, level: 0, effect: 'multiplier', value: 2.0 },
+  ],
+  ilakaka: [
+    { id: 'ilakaka_rare_finder', name: 'Rare Finder', description: '+3,000 click power per level', icon: '🔍', baseCost: 10000000, costMultiplier: 1.6, level: 0, effect: 'clickPower', value: 3000 },
+    { id: 'ilakaka_gem_wash', name: 'Gem Wash Plant', description: '+2,000 crystals/sec', icon: '🏭', baseCost: 20000000, costMultiplier: 1.6, level: 0, effect: 'autoRate', value: 2000 },
+    { id: 'ilakaka_tourmaline_ring', name: 'Tourmaline Ring', description: 'x2 multiplier per level', icon: '💍', baseCost: 15000000, costMultiplier: 1.8, level: 0, effect: 'multiplier', value: 1.0 },
+    { id: 'ilakaka_pink_sapphire', name: 'Pink Sapphire', description: '+1% crit chance per level', icon: '🌸', baseCost: 30000000, costMultiplier: 2.0, level: 0, effect: 'critChance', value: 0.01, maxLevel: 25 },
+    { id: 'ilakaka_madagascar_mine', name: 'Madagascar Deep Mine', description: 'x4 multiplier per level', icon: '🌋', baseCost: 200000000, costMultiplier: 2.5, level: 0, effect: 'multiplier', value: 3.0 },
+  ],
+  mogok: [
+    { id: 'mogok_ruby_blade', name: 'Ruby Blade', description: '+12,000 click power per level', icon: '🗡️', baseCost: 100000000, costMultiplier: 1.6, level: 0, effect: 'clickPower', value: 12000 },
+    { id: 'mogok_palace_mine', name: 'Palace Mine', description: '+8,000 crystals/sec', icon: '🏯', baseCost: 200000000, costMultiplier: 1.6, level: 0, effect: 'autoRate', value: 8000 },
+    { id: 'mogok_blood_gem', name: 'Pigeon\'s Blood Gem', description: 'x2.5 multiplier per level', icon: '🩸', baseCost: 150000000, costMultiplier: 1.8, level: 0, effect: 'multiplier', value: 1.5 },
+    { id: 'mogok_dragon_ruby', name: 'Dragon Ruby', description: '+1.5% golden chance per level', icon: '🐉', baseCost: 300000000, costMultiplier: 2.0, level: 0, effect: 'goldenChance', value: 0.015, maxLevel: 20 },
+    { id: 'mogok_valley_heart', name: 'Valley of Rubies', description: 'x5 multiplier per level', icon: '❤️‍🔥', baseCost: 2000000000, costMultiplier: 2.5, level: 0, effect: 'multiplier', value: 4.0 },
+  ],
+  skeleton_coast: [
+    { id: 'skeleton_diamond_drill', name: 'Diamond Drill', description: '+50,000 click power per level', icon: '🔩', baseCost: 1000000000, costMultiplier: 1.6, level: 0, effect: 'clickPower', value: 50000 },
+    { id: 'skeleton_coast_dredge', name: 'Coastal Dredge', description: '+30,000 crystals/sec', icon: '🚢', baseCost: 2000000000, costMultiplier: 1.6, level: 0, effect: 'autoRate', value: 30000 },
+    { id: 'skeleton_diamond_polish', name: 'Diamond Polish', description: 'x3 multiplier per level', icon: '💠', baseCost: 1500000000, costMultiplier: 1.8, level: 0, effect: 'multiplier', value: 2.0 },
+    { id: 'skeleton_ice_crit', name: 'Ice Crit', description: '+1% crit chance per level', icon: '🧊', baseCost: 3000000000, costMultiplier: 2.0, level: 0, effect: 'critChance', value: 0.01, maxLevel: 30 },
+    { id: 'skeleton_kimberlite_pipe', name: 'Kimberlite Pipe', description: 'x8 multiplier per level', icon: '🌊', baseCost: 20000000000, costMultiplier: 2.5, level: 0, effect: 'multiplier', value: 7.0 },
+  ],
+};
+
+// All upgrade IDs belonging to the naica area (default upgrades)
+const NAICA_UPGRADE_IDS = new Set(DEFAULT_UPGRADES.map(u => u.id));
+
+// Helper to get upgrades for a specific area
+export function getUpgradesForArea(areaId: string, allUpgrades: Upgrade[]): Upgrade[] {
+  if (areaId === 'naica') return allUpgrades.filter(u => NAICA_UPGRADE_IDS.has(u.id));
+  return allUpgrades.filter(u => u.id.startsWith(areaId + '_'));
+}
 
 const ACHIEVEMENT_DEFS = [
   { id: 'first_click', name: 'First Spark', description: 'Click the crystal for the first time', icon: '⚡' },
@@ -338,7 +473,12 @@ export const useGameStore = create<GameState>((set, get) => ({
   floatingTexts: [], floatingTextId: 0,
   achievementQueue: [], currentNotification: null, notificationTimer: 0,
   ripples: [], rippleId: 0,
-  upgrades: DEFAULT_UPGRADES.map(u => ({ ...u })),
+  currentArea: 'naica',
+  unlockedAreas: ['naica'],
+  upgrades: [
+    ...DEFAULT_UPGRADES.map(u => ({ ...u })),
+    ...Object.values(AREA_UPGRADES).flat().map(u => ({ ...u })),
+  ],
   achievements: buildAchievementConditions(),
   screenShake: false, crystalPulse: 0, activeTab: 'upgrades',
 
@@ -405,7 +545,9 @@ export const useGameStore = create<GameState>((set, get) => ({
     const nu = [...s.upgrades]; nu[idx] = { ...u, level: u.level + 1 };
     const stats = recalcStats(nu);
     set({ crystals: Math.round((s.crystals - cost) * 100) / 100, upgrades: nu, ...stats });
-    get().checkAchievements(); return true;
+    get().checkAchievements();
+    get().checkAreaUnlocks();
+    return true;
   },
 
   setBuyQuantity: (q) => set({ buyQuantity: q }),
@@ -420,7 +562,10 @@ export const useGameStore = create<GameState>((set, get) => ({
       goldenClicks: 0, goldenChance: 0.03, critChance: 0.05, totalCrits: 0,
       goldenActive: false, goldenTimer: 0, activePowerUp: null, powerUpTimer: 0,
       activeEvent: null, eventTimer: 0,
-      upgrades: DEFAULT_UPGRADES.map(u => ({ ...u })),
+      upgrades: [
+        ...DEFAULT_UPGRADES.map(u => ({ ...u })),
+        ...Object.values(AREA_UPGRADES).flat().map(u => ({ ...u })),
+      ],
       milestones: MILESTONE_DEFS.map(m => ({ ...m, celebrated: false })),
       floatingTexts: [], ripples: [], screenShake: true, crystalPulse: 5,
       sessionClicks: 0, sessionEarned: 0,
@@ -594,8 +739,17 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (Object.keys(updates).length > 0) set(updates);
   },
 
+  switchArea: (areaId) => set({ currentArea: areaId }),
+
+  checkAreaUnlocks: () => {
+    const s = get();
+    const newlyUnlocked = AREAS.filter(a => a.unlockAt > 0 && s.totalEarned >= a.unlockAt && !s.unlockedAreas.includes(a.id)).map(a => a.id);
+    if (newlyUnlocked.length > 0) set({ unlockedAreas: [...s.unlockedAreas, ...newlyUnlocked] });
+  },
+
   checkMilestones: () => {
     const s = get();
+    get().checkAreaUnlocks();
     const nm = s.milestones.map(m => (!m.celebrated && s.totalEarned >= m.value ? { ...m, celebrated: true } : m));
     const just = nm.find((m, i) => m.celebrated && !s.milestones[i].celebrated);
     if (just) {
@@ -636,7 +790,11 @@ export const useGameStore = create<GameState>((set, get) => ({
       lastOnlineTime: Date.now(), offlineEarned: 0, showOfflineBonus: false,
       floatingTexts: [], floatingTextId: 0, achievementQueue: [], currentNotification: null, notificationTimer: 0,
       ripples: [], rippleId: 0,
-      upgrades: DEFAULT_UPGRADES.map(u => ({ ...u })), achievements: buildAchievementConditions(),
+      currentArea: 'naica', unlockedAreas: ['naica'],
+      upgrades: [
+        ...DEFAULT_UPGRADES.map(u => ({ ...u })),
+        ...Object.values(AREA_UPGRADES).flat().map(u => ({ ...u })),
+      ], achievements: buildAchievementConditions(),
       screenShake: false, crystalPulse: 0, activeTab: 'upgrades',
     });
   },
@@ -655,7 +813,11 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   loadSave: (data) => {
     const su = data.upgrades as { id: string; level: number }[] | undefined;
-    const upgrades = DEFAULT_UPGRADES.map(u => {
+    const allDefaults = [
+      ...DEFAULT_UPGRADES,
+      ...Object.values(AREA_UPGRADES).flat(),
+    ];
+    const upgrades = allDefaults.map(u => {
       const saved = su?.find(s => s.id === u.id);
       return { ...u, level: saved?.level ?? 0 };
     });
@@ -671,6 +833,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     const offlineEarned = stats.autoRate > 0 && elapsed >= 60000
       ? Math.round(stats.autoRate * (Math.min(elapsed, 8 * 3600000) / 1000) * 0.5 * 100) / 100
       : 0;
+    const currentArea = (data.currentArea as string) || 'naica';
+    const unlockedAreas = (data.unlockedAreas as string[]) || ['naica'];
     set({
       crystals: (data.crystals as number) ?? 0, totalClicks: (data.totalClicks as number) ?? 0,
       totalEarned: (data.totalEarned as number) ?? 0, ...stats,
@@ -679,7 +843,9 @@ export const useGameStore = create<GameState>((set, get) => ({
       maxCombo: (data.maxCombo as number) ?? 0, totalEvents: (data.totalEvents as number) ?? 0,
       upgrades, achievements, lastOnlineTime: Date.now(),
       offlineEarned, showOfflineBonus: offlineEarned > 0,
+      currentArea, unlockedAreas,
     });
+    get().checkAreaUnlocks();
   },
 
   getSaveData: () => {
@@ -692,6 +858,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       achievements: s.achievements.map(a => ({ id: a.id, unlocked: a.unlocked })),
       goldenClicks: s.goldenClicks, totalCrits: s.totalCrits, maxCombo: s.maxCombo,
       totalEvents: s.totalEvents, lastOnlineTime: Date.now(),
+      currentArea: s.currentArea, unlockedAreas: s.unlockedAreas,
     };
   },
 }));
