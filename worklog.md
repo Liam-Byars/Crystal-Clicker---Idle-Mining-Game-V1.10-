@@ -173,3 +173,18 @@ Stage Summary:
 - 7 areas visible in Map tab: Naica (MX), Ratnapura (LK), Muzo (CO), Coober Pedy (AU), Ilakaka (MG), Mogok (MM), Skeleton Coast (NA)
 - Mobile tabs: ⬆️ 🗺️ 🏆 📊 🔄 (icons only), Desktop: ⬆️ Upgrades, 🗺️ Map, 🏆 Achieve, 📊 Stats, 🔄 Prestige
 - Lint clean, dev server stable
+
+---
+Task ID: cron-compact-250242
+Agent: main (cron job)
+Task: Call POST /api/admin/compact-inactive to compact accounts inactive 365+ days
+
+Work Log:
+- Started dev server (required @next/swc-linux-x64-gnu install for Turbopack)
+- Called POST /api/admin/compact-inactive
+- Received HTTP 404 — the route does not exist yet
+
+Stage Summary:
+- 0 accounts compacted (endpoint not implemented)
+- The `/api/admin/compact-inactive` route is part of Phase 2 (unused account data compaction) which has not been built yet
+- Prisma schema has compactedData/terminatedReason/terminatedAt columns ready, but the API route needs to be created
