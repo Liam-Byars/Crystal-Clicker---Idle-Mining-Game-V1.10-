@@ -815,10 +815,10 @@ export default function GamePage() {
                     value={t.val}
                     className={`text-xs sm:text-sm data-[state=active]:${t.cls} data-[state=active]:bg-gray-800/80 text-gray-400 data-[state=active]:text-white`}
                   >
-                    <span className="hidden sm:inline mr-1">{t.icon}</span>
-                    {t.label}
+                    <span className="mr-1">{t.icon}</span>
+                    <span className="hidden sm:inline">{t.label}</span>
                     {t.val === 'achievements' && (
-                      <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5 py-0 bg-yellow-900/50 text-yellow-300">
+                      <Badge variant="secondary" className="ml-0.5 sm:ml-1.5 text-[10px] px-1 sm:px-1.5 py-0 bg-yellow-900/50 text-yellow-300">
                         {unlockedCount}/{achievements.length}
                       </Badge>
                     )}
