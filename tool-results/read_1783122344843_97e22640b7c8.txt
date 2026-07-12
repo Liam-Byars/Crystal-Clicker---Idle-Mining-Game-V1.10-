@@ -1,0 +1,302 @@
+     1→  1460→            <DialogHeader>
+     2→  1461→              <DialogTitle className="text-lg text-white flex items-center gap-2">
+     3→  1462→                <FileText className="w-5 h-5 text-purple-400" />
+     4→  1463→                Terms of Service
+     5→  1464→              </DialogTitle>
+     6→  1465→              <DialogDescription className="text-gray-400 text-sm">
+     7→  1466→                Crystal Clicker terms and conditions
+     8→  1467→              </DialogDescription>
+     9→  1468→            </DialogHeader>
+    10→  1469→            <ScrollArea className="flex-1 max-h-[50vh]">
+    11→  1470→              <div className="text-gray-400 text-sm leading-relaxed py-2">
+    12→  1471→                <h3 className="text-gray-300 font-semibold text-sm mt-4 mb-2">1. Acceptance of Terms</h3>
+    13→  1472→                <p className="mb-4">By accessing or playing Crystal Clicker (the "Game"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to all of these Terms, you may not use the Game. These Terms constitute a legally binding agreement between you ("User" or "you") and Crystal Clicker ("we," "us," or "our"), a game developed and operated in the State of Minnesota, United States. These Terms are governed by and shall be construed in accordance with the laws of the State of Minnesota and applicable federal law, including but not limited to 16 C.F.R. Part 312 (COPPA), 15 U.S.C. § 45 et seq. (FTC Act), and Minn. Stat. § 325M.01 et seq. (MCDPA).</p>
+    14→  1473→                <h3 className="text-gray-300 font-semibold text-sm mt-4 mb-2">2. Description of Service</h3>
+    15→  1474→                <p className="mb-4">Crystal Clicker is a free-to-play idle clicker game in which players collect in-game virtual currencies, purchase upgrades, unlock achievements, and optionally view advertisements to earn bonus rewards. The Game is provided as-is for personal, non-commercial entertainment purposes. We reserve the right to modify, suspend, or discontinue the Game or any portion thereof at any time, with or without notice.</p>
+    16→  1475→                <h3 className="text-gray-300 font-semibold text-sm mt-4 mb-2">3. User Accounts</h3>
+    17→  1476→                <p className="mb-4">Crystal Clicker offers two modes of play:</p>
+    18→  1477→                <ul className="list-disc list-inside mb-4 space-y-1">
+    19→  1478→                  <li><strong>Guest Mode:</strong> No account creation is required. Game progress is stored locally in your browser. If you clear your browser data or use a different device, your progress may be lost. No personal information is collected in Guest Mode beyond an anonymous, locally-generated user identifier and your birth year for age verification purposes.</li>
+    20→  1479→                  <li><strong>Google Sign-In:</strong> Available only to users aged 13 and older. By signing in with Google via Firebase Authentication (a third-party service operated by Google LLC), you authorize us to access your Google user ID, display name, and profile photo. This data is used solely to associate your game save data with your account and to display your name and photo within the Game. Google Sign-In enables cloud-based progress saving via Firebase Firestore (also operated by Google LLC). See Section 10 for full third-party disclosure.</li>
+    21→  1480→                </ul>
+    22→  1481→                <h3 className="text-gray-300 font-semibold text-sm mt-4 mb-2">4. Age Requirements and COPPA Compliance</h3>
+    23→  1482→                <p className="mb-4">Crystal Clicker complies with the Children's Online Privacy Protection Act ("COPPA"), 16 C.F.R. Part 312 (federal regulation). Before accessing the Game, all users are required to enter their birth year through our age gate. Users under the age of 13 are restricted to Guest Mode only and are not permitted to use Google Sign-In or view advertisements. We do not knowingly collect personal information from children under 13. The birth year is collected solely for the purpose of COPPA age verification and is stored locally on the user's device in Guest Mode. We also comply with Minn. Stat. § 325M.01 et seq. (Minnesota Consumer Data Privacy Act) where applicable. For a detailed explanation of our children's privacy practices, please see our Privacy Policy.</p>
+    24→  1483→                <h3 className="text-gray-300 font-semibold text-sm mt-4 mb-2">5. Intellectual Property and User-Generated Content</h3>
+    25→  1484→                <p className="mb-4">All content, features, and functionality of the Game — including but not limited to text, graphics, logos, icons, images, audio, software, and the overall design — are the exclusive property of Crystal Clicker and are protected by United States copyright law (17 U.S.C. § 101 et seq.), trademark law (15 U.S.C. § 1051 et seq., Lanham Act), and applicable Minnesota law.</p>
+    26→  1485→                <p className="mb-2 text-gray-300 font-semibold">Video Creation and Streaming</p>
+    27→  1486→                <p className="mb-4">You are granted a limited, non-exclusive, non-transferable, revocable license to create and publish video content (including but not limited to gameplay videos, streams, let's plays, tutorials, and reviews) featuring Crystal Clicker, subject to the following conditions:</p>
+    28→  1487→                <ul className="list-disc list-inside mb-4 space-y-1">
+    29→  1488→                  <li>Such content must not contain defamatory, false, misleading, or harassing statements about Crystal Clicker, its developers, or affiliates, as prohibited by Minn. Stat. § 609.765 (Defamation) and applicable federal law;</li>
+    30→  1489→                  <li>Such content must not misrepresent your affiliation with or endorsement by Crystal Clicker;</li>
+    31→  1490→                  <li>You may not use the content to impersonate Crystal Clicker or its developers;</li>
+    32→  1491→                  <li>We retain all intellectual property rights in the Game content depicted in your videos;</li>
+    33→  1492→                  <li>This license may be revoked at any time for any reason at our sole discretion.</li>
+    34→  1493→                </ul>
+    35→  1494→                <p className="mb-4">All other reproduction, distribution, modification, creation of derivative works, public display, or exploitation of Game content requires our prior written consent.</p>
+    36→  1495→                <h3 className="text-gray-300 font-semibold text-sm mt-4 mb-2">6. User Conduct</h3>
+    37→  1496→                <p className="mb-4">You agree not to:</p>
+    38→  1497→                <ul className="list-disc list-inside mb-4 space-y-1">
+    39→  1498→                  <li>Use the Game for any unlawful purpose or in violation of any applicable federal laws or Minnesota state laws, including but not limited to the Minnesota Consumer Fraud Act (Minn. Stat. § 325F.68) and the Computer Fraud and Abuse Act (18 U.S.C. § 1030);</li>
+    40→  1499→                  <li>Attempt to reverse engineer, decompile, disassemble, or otherwise access the source code of the Game;</li>
+    41→  1500→                  <li>Use cheats, hacks, bots, scripts, or any third-party software to gain an unfair advantage or manipulate game data;</li>
+    42→  1501→                  <li>Interfere with or disrupt the Game, servers, or networks connected to the Game;</li>
+    43→  1502→                  <li>Impersonate any person or entity, or falsely represent your affiliation with any person or entity;</li>
+    44→  1503→                  <li>Transfer, sell, or auction any in-game items, accounts, or progress, except as expressly permitted for premium currency (Gems) as described in Section 7.</li>
+    45→  1504→                </ul>
+    46→  1505→                <p className="mb-4">We reserve the right to terminate or restrict your access to the Game at our sole discretion if you violate these Terms. See Section 9 for our account termination policy.</p>
+    47→  1506→                <h3 className="text-gray-300 font-semibold text-sm mt-4 mb-2">7. Virtual Currency</h3>
+    48→  1507→                <p className="mb-2 text-gray-300 font-semibold">A. Crystals (Non-Valued Virtual Currency)</p>
+    49→  1508→                <p className="mb-4">Crystals are the primary in-game virtual currency in Crystal Clicker. Crystals have no real-world monetary value and cannot be exchanged, redeemed, sold, or transferred for real money, goods, or services of any kind. Crystals exist solely within the Game for entertainment purposes and are earned exclusively through gameplay. We are not obligated to provide any refund, exchange, or compensation for the loss of crystals or any in-game progress, regardless of the cause of such loss. Nothing in this section is intended to invoke the provisions of Minn. Stat. Chapter 325J (Minnesota Gift Card Statute), as crystals do not constitute a stored-value card or gift certificate under Minnesota law.</p>
+    50→  1509→                <p className="mb-2 text-gray-300 font-semibold">B. Gems (Premium Currency with Real-World Value)</p>
+    51→  1510→                <p className="mb-4">Gems are a secondary premium currency that may be acquired by (i) viewing in-game advertisements, or (ii) direct purchase through authorized payment methods. Gems have a defined real-world monetary value and may be used to purchase boosters, cosmetic items, and other premium in-game benefits from the in-game Store. Gems are subject to the following terms:</p>
+    52→  1511→                <ul className="list-disc list-inside mb-4 space-y-1">
+    53→  1512→                  <li>Gems may be purchased for real money at prices displayed in the in-game Store;</li>
+    54→  1513→                  <li>Purchased Gems are non-refundable except as required by applicable law or as described in the Store's refund policy;</li>
+    55→  1514→                  <li>Gems constitute a digital good and are subject to the consumer protection provisions of Minn. Stat. § 325G.49 (Digital Goods) and applicable federal law;</li>
+    56→  1515→                  <li>Gem balances and premium purchases are saved to your account and persist across sessions;</li>
+    57→  1516→                  <li>We reserve the right to modify the items available for Gems or the real-world value exchange rate, with reasonable notice provided for material changes;</li>
+    58→  1517→                  <li>Gems obtained through advertisements have the same in-game value as purchased Gems.</li>
+    59→  1518→                </ul>
+    60→  1519→                <p className="mb-2 text-gray-300 font-semibold">C. Boosters</p>
+    61→  1520→                <p className="mb-4">Boosters are time-limited or one-use in-game items that enhance gameplay (e.g., double click power, triple auto income, increased golden crystal chance, instant crystal bonuses). Boosters are purchased with Gems and provide the described effect for their stated duration. Booster effects apply to the primary virtual currency (Crystals) only. Expired boosters cannot be restored, refunded, or exchanged.</p>
+    62→  1521→                <h3 className="text-gray-300 font-semibold text-sm mt-4 mb-2">8. Advertisements</h3>
+    63→  1522→                <p className="mb-4">Crystal Clicker may display advertisements to users aged 13 and older. Users under 13 will not be shown advertisements. By viewing advertisements in the Game, you may earn Gems as a reward. We may use third-party advertising providers to serve ads; any such providers are disclosed in our Privacy Policy under Third-Party Services. You are not required to view advertisements to play the Game. We are not responsible for the content of third-party advertisements. Ad placement and reward values are subject to change at any time.</p>
+    64→  1523→                <h3 className="text-gray-300 font-semibold text-sm mt-4 mb-2">9. Account Termination and Data Retention</h3>
+    65→  1524→                <p className="mb-4">We reserve the right to suspend or terminate your account (including Google Sign-In accounts) at our sole discretion, including but not limited to for violations of these Terms. Upon termination:</p>
+    66→  1525→                <ul className="list-disc list-inside mb-4 space-y-1">
+    67→  1526→                  <li><strong>Access Blocked:</strong> You will be prevented from logging in or accessing any account functionality. Your data will not be deleted but will be rendered permanently inaccessible to you;</li>
+    68→  1527→                  <li><strong>Data Retained:</strong> Your game save data and account information will be retained in compacted form for legal compliance purposes, including but not limited to compliance with law enforcement requests under applicable federal and Minnesota state law;</li>
+    69→  1528→                  <li><strong>Reactivation Prohibited:</strong> Terminated accounts may not be reactivated. If a terminated user attempts to log in again, the system will deny access while preserving the retained data;</li>
+    70→  1529→                  <li><strong>Legal Access:</strong> Retained data may be disclosed to law enforcement agencies pursuant to a valid legal process (subpoena, court order, or warrant) under 18 U.S.C. § 2703 (Stored Communications Act) and/or Minn. Stat. § 590.11 (Minnesota Government Data Access);</li>
+    71→  1530→                  <li><strong>User Return:</strong> If you wish to resume playing after an extended absence (not related to termination), your data will be available upon successful authentication, subject to our inactive account policy as described in the Privacy Policy.</li>
+    72→  1531→                </ul>
+    73→  1532→                <h3 className="text-gray-300 font-semibold text-sm mt-4 mb-2">10. Third-Party Services Disclosure</h3>
+    74→  1533→                <p className="mb-4">Crystal Clicker uses the following third-party services, which are operated by entities independent of Crystal Clicker. By using the Game, you acknowledge and agree to the following third-party service relationships:</p>
+    75→  1534→                <ul className="list-disc list-inside mb-4 space-y-1">
+    76→  1535→                  <li><strong>Google Firebase Authentication (Google LLC):</strong> A third-party identity and access management service operated by Google LLC. Used exclusively for the optional Google Sign-In feature, available only to users aged 13 and older who affirmatively choose to sign in. Firebase Authentication processes your Google sign-in credentials and provides us with your Firebase user ID, display name, and profile photo. Your interaction with Firebase is governed by Google's Terms of Service and Privacy Policy available at policies.google.com.</li>
+    77→  1536→                  <li><strong>Google Firebase Firestore (Google LLC):</strong> A third-party cloud-hosted NoSQL database service operated by Google LLC. Used to store and synchronize game save data for users who sign in with Google. Firestore is accessed only through authenticated Firebase connections with appropriate security rules. Data stored in Firestore is subject to Google Cloud's terms and applicable data protection laws.</li>
+    78→  1537→                  <li><strong>Advertising Partners:</strong> We may engage third-party advertising providers to serve advertisements within the Game to eligible users (ages 13+). Any advertising partners and their data practices are disclosed in our Privacy Policy.</li>
+    79→  1538→                </ul>
+    80→  1539→                <p className="mb-4">These third-party services are essential to the operation of certain Game features and are not operated or controlled by Crystal Clicker. We are not responsible for the privacy practices, data security, or terms of service of these third parties. We encourage you to review the privacy policies of Google LLC and any advertising partners.</p>
+    81→  1540→                <h3 className="text-gray-300 font-semibold text-sm mt-4 mb-2">11. Disclaimer of Warranties</h3>
+    82→  1541→                <p className="mb-4">THE GAME IS PROVIDED ON AN "AS IS" AND "AS AVAILABLE" BASIS WITHOUT WARRANTIES OF ANY KIND, WHETHER EXPRESS, IMPLIED, STATUTORY, OR OTHERWISE. TO THE FULLEST EXTENT PERMITTED BY APPLICABLE LAW, INCLUDING THE MINNESOTA UNIFORM COMMERCIAL CODE (MINN. STAT. § 336.2-315) AND 15 U.S.C. § 2310 (MAGNUSON-MOSS WARRANTY ACT), WE DISCLAIM ALL WARRANTIES, INCLUDING BUT NOT LIMITED TO IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, AND NON-INFRINGEMENT. WE DO NOT WARRANT THAT THE GAME WILL BE UNINTERRUPTED, ERROR-FREE, SECURE, OR FREE FROM VIRUSES OR OTHER HARMFUL COMPONENTS. YOUR USE OF THE GAME IS AT YOUR SOLE RISK.</p>
+    83→  1542→                <h3 className="text-gray-300 font-semibold text-sm mt-4 mb-2">12. Limitation of Liability</h3>
+    84→  1543→                <p className="mb-4">TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, INCLUDING MINN. STAT. § 542.09 (MINNESOTA LIABILITY LIMITATION STATUTE) AND APPLICABLE FEDERAL LAW, IN NO EVENT SHALL CRYSTAL CLICKER, ITS DEVELOPERS, OFFICERS, DIRECTORS, EMPLOYEES, AGENTS, OR AFFILIATES BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, PUNITIVE, OR EXEMPLARY DAMAGES, INCLUDING BUT NOT LIMITED TO DAMAGES FOR LOSS OF PROFITS, DATA, GOODWILL, OR OTHER INTANGIBLE LOSSES, ARISING OUT OF OR IN CONNECTION WITH YOUR USE OF OR INABILITY TO USE THE GAME, REGARDLESS OF THE LEGAL THEORY UNDER WHICH SUCH DAMAGES ARE SOUGHT (INCLUDING BUT NOT LIMITED TO NEGLIGENCE, STRICT LIABILITY, BREACH OF CONTRACT, OR BREACH OF WARRANTY), EVEN IF WE HAVE BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES. IN NO EVENT SHALL OUR TOTAL LIABILITY TO YOU EXCEED THE AMOUNT OF ONE HUNDRED U.S. DOLLARS ($100.00) OR THE TOTAL AMOUNT YOU HAVE ACTUALLY PAID TO CRYSTAL CLICKER IN THE TWELVE (12) MONTHS PRIOR TO THE CLAIM, WHICHEVER IS GREATER.</p>
+    85→  1544→                <h3 className="text-gray-300 font-semibold text-sm mt-4 mb-2">13. Governing Law and Dispute Resolution</h3>
+    86→  1545→                <p className="mb-4">These Terms shall be governed by and construed in accordance with the laws of the State of Minnesota, United States, without regard to its conflict-of-law principles, and applicable federal law including 16 C.F.R. Part 312 (COPPA), the Children's Online Privacy Protection Rule, and other applicable federal statutes and regulations. You agree that any dispute arising out of or relating to these Terms or the Game shall be resolved exclusively in the state or federal courts located in the State of Minnesota, and you consent to the personal jurisdiction of such courts and waive any objection to venue therein. Any claim or cause of action arising out of or related to your use of the Game must be filed within one (1) year after such claim or cause of action arose, or it shall be permanently barred, except where a shorter or longer period is required by applicable Minnesota or federal law.</p>
+    87→  1546→                <h3 className="text-gray-300 font-semibold text-sm mt-4 mb-2">14. Severability</h3>
+    88→  1547→                <p className="mb-4">If any provision of these Terms is held to be invalid, illegal, or unenforceable by a court of competent jurisdiction in the State of Minnesota or under federal law, such provision shall be modified to the minimum extent necessary to make it valid and enforceable, and the remaining provisions shall continue in full force and effect.</p>
+    89→  1548→                <h3 className="text-gray-300 font-semibold text-sm mt-4 mb-2">15. Changes to Terms</h3>
+    90→  1549→                <p className="mb-4">We reserve the right to modify or replace these Terms at any time at our sole discretion. If a revision is material, we will make reasonable efforts to provide notice prior to the new terms taking effect, such as by updating the "Last Updated" date or displaying a notice within the Game. What constitutes a material change will be determined at our sole discretion. By continuing to access or use the Game after any revisions become effective, you agree to be bound by the revised Terms.</p>
+    91→  1550→                <h3 className="text-gray-300 font-semibold text-sm mt-4 mb-2">16. Contact Information</h3>
+    92→  1551→                <p className="mb-4">If you have any questions, concerns, or requests regarding these Terms of Service, please contact us at:</p>
+    93→  1552→                <p className="mb-2">Crystal Clicker</p>
+    94→  1553→                <p className="mb-1"><strong>General Inquiries:</strong> Crystalclicker.app@gmail.com</p>
+    95→  1554→                <p className="mb-4"><strong>Reports & Complaints:</strong> Crystalclicker.report.app@gmail.com</p>
+    96→  1555→              </div>
+    97→  1556→            </ScrollArea>
+    98→  1557→            <DialogFooter>
+    99→  1558→              <Button
+   100→  1559→                variant="ghost"
+   101→  1560→                className="w-full text-gray-400 hover:text-white"
+   102→  1561→                onClick={() => setShowTos(false)}
+   103→  1562→              >
+   104→  1563→                Close
+   105→  1564→              </Button>
+   106→  1565→            </DialogFooter>
+   107→  1566→          </DialogContent>
+   108→  1567→        </Dialog>
+   109→  1568→
+   110→  1569→        {/* ====== PRIVACY POLICY DIALOG ====== */}
+   111→  1570→        <Dialog open={showPp} onOpenChange={setShowPp}>
+   112→  1571→          <DialogContent className="bg-gray-900 border-gray-700 sm:max-w-lg max-h-[80vh] flex flex-col">
+   113→  1572→            <DialogHeader>
+   114→  1573→              <DialogTitle className="text-lg text-white flex items-center gap-2">
+   115→  1574→                <Shield className="w-5 h-5 text-purple-400" />
+   116→  1575→                Privacy Policy
+   117→  1576→              </DialogTitle>
+   118→  1577→              <DialogDescription className="text-gray-400 text-sm">
+   119→  1578→                Crystal Clicker privacy practices
+   120→  1579→              </DialogDescription>
+   121→  1580→            </DialogHeader>
+   122→  1581→            <ScrollArea className="flex-1 max-h-[50vh]">
+   123→  1582→              <div className="text-gray-400 text-sm leading-relaxed py-2">
+   124→  1583→                <h3 className="text-gray-300 font-semibold text-sm mt-4 mb-2">1. Information We Collect</h3>
+   125→  1584→                <p className="mb-2">Crystal Clicker collects the following categories of information:</p>
+   126→  1585→                <p className="text-gray-500 text-xs mt-2 mb-1">A. From All Users</p>
+   127→  1586→                <ul className="list-disc list-inside mb-4 space-y-1">
+   128→  1587→                  <li><strong>Birth Year:</strong> Collected once at the age gate before you begin playing. Used solely to determine your eligibility for Google Sign-In and to ensure COPPA compliance (16 C.F.R. Part 312, federal regulation). In Guest Mode, the birth year is stored only on your local device and is not transmitted to our servers.</li>
+   129→  1588→                  <li><strong>Anonymous User Identifier:</strong> A randomly generated, anonymous identifier created locally on your device. Used to distinguish your local game session. Does not personally identify you.</li>
+   130→  1589→                  <li><strong>Game Save Data:</strong> In-game progress data including crystal count, gem balance, purchased boosters, upgrade levels, unlocked achievements, and area progression. In Guest Mode, stored exclusively in your browser's localStorage. For Google Sign-In users, stored in Firebase Firestore (a third-party service operated by Google LLC) associated with your Firebase user ID.</li>
+   131→  1590→                </ul>
+   132→  1591→                <p className="text-gray-500 text-xs mt-2 mb-1">B. From Google Sign-In Users (Ages 13+ Only)</p>
+   133→  1592→                <ul className="list-disc list-inside mb-4 space-y-1">
+   134→  1593→                  <li><strong>Firebase User ID:</strong> A unique identifier assigned by Google Firebase Authentication (third-party service, Google LLC) upon sign-in.</li>
+   135→  1594→                  <li><strong>Display Name:</strong> Your Google account display name, used to personalize your in-game profile.</li>
+   136→  1595→                  <li><strong>Profile Photo:</strong> Your Google account profile photo URL, used as your in-game avatar.</li>
+   137→  1596→                </ul>
+   138→  1597→                <p className="text-gray-500 text-xs mt-2 mb-1">C. From Advertisement Viewers (Ages 13+ Only)</p>
+   139→  1598→                <ul className="list-disc list-inside mb-4 space-y-1">
+   140→  1599→                  <li><strong>Ad Interaction Data:</strong> When you view an advertisement to earn Gems, our advertising partner (a third-party service) may collect certain technical data such as ad impression events and reward fulfillment signals. We do not control the data collected by our advertising partners and encourage you to review their privacy policies. Users under 13 are never shown advertisements and no ad-related data is collected from them.</li>
+   141→  1600→                </ul>
+   142→  1601→                <p className="mb-4">We do not collect email addresses, IP addresses, precise location data, or device identifiers beyond the anonymous local ID. We do not engage in behavioral advertising, cross-site tracking, or data brokering.</p>
+   143→  1602→                <h3 className="text-gray-300 font-semibold text-sm mt-4 mb-2">2. How We Use Information</h3>
+   144→  1603→                <p className="mb-4">The information we collect is used for the following limited purposes, in compliance with Minn. Stat. § 325M.01 et seq. (MCDPA) and 16 C.F.R. Part 312 (COPPA):</p>
+   145→  1604→                <ul className="list-disc list-inside mb-4 space-y-1">
+   146→  1605→                  <li>Verifying user age to comply with COPPA requirements (federal law);</li>
+   147→  1606→                  <li>Saving, loading, and synchronizing game progress;</li>
+   148→  1607→                  <li>Managing premium currency (Gems) balances and booster purchases;</li>
+   149→  1608→                  <li>Displaying your name and profile photo in-game (Google Sign-In users only);</li>
+   150→  1609→                  <li>Providing and maintaining the core functionality of the Game;</li>
+   151→  1610→                  <li>Fulfilling ad-view rewards (Gems) for eligible users aged 13+.</li>
+   152→  1611→                </ul>
+   153→  1612→                <p className="mb-4">We do not use your information for marketing, profiling for targeted advertising, or any purpose beyond operating the Game. We do not sell personal data as defined by the MCDPA.</p>
+   154→  1613→                <h3 className="text-gray-300 font-semibold text-sm mt-4 mb-2">3. COPPA Compliance</h3>
+   155→  1614→                <p className="mb-4">Crystal Clicker is designed to comply with the Children's Online Privacy Protection Act ("COPPA"), 16 C.F.R. Part 312 (federal regulation). We recognize that children may use our Game, and we have implemented the following measures to protect children's privacy:</p>
+   156→  1615→                <p className="text-gray-500 text-xs mt-2 mb-1">Age Gate</p>
+   157→  1616→                <p className="mb-4">Before any user can access the Game, they must enter their birth year through a mandatory age verification screen. This age gate prevents children under 13 from accessing Google Sign-In, advertisements, the Store, or any feature that would transmit personal information to our servers or third parties.</p>
+   158→  1617→                <p className="text-gray-500 text-xs mt-2 mb-1">Under-13 Users</p>
+   159→  1618→                <p className="mb-4">For users who indicate they are under the age of 13, the following restrictions apply:</p>
+   160→  1619→                <ul className="list-disc list-inside mb-4 space-y-1">
+   161→  1620→                  <li>Google Sign-In is disabled and unavailable;</li>
+   162→  1621→                  <li>Advertisements are never shown;</li>
+   163→  1622→                  <li>The Store and premium currency features are inaccessible;</li>
+   164→  1623→                  <li>No personal data is transmitted to any server or third party;</li>
+   165→  1624→                  <li>The birth year is stored only in the user's browser (localStorage) and is not sent to us;</li>
+   166→  1625→                  <li>Game progress is saved exclusively to the user's browser via localStorage;</li>
+   167→  1626→                  <li>No account is created, and no persistent identifier is stored server-side;</li>
+   168→  1627→                  <li>Clearing browser data will permanently erase all stored information for that user.</li>
+   169→  1628→                </ul>
+   170→  1629→                <p className="mb-4">We do not knowingly collect, use, or disclose personal information from children under 13 in violation of COPPA. If a parent or guardian becomes aware that their child under 13 has provided us with personal information, they should contact us immediately at Crystalclicker.report.app@gmail.com, and we will take steps to delete such information from our servers.</p>
+   171→  1630→                <h3 className="text-gray-300 font-semibold text-sm mt-4 mb-2">4. Minnesota Consumer Data Privacy Act (MCDPA) Compliance</h3>
+   172→  1631→                <p className="mb-4">Crystal Clicker operates in compliance with the Minnesota Consumer Data Privacy Act ("MCDPA"), Minn. Stat. § 325M.01 et seq. (Minnesota state law), effective January 1, 2025. To the extent the MCDPA applies to our data practices, we provide the following disclosures:</p>
+   173→  1632→                <ul className="list-disc list-inside mb-4 space-y-1">
+   174→  1633→                  <li><strong>Purpose of Processing:</strong> We process consumer data solely for the purposes described in Section 2 of this Privacy Policy — namely, age verification, game progress saving, premium currency management, ad reward fulfillment, and core game functionality. We do not process data for targeted advertising, profiling, or sale of personal data.</li>
+   175→  1634→                  <li><strong>Sale of Personal Data:</strong> We do not sell personal data as defined by the MCDPA (Minn. Stat. § 325M.02, subd. 9). We have not sold, and will not sell, any personal information to third parties.</li>
+   176→  1635→                  <li><strong>Third-Party Sharing:</strong> We share personal data with third parties only as described in Section 6 (Google Firebase Authentication, Google Firebase Firestore, and advertising partners — all third-party services), and only for the limited purposes described therein.</li>
+   177→  1636→                  <li><strong>Opt-Out Rights:</strong> Since we do not engage in targeted advertising or the sale of personal data as defined by the MCDPA, there are no opt-out mechanisms required under the MCDPA for such activities. However, you may opt out of Google Sign-In at any time by ceasing to use that feature, and you may opt out of ad viewing by not engaging with the ad feature.</li>
+   178→  1637→                </ul>
+   179→  1638→                <h3 className="text-gray-300 font-semibold text-sm mt-4 mb-2">5. Data Storage and Security</h3>
+   180→  1639→                <p className="mb-4">Data storage depends on your chosen mode of play:</p>
+   181→  1640→                <p className="text-gray-500 text-xs mt-2 mb-1">Guest Mode</p>
+   182→  1641→                <ul className="list-disc list-inside mb-4 space-y-1">
+   183→  1642→                  <li>All data (birth year, game progress, anonymous user ID) is stored exclusively in your browser's localStorage.</li>
+   184→  1643→                  <li>No data is transmitted to any external server or third party.</li>
+   185→  1644→                  <li>Data persists only as long as it remains in your browser. Clearing browser data, using incognito/private mode, or switching browsers will result in data loss.</li>
+   186→  1645→                </ul>
+   187→  1646→                <p className="text-gray-500 text-xs mt-2 mb-1">Google Sign-In Mode (Ages 13+)</p>
+   188→  1647→                <ul className="list-disc list-inside mb-4 space-y-1">
+   189→  1648→                  <li>Game save data, gem balances, and booster inventories are stored in Google Firebase Firestore, a third-party cloud-hosted NoSQL database operated by Google LLC.</li>
+   190→  1649→                  <li>Firebase implements industry-standard security measures including encryption in transit (TLS) and at rest.</li>
+   191→  1650→                  <li>Your game data is accessible only to your authenticated account via Firebase security rules.</li>
+   192→  1651→                  <li>Google LLC's data processing is governed by its own privacy policy and applicable data protection laws.</li>
+   193→  1652→                </ul>
+   194→  1653→                <p className="mb-4">While we implement reasonable measures to protect your information, no method of electronic storage or transmission is 100% secure. We cannot guarantee absolute security of your data.</p>
+   195→  1654→                <h3 className="text-gray-300 font-semibold text-sm mt-4 mb-2">6. Third-Party Services</h3>
+   196→  1655→                <p className="mb-4">Crystal Clicker uses the following third-party services, which are operated by entities independent of Crystal Clicker. By using the Game, you acknowledge that your data may be processed by these third parties as described below:</p>
+   197→  1656→                <ul className="list-disc list-inside mb-4 space-y-1">
+   198→  1657→                  <li><strong>Google Firebase Authentication (Google LLC):</strong> A third-party identity and access management service. Used exclusively for the optional Google Sign-In feature, available only to users aged 13+. Firebase Authentication processes your Google sign-in credentials and provides us with your Firebase user ID, display name, and profile photo. Google's privacy policy: policies.google.com/privacy.</li>
+   199→  1658→                  <li><strong>Google Firebase Firestore (Google LLC):</strong> A third-party cloud database service. Used to store and synchronize game save data for users who sign in with Google. Data stored in Firestore is processed by Google LLC and is subject to Google Cloud's terms. Accessed only through authenticated connections.</li>
+   200→  1659→                  <li><strong>Advertising Partners:</strong> We may engage third-party advertising providers to serve advertisements within the Game to eligible users (ages 13+). Advertising partners may collect technical data related to ad delivery (e.g., ad impressions, reward events). We do not control the data practices of our advertising partners and encourage you to review their respective privacy policies. Users under 13 are never shown advertisements.</li>
+   201→  1660→                </ul>
+   202→  1661→                <p className="mb-4">These are the only third-party services we use. We do not use any third-party analytics platforms, social media integrations, or data brokers. There are no third-party cookies or tracking pixels beyond those used by the services listed above.</p>
+   203→  1662→                <h3 className="text-gray-300 font-semibold text-sm mt-4 mb-2">7. Data Retention and Inactive Account Policy</h3>
+   204→  1663→                <p className="mb-4">Data retention depends on your mode of play:</p>
+   205→  1664→                <p className="text-gray-500 text-xs mt-2 mb-1">Guest Mode</p>
+   206→  1665→                <ul className="list-disc list-inside mb-4 space-y-1">
+   207→  1666→                  <li>Data is retained in your browser's localStorage indefinitely or until you clear your browser data. We have no ability to access, retain, or delete Guest Mode data, as it never leaves your device.</li>
+   208→  1667→                </ul>
+   209→  1668→                <p className="text-gray-500 text-xs mt-2 mb-1">Google Sign-In: Active Accounts</p>
+   210→  1669→                <ul className="list-disc list-inside mb-4 space-y-1">
+   211→  1670→                  <li>Game save data, gem balances, and account information are retained in Firebase Firestore for as long as your account is active.</li>
+   212→  1671→                  <li>An account is considered "active" if there has been a save or load operation within the preceding 90 days.</li>
+   213→  1672→                </ul>
+   214→  1673→                <p className="text-gray-500 text-xs mt-2 mb-1">Google Sign-In: Inactive Accounts</p>
+   215→  1674→                <ul className="list-disc list-inside mb-4 space-y-1">
+   216→  1675→                  <li>If a Google Sign-In account has been inactive (no save/load operations) for more than 365 consecutive days, the account data will be automatically compacted.</li>
+   217→  1676→                  <li><strong>Compaction:</strong> Full game save data (detailed upgrade levels, achievement progress, crystal counts, gem balances) will be reduced to a minimal record containing only: (a) Firebase user ID, (b) display name, (c) profile photo URL, (d) timestamp of last activity, (e) a compacted summary of total progress (e.g., total earned, prestige count, areas unlocked). The detailed save data will be permanently deleted.</li>
+   218→  1677→                  <li><strong>Reactivation:</strong> If a user with compacted data returns and logs in, the system will create a fresh game state. Compacted progress data is insufficient to restore the full game state; however, prestige points and unlocked area status from the compacted record may be restored at our discretion.</li>
+   219→  1678→                  <li><strong>Legal Preservation:</strong> Before compaction, we may retain a copy of the full save data in a separate secure archive for up to 90 additional days. This archived data is accessible only (i) to the user upon verified request, or (ii) to law enforcement pursuant to valid legal process under 18 U.S.C. § 2703 (Stored Communications Act) or Minn. Stat. § 590.11.</li>
+   220→  1679→                </ul>
+   221→  1680→                <p className="text-gray-500 text-xs mt-2 mb-1">Google Sign-In: Terminated Accounts</p>
+   222→  1681→                <ul className="list-disc list-inside mb-4 space-y-1">
+   223→  1682→                  <li>When an account is terminated (see TOS Section 9), all data is compacted immediately as described above, and the account is flagged as terminated.</li>
+   224→  1683→                  <li>Terminated users who attempt to log in will be denied access. Their compacted data is retained for legal compliance purposes but is never restored.</li>
+   225→  1684→                  <li>Terminated account data is retained indefinitely unless a shorter retention period is required by applicable Minnesota or federal law, or unless the data subject requests deletion under Section 8.</li>
+   226→  1685→                </ul>
+   227→  1686→                <h3 className="text-gray-300 font-semibold text-sm mt-4 mb-2">8. Your Rights</h3>
+   228→  1687→                <p className="mb-4">Under the Minnesota Consumer Data Privacy Act (Minn. Stat. § 325M.01 et seq.), COPPA (16 C.F.R. Part 312), and other applicable federal and Minnesota state law, you may have the following rights regarding your personal data. These rights apply to data we hold; Guest Mode data that resides solely on your device can be managed directly through your browser settings.</p>
+   229→  1688→                <ul className="list-disc list-inside mb-4 space-y-1">
+   230→  1689→                  <li><strong>Right to Access:</strong> You may request a copy of the personal data we hold about you. For Google Sign-In users, this includes your display name, profile photo, game save data, gem balance, and booster inventory stored in Firebase Firestore.</li>
+   231→  1690→                  <li><strong>Right to Deletion:</strong> You may request that we delete all personal data we hold about you. Upon a verified request, we will delete your data from Firebase Firestore within 30 days. Note that deleting your account will result in permanent loss of your cloud-saved game progress, gem balance, and purchased boosters.</li>
+   232→  1691→                  <li><strong>Right to Correct Inaccurate Data:</strong> You may request correction of any inaccurate personal data we maintain about you.</li>
+   233→  1692→                  <li><strong>Right to Data Portability:</strong> You may request your data in a portable, readily usable format.</li>
+   234→  1693→                  <li><strong>COPPA Parental Rights:</strong> Parents and guardians of children under 13 may review, request deletion of, or refuse to permit further collection of their child's personal information. Contact us at Crystalclicker.report.app@gmail.com to exercise these rights.</li>
+   235→  1694→                </ul>
+   236→  1695→                <p className="mb-4">To exercise any of these rights, please contact us at Crystalclicker.app@gmail.com (general requests) or Crystalclicker.report.app@gmail.com (privacy-related requests and complaints). We will respond to verified requests within 45 days, as required by the MCDPA. We may need to verify your identity before processing your request.</p>
+   237→  1696→                <h3 className="text-gray-300 font-semibold text-sm mt-4 mb-2">9. Children's Privacy</h3>
+   238→  1697→                <p className="mb-4">Crystal Clicker takes children's privacy seriously. In addition to the COPPA compliance measures described in Section 3 (16 C.F.R. Part 312, federal regulation), and consistent with Minn. Stat. § 325M.01 et seq., we provide the following commitments:</p>
+   239→  1698→                <ul className="list-disc list-inside mb-4 space-y-1">
+   240→  1699→                  <li>We do not require children under 13 to provide more information than is reasonably necessary to participate in the Game.</li>
+   241→  1700→                  <li>We do not condition a child's participation in the Game on the disclosure of more personal information than is reasonably necessary.</li>
+   242→  1701→                  <li>We do not disclose personal information collected from children under 13 to any third party.</li>
+   243→  1702→                  <li>For children under 13, the only data stored is the birth year (in localStorage) and game progress (in localStorage). Neither is transmitted to any server or third party.</li>
+   244→  1703→                  <li>Advertisements, the Store, and premium currency features are completely inaccessible to users under 13.</li>
+   245→  1704→                  <li>Parents and guardians may review, refuse, or request deletion of their child's locally stored data at any time by clearing their browser's local storage, or by contacting us at Crystalclicker.report.app@gmail.com for guidance.</li>
+   246→  1705→                </ul>
+   247→  1706→                <p className="mb-4">If you are a parent or guardian and believe that your child under 13 has inadvertently provided personal information through the Game, please contact us immediately at Crystalclicker.report.app@gmail.com. We will take prompt steps to delete such information from any of our servers.</p>
+   248→  1707→                <h3 className="text-gray-300 font-semibold text-sm mt-4 mb-2">10. Changes to This Privacy Policy</h3>
+   249→  1708→                <p className="mb-4">We may update this Privacy Policy from time to time to reflect changes in our practices, technology, legal requirements under Minnesota or federal law, or other factors. When we make material changes, we will update the "Last Updated" date at the top of this policy and, where appropriate, provide additional notice such as an in-game notification. We encourage you to review this Privacy Policy periodically to stay informed about how we protect your information. Your continued use of the Game after any changes to this Privacy Policy constitutes your acceptance of the updated policy.</p>
+   250→  1709→                <h3 className="text-gray-300 font-semibold text-sm mt-4 mb-2">11. Contact Information</h3>
+   251→  1710→                <p className="mb-4">If you have any questions, concerns, or requests regarding this Privacy Policy, our data practices, or your rights under applicable Minnesota or federal law, please contact us at:</p>
+   252→  1711→                <p className="mb-2">Crystal Clicker</p>
+   253→  1712→                <p className="mb-1"><strong>General Inquiries:</strong> Crystalclicker.app@gmail.com</p>
+   254→  1713→                <p className="mb-4"><strong>Privacy, Reports & Complaints:</strong> Crystalclicker.report.app@gmail.com</p>
+   255→  1714→              </div>
+   256→  1715→            </ScrollArea>
+   257→  1716→            <DialogFooter>
+   258→  1717→              <Button
+   259→  1718→                variant="ghost"
+   260→  1719→                className="w-full text-gray-400 hover:text-white"
+   261→  1720→                onClick={() => setShowPp(false)}
+   262→  1721→              >
+   263→  1722→                Close
+   264→  1723→              </Button>
+   265→  1724→            </DialogFooter>
+   266→  1725→          </DialogContent>
+   267→  1726→        </Dialog>
+   268→  1727→
+   269→  1728→        {/* ====== WORLD MAP OVERLAY ====== */}
+   270→  1729→        <AnimatePresence>
+   271→  1730→          {showWorldMap && (
+   272→  1731→            <WorldMap
+   273→  1732→              areas={areas}
+   274→  1733→              currentArea={currentArea}
+   275→  1734→              crystals={crystals}
+   276→  1735→              autoRate={autoRate}
+   277→  1736→              clickPower={clickPower}
+   278→  1737→              multiplier={multiplier}
+   279→  1738→              onClose={() => { setShowWorldMap(false); setActiveTab('upgrades'); }}
+   280→  1739→              switchArea={(id) => { switchArea(id); }}
+   281→  1740→              unlockArea={(id) => {
+   282→  1741→                const ok = unlockArea(id);
+   283→  1742→                return ok;
+   284→  1743→              }}
+   285→  1744→            />
+   286→  1745→          )}
+   287→  1746→        </AnimatePresence>
+   288→  1747→      </div>
+   289→  1748→    </TooltipProvider>
+   290→  1749→  );
+   291→  1750→}
+   292→  1751→
+   293→  1752→// ====== Stat Row Component ======
+   294→  1753→function StatRow({ label, value, icon }: { label: string; value: string; icon: string }) {
+   295→  1754→  return (
+   296→  1755→    <div className="flex items-center justify-between">
+   297→  1756→      <span className="text-xs text-gray-500 flex items-center gap-1.5">
+   298→  1757→        <span>{icon}</span>
+   299→  1758→        {label}
+   300→  1759→      </span>
+   301→
+   302→[showing lines 1460-1759 of 1763; use offset=1760 with limit to continue reading]

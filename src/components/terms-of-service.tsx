@@ -1,0 +1,271 @@
+'use client';
+
+import React from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { FileText } from 'lucide-react';
+
+const today = new Date().toLocaleDateString('en-US', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+});
+
+const sections = [
+  {
+    heading: '1. Acceptance of Terms',
+    body: `By accessing, downloading, or playing Crystal Clicker ("the Game," "the Application," or "the Service"), you agree to be bound by these Terms of Service ("Terms," "Agreement," or "ToS"), including all policies, guidelines, and amendments incorporated herein by reference. If you do not agree to all of these Terms, you must not access or use the Game.
+
+These Terms constitute a legally binding agreement between you ("User," "you," or "your") and Crystal Clicker ("we," "us," or "our"). By creating an account, playing as a guest, or otherwise using the Service, you acknowledge that you have read, understood, and agree to be bound by these Terms.
+
+We reserve the right to refuse service to anyone for any reason at any time. Your continued use of the Service following the posting of any changes to these Terms constitutes acceptance of those changes.`,
+  },
+  {
+    heading: '2. Description of Service',
+    body: `Crystal Clicker is a free-to-play incremental/idle browser-based game where players mine virtual crystals, purchase in-game upgrades, progress through different mining areas based on real-world gem locations, unlock achievements, and compete via leaderboards and prestige mechanics.
+
+The Service is provided to you "as is" and "as available," without any warranties of any kind, either express or implied, including but not limited to the implied warranties of merchantability, fitness for a particular purpose, or non-infringement.
+
+We do not guarantee that the Service will be uninterrupted, timely, secure, or error-free. We are not responsible for the content, accuracy, or functionality of any third-party services or websites linked to or from the Service.
+
+Features of the Service may be modified, enhanced, disabled, or removed at any time without prior notice. We may also limit, suspend, or discontinue the Service (or any part thereof) at any time, with or without notice.`,
+  },
+  {
+    heading: '3. User Accounts',
+    body: `You may access the Game in one of two ways:
+
+(a) Guest Access: Guest players receive a randomly generated identifier stored in their browser's localStorage. Guest accounts do not require registration. Guest progress is stored locally on the device and is not synced to any remote server. Clearing browser data, using private/incognito mode, or switching browsers will result in permanent loss of guest progress. We are not responsible for any loss of guest data.
+
+(b) Google Authentication: Players may sign in using their Google account via Firebase Authentication. When you sign in with Google, we collect your Google User ID, display name, and profile picture. We do not access your email address, contacts, calendar, or any other Google services. You are solely responsible for maintaining the confidentiality and security of your Google account credentials.
+
+Account Migration: If you initially play as a guest and later sign in with Google, we will attempt to migrate your local guest progress to your authenticated account. This migration is provided on a best-effort basis and may not succeed in all cases. If migration fails, your guest progress remains in localStorage but will not be accessible from other devices.
+
+Account Termination: You may stop using the Service at any time. We reserve the right to suspend, disable, or terminate your account for any reason, including but not limited to: violation of these Terms, fraudulent activity, extended inactivity (365+ days), or at our sole discretion.`,
+  },
+  {
+    heading: '4. Virtual Currency, Items, and Progress',
+    body: `All in-game currency (including "crystals," "prestige points," and any other virtual currencies), items, upgrades, achievements, and progress are virtual and exist solely within the context of the Game. These virtual items:
+
+(a) Have no real-world monetary value and cannot be exchanged, sold, traded, or transferred for real money, goods, or services of any kind.
+
+(b) Are licensed to you, not sold, and you do not acquire any ownership interest in any virtual items or currency.
+
+(c) May be modified, rebalanced, reduced, or eliminated at any time as part of game updates, balance changes, or resets.
+
+(d) Are subject to the prestige/reset mechanics built into the Game. By using the prestige feature, you voluntarily choose to reset certain progress in exchange for prestige points and associated bonuses. This action is irreversible.
+
+(e) May be affected by bugs, server issues, or data loss. While we make reasonable efforts to preserve your progress, we do not guarantee that your data will be preserved indefinitely.
+
+We reserve the right to implement economy adjustments, including but not limited to: changing upgrade costs, adjusting crystal generation rates, modifying unlock thresholds, rebalancing area progression, and introducing new currency sinks.`,
+  },
+  {
+    heading: '5. User Conduct and Prohibited Activities',
+    body: `When using the Service, you agree NOT to:
+
+(a) Cheat, Hack, or Exploit: Use any cheats, hacks, exploits, bots, scripts, macros, automation tools, memory editors, packet sniffers, or any third-party software or hardware designed to give you an unfair advantage, manipulate game data, or automate gameplay beyond what is provided by the Service itself.
+
+(b) Reverse Engineer: Reverse-engineer, decompile, disassemble, or otherwise attempt to discover the source code, underlying algorithms, or structure of the Game, including any server-side logic, save data structures, or game mechanics.
+
+(c) Modify or Distribute: Modify, adapt, translate, create derivative works of, or distribute the Game or any portion thereof without our express written permission. This includes creating private servers, clones, or significantly similar games based on our design.
+
+(d) Interfere: Interfere with or disrupt the Service, servers, or networks connected to the Service, including by overloading, flooding, spamming, or introducing malicious code (viruses, worms, trojans, etc.).
+
+(e) Abuse: Harass, abuse, threaten, intimidate, or discriminate against other players or our staff, including through in-game features, communication channels, or any other means.
+
+(f) Impersonate: Impersonate any person or entity, or falsely represent your affiliation with any person or entity.
+
+(g) Violate Laws: Use the Service for any purpose that is unlawful or prohibited by these Terms.
+
+(h) Data Mining: Systematically extract, scrape, or collect data from the Service through automated means without our prior written consent.
+
+Violation of these rules may result in immediate and permanent suspension of your account and access to the Service, without prior warning or recourse.`,
+  },
+  {
+    heading: '6. Intellectual Property',
+    body: `All content, features, and functionality of the Game — including but not limited to: text, graphics, logos, icons, images, audio clips, digital downloads, data compilations, software code, game design, mechanics, user interface design, artwork, animations, sound effects, music, and the overall "look and feel" of the Service — are the exclusive property of Crystal Clicker and are protected by international copyright, trademark, patent, trade secret, and other intellectual property or proprietary rights laws.
+
+You are granted a limited, non-exclusive, non-transferable, revocable license to access and use the Service for personal, non-commercial entertainment purposes only. This license does not include:
+
+(a) The right to modify, reproduce, distribute, or create derivative works from any part of the Service.
+(b) The right to use any data mining, robots, or similar data gathering/extraction methods.
+(c) The right to download (other than page caching) any portion of the Service.
+(d) The right to use the Service or any content for commercial purposes without our express written permission.
+
+"Crystal Clicker," the Crystal Clicker logo, and all related names, logos, product and service names, designs, and slogans are trademarks of Crystal Clicker. You may not use such marks without our prior written permission. All other names, logos, product and service names, designs, and slogans on the Service are the trademarks of their respective owners.`,
+  },
+  {
+    heading: '7. User-Generated Content',
+    body: `If the Service allows you to create, upload, post, or transmit any content (including but not limited to: usernames, profile information, in-game names, chat messages, or any other materials) ("User Content"), you grant us a non-exclusive, worldwide, royalty-free, irrevocable, perpetual license to use, reproduce, modify, publish, translate, distribute, and display such User Content in connection with the operation and improvement of the Service.
+
+You represent and warrant that:
+(a) You own or control all rights in and to your User Content.
+(b) Your User Content does not violate any applicable law or regulation.
+(c) Your User Content does not infringe upon the rights of any third party, including intellectual property rights, privacy rights, or publicity rights.
+(d) Your User Content is not defamatory, obscene, threatening, abusive, or otherwise objectionable.
+
+We reserve the right to remove, edit, or refuse to display any User Content at our sole discretion, without prior notice or liability to you. We are under no obligation to monitor User Content but may do so at our discretion.`,
+  },
+  {
+    heading: '8. Disclaimer of Warranties',
+    body: `TO THE FULLEST EXTENT PERMITTED BY APPLICABLE LAW, THE SERVICE IS PROVIDED ON AN "AS IS" AND "AS AVAILABLE" BASIS WITHOUT WARRANTIES OF ANY KIND, WHETHER EXPRESS, IMPLIED, STATUTORY, OR OTHERWISE.
+
+WE EXPRESSLY DISCLAIM ALL IMPLIED WARRANTIES, INCLUDING BUT NOT LIMITED TO:
+(a) IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
+(b) WARRANTIES THAT THE SERVICE WILL BE UNINTERRUPTED, TIMELY, SECURE, OR ERROR-FREE.
+(c) WARRANTIES THAT ANY RESULTS OBTAINED FROM THE USE OF THE SERVICE WILL BE ACCURATE OR RELIABLE.
+(d) WARRANTIES THAT THE QUALITY OF THE SERVICE WILL MEET YOUR EXPECTATIONS.
+
+NO ADVICE OR INFORMATION, WHETHER ORAL OR WRITTEN, OBTAINED BY YOU FROM US OR THROUGH THE SERVICE SHALL CREATE ANY WARRANTY NOT EXPRESSLY STATED IN THESE TERMS.
+
+YOU ACKNOWLEDGE THAT THE SERVICE IS NOT DESIGNED FOR OR INTENDED FOR USE IN ANY HIGH-RISK ACTIVITIES, AND WE SHALL NOT BE LIABLE FOR ANY DAMAGES ARISING FROM SUCH USE.`,
+  },
+  {
+    heading: '9. Limitation of Liability',
+    body: `TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL CRYSTAL CLICKER, ITS DIRECTORS, EMPLOYEES, PARTNERS, AGENTS, SUPPLIERS, OR AFFILIATES BE LIABLE FOR:
+
+(a) ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, EXEMPLARY, OR PUNITIVE DAMAGES, INCLUDING BUT NOT LIMITED TO: LOSS OF PROFITS, DATA, USE, GOODWILL, OR OTHER INTANGIBLE LOSSES, REGARDLESS OF WHETHER SUCH DAMAGES ARE BASED ON CONTRACT, TORT, STRICT LIABILITY, OR ANY OTHER LEGAL THEORY, AND WHETHER OR NOT WE HAVE BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+
+(b) THE TOTAL CUMULATIVE LIABILITY OF CRYSTAL CLICKER ARISING FROM OR RELATED TO THESE TERMS OR THE SERVICE SHALL NOT EXCEED THE AMOUNT OF $0.00 (ZERO DOLLARS), AS THE SERVICE IS PROVIDED FREE OF CHARGE.
+
+(c) ANY LOSS OR CORRUPTION OF GAME DATA, PROGRESS, VIRTUAL CURRENCY, OR ACHIEVEMENTS, REGARDLESS OF THE CAUSE, INCLUDING BUT NOT LIMITED TO: SERVER OUTAGES, DATA CORRUPTION, BUGS, UPDATES, ACCOUNT TERMINATION, OR FORCE MAJEURE EVENTS.
+
+(d) ANY DAMAGES RESULTING FROM YOUR RELIANCE ON INFORMATION OBTAINED THROUGH THE SERVICE, OR RESULTING FROM UNAUTHORIZED ACCESS TO OR ALTERATION OF YOUR TRANSMISSIONS OR DATA.
+
+THIS LIMITATION OF LIABILITY APPLIES WHETHER THE ALLEGED LIABILITY IS BASED ON CONTRACT, TORT, NEGLIGENCE, STRICT LIABILITY, OR ANY OTHER BASIS, EVEN IF WE HAVE BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.`,
+  },
+  {
+    heading: '10. Indemnification',
+    body: `You agree to defend, indemnify, and hold harmless Crystal Clicker and its officers, directors, employees, agents, licensors, suppliers, and any third-party information providers from and against all losses, expenses, damages, costs, claims, and demands, including reasonable attorneys' fees and related costs and expenses, arising out of or related to:
+
+(a) Your use of the Service or any activity conducted through the Service.
+(b) Your violation of these Terms or any applicable law or regulation.
+(c) Your violation of any rights of a third party, including but not limited to intellectual property rights, privacy rights, or proprietary rights.
+(d) Any content you submit, post, or transmit through the Service.
+(e) Your negligent or wrongful conduct.
+
+We reserve the right, at our own expense, to assume the exclusive defense and control of any matter otherwise subject to indemnification by you, and in such case, you agree to cooperate with our defense of such claim.`,
+  },
+  {
+    heading: '11. Changes to Terms',
+    body: `We reserve the right to modify, amend, or update these Terms of Service at any time, at our sole discretion. Changes may include but are not limited to: adding new terms, removing existing terms, modifying existing provisions, or restructuring the document.
+
+When we make material changes to these Terms, we will:
+(a) Update the "Last Updated" date at the top of the Terms.
+(b) Make reasonable efforts to notify users through in-game notifications, banners, or other prominent means.
+
+Your continued use of the Service after any such changes constitutes your acceptance of the new Terms. If you do not agree to the modified Terms, you must discontinue use of the Service immediately.
+
+We encourage you to review these Terms periodically to stay informed of any updates. The most current version of the Terms will always be available through the in-game "Terms of Service" link on the sign-in screen.
+
+It is your responsibility to check this page regularly for changes. Your failure to be aware of changes does not negate your obligation to comply with the updated Terms.`,
+  },
+  {
+    heading: '12. Termination',
+    body: `We reserve the right to suspend, disable, or terminate your access to all or part of the Service at any time, with or without cause, and with or without prior notice or liability.
+
+Termination may occur for any reason, including but not limited to:
+(a) Violation of these Terms.
+(b) Fraudulent, abusive, or unlawful activity.
+(c) Extended inactivity (accounts inactive for 365+ days may be compacted or removed).
+(d) Request by law enforcement or government authority.
+(e) Technical or operational requirements.
+(f) At our sole discretion, for any reason or no reason.
+
+Upon termination:
+(a) Your right to use the Service will immediately cease.
+(b) All licenses and rights granted to you under these Terms will terminate.
+(c) Provisions that by their nature should survive termination will remain in effect, including but not limited to: intellectual property provisions, warranty disclaimers, limitation of liability, and indemnification.
+
+We are not liable for any loss or damage resulting from the termination of your access to the Service, including loss of game progress, virtual currency, or achievements.`,
+  },
+  {
+    heading: '13. Governing Law and Dispute Resolution',
+    body: `These Terms shall be governed by and construed in accordance with the laws of the jurisdiction in which Crystal Clicker operates, without regard to its conflict of law provisions.
+
+Any disputes arising out of or relating to these Terms or the Service shall be resolved through:
+(a) Informal Resolution: You agree to first attempt to resolve any dispute informally by contacting us. We will attempt to resolve the dispute within 30 days of receiving your notice.
+(b) Binding Arbitration: If the dispute cannot be resolved informally, you agree to submit to binding arbitration administered by a recognized arbitration service. The arbitration shall be conducted on an individual basis — class actions and class-wide arbitration are waived.
+(c) No Jury Trial: You waive any right to a jury trial in connection with any dispute arising under these Terms.
+
+You agree that any claim or cause of action arising out of or related to your use of the Service or these Terms must be filed within one (1) year after such claim or cause of action arose, or be forever barred.`,
+  },
+  {
+    heading: '14. General Provisions',
+    body: `(a) Entire Agreement: These Terms, together with the Privacy Policy, constitute the entire agreement between you and Crystal Clicker regarding the use of the Service, and supersede any prior agreements we might have had.
+
+(b) Severability: If any provision of these Terms is found to be unenforceable or invalid by a court of competent jurisdiction, that provision shall be limited or eliminated to the minimum extent necessary so that the remaining provisions remain in full force and effect.
+
+(c) Waiver: The failure of either party to exercise any right provided for herein shall not be deemed a waiver of that right or any other right.
+
+(d) Assignment: You may not assign or transfer these Terms or your rights under these Terms, in whole or in part, without our prior written consent. We may assign our rights and obligations without restriction.
+
+(e) No Agency: Nothing in these Terms creates any agency, partnership, joint venture, or employment relationship between you and Crystal Clicker.
+
+(f) Force Majeure: We shall not be liable for any failure or delay in performing our obligations where such failure or delay results from circumstances beyond our reasonable control, including but not limited to: acts of God, natural disasters, war, terrorism, riots, embargoes, acts of civil or military authorities, fire, floods, accidents, pandemics, strikes, or shortages of transportation, facilities, fuel, energy, labor, or materials.
+
+(g) Language: These Terms were originally written in English. Any translation into other languages is provided for convenience only and the English version shall control in the event of any conflict.`,
+  },
+  {
+    heading: '15. Contact Information',
+    body: `If you have any questions, concerns, or feedback regarding these Terms of Service, please contact us through one of the following methods:
+
+In-Game: Use the in-game feedback or support channels, if available.
+Email: Contact our support team at the email address provided in the Game's "About" or "Support" section.
+
+We will make reasonable efforts to respond to legitimate inquiries within a reasonable timeframe. However, we are not obligated to respond to every communication.
+
+For legal notices or formal correspondence, please send to the contact information provided in the Game's official documentation.
+
+We recommend checking the in-game "About" section for the most current contact information, as it may change over time.`,
+  },
+];
+
+export function TermsOfServiceDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] p-0 gap-0 overflow-hidden bg-[#12122a] border-purple-500/20 text-white/90">
+        <DialogHeader className="px-6 pt-6 pb-4 shrink-0">
+          <div className="flex items-center gap-3 mb-1">
+            <div className="w-10 h-10 rounded-lg bg-purple-500/15 flex items-center justify-center shrink-0">
+              <FileText className="w-5 h-5 text-purple-400" />
+            </div>
+            <div>
+              <DialogTitle className="text-xl font-bold text-white">Terms of Service</DialogTitle>
+              <DialogDescription className="text-white/40 text-xs mt-0.5">
+                Last updated: {today}
+              </DialogDescription>
+            </div>
+          </div>
+        </DialogHeader>
+        <Separator className="bg-white/10 shrink-0" />
+        <ScrollArea className="flex-1 max-h-[70vh]">
+          <div className="px-6 py-5 space-y-6 pr-4">
+            {sections.map((section, i) => (
+              <section key={i} className="space-y-2">
+                <h3 className="text-sm font-bold text-purple-300 tracking-wide uppercase">
+                  {section.heading}
+                </h3>
+                <p className="text-[13px] text-white/55 leading-relaxed whitespace-pre-line">
+                  {section.body}
+                </p>
+              </section>
+            ))}
+          </div>
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
+  );
+}

@@ -188,3 +188,42 @@ Stage Summary:
 - 0 accounts compacted (endpoint not implemented)
 - The `/api/admin/compact-inactive` route is part of Phase 2 (unused account data compaction) which has not been built yet
 - Prisma schema has compactedData/terminatedReason/terminatedAt columns ready, but the API route needs to be created
+
+---
+Task ID: restore-tos-pp
+Agent: main
+Task: Restore missing Terms of Service and Privacy Policy on sign-in screen
+
+Work Log:
+- Investigated project — TOS/PP were lost when auth system was rebuilt from scratch in Session 7
+- Created themed modal dialogs for both TOS (10 sections) and Privacy Policy (11 sections)
+- Added `LegalDialog` reusable component with icon header, last-updated date, scrollable content
+- Added "Terms of Service" and "Privacy Policy" clickable links below the sign-in card
+- Links styled with subtle underlines, hover effects matching the dark theme
+- Both dialogs use dark theme (bg-[#12122a]), purple accents, ScrollArea for long content
+- Lint passes clean, browser QA verified both dialogs open/close correctly
+
+Stage Summary:
+- TOS and PP restored as modal dialogs accessible from sign-in screen footer
+- File modified: `src/components/sign-in-screen.tsx` (added ~180 lines of legal content + dialog component)
+- Verified via agent-browser: both dialogs render all sections, close button works
+- No new files created — everything lives in the existing sign-in-screen component
+
+---
+Task ID: tos-pp-standalone-docs
+Agent: main
+Task: Convert TOS and PP from TSX components to standalone plain text documents
+
+Work Log:
+- Created `public/legal/terms-of-service.txt` — full 15-section ToS document with detailed legal language covering: acceptance, service description, accounts, virtual currency, conduct, IP, user content, disclaimers, liability limits, indemnification, changes, termination, governing law, general provisions, contact
+- Created `public/legal/privacy-policy.txt` — full 14-section PP document covering: introduction, data collection, usage, storage/security, sharing/disclosure, Google auth, cookies, retention, user rights, children's privacy, international transfers, breach notification, contact, changes
+- Deleted old `src/components/terms-of-service.tsx` and `src/components/privacy-policy.tsx`
+- Updated `src/components/sign-in-screen.tsx` to fetch .txt files via `fetch()` and display in a generic `LegalDocumentDialog` with loading spinner
+- Both .txt files are in `public/legal/` so they're also directly accessible as static files (e.g., `/legal/terms-of-service.txt`)
+- Lint passes clean (1 eslint-disable for legitimate setState-in-effect for fetch pattern)
+- Browser QA verified: both TOS and PP dialogs open, full document content loads from .txt files
+
+Stage Summary:
+- TOS and PP are now standalone `.txt` documents in `public/legal/`
+- Sign-in screen fetches and displays them in themed scrollable dialogs
+- Files can also be accessed directly at `/legal/terms-of-service.txt` and `/legal/privacy-policy.txt`

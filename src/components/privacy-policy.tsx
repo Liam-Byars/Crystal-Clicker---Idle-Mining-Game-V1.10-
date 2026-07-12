@@ -1,0 +1,404 @@
+'use client';
+
+import React from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { ShieldCheck } from 'lucide-react';
+
+const today = new Date().toLocaleDateString('en-US', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+});
+
+const sections = [
+  {
+    heading: '1. Introduction and Scope',
+    body: `This Privacy Policy ("Policy") describes how Crystal Clicker ("we," "us," "our," or "the Company") collects, uses, stores, shares, and protects personal information and data in connection with your use of the Crystal Clicker game and related services (collectively, the "Service").
+
+This Policy applies to all users of the Service, including both guest players and authenticated (Google sign-in) players. By accessing or using the Service, you acknowledge that you have read, understood, and agree to the practices described in this Privacy Policy.
+
+If you do not agree with the terms of this Privacy Policy, please do not use the Service. Your continued use of the Service after any changes to this Policy constitutes your acceptance of those changes.
+
+For the purposes of this Policy, "personal information" means any information that can be used to identify, contact, or locate you, or that can be linked to you individually. "Non-personal information" means aggregated, anonymized, or de-identified data that cannot reasonably be used to identify you.`,
+  },
+  {
+    heading: '2. Information We Collect',
+    body: `We collect the following categories of information when you use the Service:
+
+(a) Account Information (Authenticated Users Only):
+   - Google User ID: A unique identifier assigned by Google to your account.
+   - Display Name: The name associated with your Google account as visible to us.
+   - Profile Picture: The avatar image associated with your Google account.
+   We do NOT collect: email address, phone number, physical address, date of birth, gender, contacts, calendar data, or any information from other Google services (Gmail, Drive, YouTube, Maps, etc.).
+
+(b) Game Data (All Users):
+   - Crystal balance and all virtual currency amounts.
+   - Upgrade purchases and levels.
+   - Achievement unlock status and timestamps.
+   - Current and unlocked mining areas.
+   - Prestige level and prestige points.
+   - Statistics: total clicks, total earned, max combo, total events, session duration.
+   - Settings preferences: sound toggle, buy quantity, and any other in-game settings.
+
+(c) Guest Identifiers (Guest Users Only):
+   - A randomly generated unique identifier (format: "guest_[random]") stored in your browser's localStorage.
+   - This identifier is generated locally and never transmitted to our servers.
+
+(d) Usage and Analytics Data:
+   - Pages or screens visited within the Service.
+   - Session start and end times.
+   - Feature interaction patterns (which tabs are used, how frequently).
+   - Device and browser type, operating system, and screen resolution.
+   - Error logs and crash reports.
+   This data may be collected through automated means and is used solely for improving the Service.
+
+(e) Technical Data:
+   - IP address (logged temporarily during server requests for security and debugging purposes).
+   - Browser type and version.
+   - Operating system.
+   - Referring URL and exit pages.
+   - Device identifiers (for mobile browsers).
+
+(f) Information We Do NOT Collect:
+   - We do not collect your precise geolocation.
+   - We do not access your camera, microphone, or other device hardware.
+   - We do not collect payment information, as the Service is free-to-play with no in-app purchases.
+   - We do not collect information about other websites you visit.
+   - We do not build advertising profiles or share data with ad networks.`,
+  },
+  {
+    heading: '3. How We Use Your Information',
+    body: `We use the information we collect for the following purposes:
+
+(a) Providing and Operating the Service:
+   - Authenticating your identity when you sign in.
+   - Saving and loading your game progress across sessions and devices (authenticated users).
+   - Rendering your avatar, display name, and profile information in the user interface.
+   - Enabling game features such as upgrades, achievements, prestige, and area progression.
+
+(b) Improving and Developing the Service:
+   - Analyzing gameplay patterns to balance game mechanics and identify popular features.
+   - Identifying and fixing bugs, errors, and performance issues.
+   - Designing new features, areas, upgrades, and content based on user engagement data.
+   - A/B testing new features or UI changes (if implemented in the future).
+
+(c) Communication:
+   - Sending important service-related notifications (e.g., maintenance, data policy changes).
+   - Responding to your inquiries, support requests, or feedback.
+   We do NOT send marketing emails, promotional messages, or newsletters unless you explicitly opt in.
+
+(d) Security and Fraud Prevention:
+   - Detecting, preventing, and responding to security incidents, hacking attempts, and fraudulent activity.
+   - Enforcing our Terms of Service.
+   - Investigating and resolving disputes.
+   - Complying with legal obligations.
+
+(e) Analytics and Research:
+   - Generating aggregated, anonymized statistics about Service usage.
+   - Understanding player behavior and engagement trends.
+   - Creating internal reports and dashboards for development purposes.
+
+(f) Legal Compliance:
+   - Complying with applicable laws, regulations, legal processes, or governmental requests.
+   - Establishing, exercising, or defending legal claims.`,
+  },
+  {
+    heading: '4. Data Storage and Security',
+    body: `(a) Server-Side Storage (Authenticated Users):
+   Your game save data is stored on our servers using Prisma ORM with a SQLite database. Each save is uniquely keyed to your Google User ID. Data is stored indefinitely for active accounts. Inactive accounts (no login for 365+ days) may be compacted, anonymized, or removed.
+
+(b) Local Storage (Guest Users):
+   Guest player data is stored entirely in your browser's localStorage under the key "crystal_clicker_save_[guestId]" and authentication state under "crystal_clicker_auth". This data:
+   - Is NEVER transmitted to our servers.
+   - Is accessible only to the specific browser and device where it was created.
+   - Can be lost if you clear browser data, use private/incognito mode, or switch browsers/devices.
+   - Is not encrypted by us (relies on your browser's default localStorage security).
+
+(c) Security Measures:
+   We implement reasonable technical and organizational security measures to protect your data, including but not limited to:
+   - HTTPS/TLS encryption for all data in transit between your browser and our servers.
+   - Access controls limiting who can access user data on our servers.
+   - Regular security reviews of our codebase and infrastructure.
+   - Firebase Authentication for secure user identity verification.
+
+(d) Limitations:
+   No method of electronic storage or transmission is 100% secure. We cannot guarantee absolute security of your data. You are responsible for:
+   - Maintaining the security of your Google account (if authenticated).
+   - Not sharing your session with others.
+   - Using a modern, up-to-date browser with security features enabled.
+
+(e) Data Backup:
+   We make reasonable efforts to back up server-side data regularly. However, we do not guarantee that backups will be available or that data loss will never occur. Guest data is not backed up by us since it resides on your device.`,
+  },
+  {
+    heading: '5. Data Sharing and Disclosure',
+    body: `We are committed to protecting your privacy and do not sell, rent, trade, or otherwise monetize your personal information.
+
+We may share your information only in the following circumstances:
+
+(a) Service Providers:
+   We may share limited data with trusted third-party service providers who assist us in operating the Service, including:
+   - Google (Firebase): Authentication services, hosting infrastructure. Google's Privacy Policy applies to data processed by their services.
+   - Cloud/Hosting Providers: For server infrastructure and data storage.
+   These service providers are contractually obligated to use your data only as instructed by us and must maintain appropriate security measures.
+
+(b) Aggregated and Anonymized Data:
+   We may share aggregated, anonymized, or de-identified data that cannot reasonably be used to identify you. This data may be used for analytics, research, or industry benchmarking purposes.
+
+(c) Legal Requirements:
+   We may disclose your information if required to do so by law, including:
+   - In response to a valid subpoena, court order, or legal process.
+   - To comply with applicable laws, regulations, or governmental requests.
+   - To establish, exercise, or defend our legal rights.
+   - To report or prevent fraud, security issues, or technical problems.
+
+(d) Business Transfers:
+   In the event of a merger, acquisition, reorganization, bankruptcy, or sale of all or a portion of our assets, your data may be transferred as part of that transaction. We will notify you via the Service or email (if available) of any such change in ownership.
+
+(e) With Your Consent:
+   We may share your information with third parties when you have given us explicit consent to do so.
+
+(f) What We NEVER Share:
+   - We do not share your personal information with advertisers or ad networks.
+   - We do not participate in cross-site tracking or retargeting.
+   - We do not sell your data to data brokers.
+   - We do not share your information with social media platforms unless you explicitly use social sign-in.`,
+  },
+  {
+    heading: '6. Google Authentication and Third-Party Services',
+    body: `(a) Firebase Authentication:
+   The Service uses Firebase Authentication for Google sign-in. When you sign in with Google:
+   - A popup window opens, managed by Google, where you authorize access.
+   - We request only basic profile information: User ID, display name, and profile picture.
+   - We do NOT request access to your email, contacts, Google Drive, calendar, or any other Google service.
+   - Google provides us with an ID token and/or refresh token for session management.
+
+(b) Google's Data Practices:
+   Your use of Google Authentication is also governed by Google's Privacy Policy (https://policies.google.com/privacy). We encourage you to review Google's privacy practices. We are not responsible for Google's data collection, use, or sharing practices.
+
+(c) Third-Party Links:
+   The Service may contain links to third-party websites or services. We are not responsible for the privacy practices or content of these third-party sites. This Privacy Policy applies only to our Service. We recommend reviewing the privacy policies of any third-party sites you visit.
+
+(d) Third-Party Libraries:
+   The Service may use open-source or third-party JavaScript libraries. These libraries operate within your browser and may have their own privacy practices. We use reputable, well-maintained libraries and do not include libraries that engage in unauthorized data collection.`,
+  },
+  {
+    heading: '7. Cookies, Local Storage, and Tracking Technologies',
+    body: `(a) What Technologies We Use:
+   - LocalStorage: Used to store guest game progress, authentication state, and user preferences. Data persists until manually cleared by the user or the browser.
+   - SessionStorage: May be used for temporary session data. Data is cleared when the browser tab or window is closed.
+   - Firebase Auth Cookies: Firebase may set cookies to manage authentication sessions (e.g., "__session" cookie). These are essential for the sign-in functionality to work.
+
+(b) What We Do NOT Use:
+   - We do NOT use third-party advertising cookies.
+   - We do NOT use tracking pixels or web beacons.
+   - We do NOT use browser fingerprinting for identification purposes.
+   - We do NOT participate in cross-site tracking networks.
+   - We do NOT use Facebook Pixel, Google Ads Remarketing, or similar marketing tracking.
+
+(c) Managing Your Data:
+   You can manage or delete your localStorage data by:
+   - Using your browser's developer tools (F12 → Application → Local Storage).
+   - Using your browser's "Clear browsing data" settings.
+   - Using browser extensions that manage site data.
+   Note: Clearing localStorage will permanently delete guest game progress.
+
+(d) Cookie Preferences:
+   You can control cookie settings through your browser preferences. Disabling cookies may affect the functionality of the Service, particularly Google sign-in.`,
+  },
+  {
+    heading: '8. Data Retention',
+    body: `(a) Active Accounts:
+   We retain your account data for as long as your account is active. An account is considered active if there has been a login or game save within the past 365 days.
+
+(b) Inactive Accounts:
+   Accounts that have been inactive (no login or save) for 365 or more days may be subject to:
+   - Data compaction: Non-essential data may be removed, retaining only core game progress.
+   - Account anonymization: Personal information (display name, profile picture) may be replaced with anonymized identifiers.
+   - Account deletion: The entire account and all associated data may be permanently deleted.
+   We will make reasonable efforts to notify inactive users before deletion, but we are not obligated to do so.
+
+(c) Guest Data:
+   Guest data stored in localStorage persists until:
+   - The user clears their browser data.
+   - The browser storage quota is exceeded.
+   - The localStorage data is manually deleted.
+   We have no control over, and no responsibility for, the retention of guest data on your device.
+
+(d) Server Logs:
+   Temporary server logs (including IP addresses) are retained for a maximum of 90 days for security and debugging purposes, after which they are automatically deleted or anonymized.
+
+(e) Upon Request:
+   You may request deletion of your data at any time by contacting us. We will process such requests within a reasonable timeframe (typically 30 days), subject to legal and regulatory obligations.
+
+(f) Data upon Account Deletion:
+   When your account is deleted (either by you or by us), all personal information associated with your account will be removed from our active servers within 30 days. Residual copies may remain in our backup systems for up to 90 days before being permanently deleted.`,
+  },
+  {
+    heading: '9. Your Rights and Choices',
+    body: `Depending on your jurisdiction, you may have the following rights regarding your personal data:
+
+(a) Right of Access:
+   You have the right to request a copy of the personal data we hold about you. You can view most of your game data in-game through the Stats tab. For a complete data export, contact us.
+
+(b) Right to Correction:
+   You have the right to request correction of inaccurate or incomplete personal data. Display name and profile picture can be updated through your Google account settings.
+
+(c) Right to Deletion (Right to be Forgotten):
+   You have the right to request deletion of your personal data. Contact us to submit a deletion request. We will delete your data within 30 days, subject to legal exceptions (e.g., ongoing legal proceedings, regulatory requirements).
+
+(d) Right to Data Portability:
+   You have the right to request your data in a structured, commonly used, and machine-readable format. Your game save data is already stored in JSON format and can be exported from localStorage (guest) or requested from us (authenticated).
+
+(e) Right to Restrict Processing:
+   You have the right to request that we limit how we process your data, in certain circumstances.
+
+(f) Right to Object:
+   You have the right to object to certain types of data processing, particularly processing based on legitimate interests or for direct marketing purposes.
+
+(g) Right to Withdraw Consent:
+   Where processing is based on your consent, you have the right to withdraw that consent at any time. Withdrawal of consent does not affect the lawfulness of processing carried out before withdrawal.
+
+(h) Right to Lodge a Complaint:
+   You have the right to lodge a complaint with a supervisory authority (data protection authority) in your jurisdiction if you believe our processing of your data violates applicable data protection laws.
+
+(i) How to Exercise Your Rights:
+   To exercise any of these rights, contact us through the in-game support channels or the contact information provided in Section 13. We will respond to legitimate requests within 30 days. We may need to verify your identity before processing your request.`,
+  },
+  {
+    heading: '10. Children\'s Privacy',
+    body: `The Service is not directed at children under the age of 13 (or the applicable age of consent in your jurisdiction). We do not knowingly collect personal information from children under 13.
+
+If we become aware that we have collected personal information from a child under 13, we will take steps to delete that information as quickly as possible. If you are a parent or guardian and believe your child has provided us with personal information, please contact us immediately.
+
+Parents and guardians are encouraged to monitor their children's online activity and to supervise their use of the Service. By allowing your child to use the Service, you assume all responsibility for their activity and any data provided.
+
+In jurisdictions where the age of consent for data processing is higher than 13 (e.g., 16 in some European countries), the Service is not intended for users under that applicable age.`,
+  },
+  {
+    heading: '11. International Data Transfers',
+    body: `If you are accessing the Service from outside the jurisdiction where our servers are located, your data may be transferred to, stored, and processed in a different jurisdiction.
+
+(a) Transfer Mechanisms:
+   Data transfers may occur through:
+   - Direct transfer to our servers or cloud infrastructure providers.
+   - Transfer through Firebase/Google Cloud services, which operate globally.
+   Such transfers are necessary for the Service to function (e.g., saving and loading your game progress).
+
+(b) Safeguards:
+   When your data is transferred internationally, we use appropriate safeguards to ensure your data is protected, including:
+   - Standard contractual clauses or other legally approved transfer mechanisms.
+   - Ensuring that data recipients maintain adequate security measures.
+   - Complying with applicable data protection framework requirements (e.g., EU-U.S. Data Privacy Framework, if applicable).
+
+(c) Risks:
+   By using the Service, you acknowledge that your data may be transferred to jurisdictions with data protection laws that differ from your own. We encourage you to consider these factors before using the Service.`,
+  },
+  {
+    heading: '12. Data Breach Notification',
+    body: `In the event of a data breach that is likely to result in a risk to your rights and freedoms, we will:
+
+(a) Notify the relevant supervisory authority within 72 hours of becoming aware of the breach, as required by applicable data protection laws.
+
+(b) Notify you directly without undue delay if the breach is likely to result in a high risk to your rights and freedoms. Notification will include:
+   - A description of the nature of the breach, including where possible the categories and approximate number of data subjects and records concerned.
+   - The name and contact details of our data protection officer or contact point.
+   - A description of the likely consequences of the breach.
+   - A description of the measures taken or proposed to address the breach, including mitigating measures.
+
+(c) We may not notify you if:
+   - The data was encrypted and the encryption key was not compromised.
+   - We have taken subsequent measures to ensure the risk is no longer likely to materialize.
+   - Individual notification would require disproportionate effort (in which case, we may use public communication instead).`,
+  },
+  {
+    heading: '13. Contact Information',
+    body: `If you have any questions, concerns, or requests regarding this Privacy Policy or our data practices, please contact us:
+
+In-Game: Use the in-game feedback or support channels, if available.
+Email: Contact our support or data protection team at the email address provided in the Game's "About" or "Support" section.
+
+For Data Subject Requests:
+Please include the following in your request:
+- Your Google User ID (if authenticated) or guest identifier.
+- A clear description of your request (access, correction, deletion, etc.).
+- Proof of identity may be required for certain requests to prevent unauthorized access to your data.
+
+We will acknowledge receipt of your request within 5 business days and will respond substantively within 30 days, or provide an extension notice if additional time is needed.
+
+For legal or regulatory inquiries, please use the formal contact information provided in the Game's official documentation.
+
+We recommend checking the in-game "About" section for the most current contact information.`,
+  },
+  {
+    heading: '14. Changes to This Privacy Policy',
+    body: `We reserve the right to update, modify, or replace this Privacy Policy at any time. When we make changes:
+
+(a) We will update the "Last Updated" date at the top of this Policy.
+
+(b) For material changes that significantly affect how we collect, use, store, or share your personal information, we will:
+   - Provide prominent in-game notification (banner, popup, or system message).
+   - Attempt to notify authenticated users via available contact methods.
+
+(c) For minor or non-material changes, we may update the Policy without additional notification beyond the date change.
+
+(d) Your continued use of the Service after the updated Policy takes effect constitutes your acceptance of the revised Policy.
+
+(e) We encourage you to review this Privacy Policy periodically to stay informed about how we protect your information.
+
+(f) Previous versions of this Policy may be available upon request.
+
+(g) If you do not agree with the updated Policy, you must stop using the Service and may request deletion of your data as described in Section 9.`,
+  },
+];
+
+export function PrivacyPolicyDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] p-0 gap-0 overflow-hidden bg-[#12122a] border-purple-500/20 text-white/90">
+        <DialogHeader className="px-6 pt-6 pb-4 shrink-0">
+          <div className="flex items-center gap-3 mb-1">
+            <div className="w-10 h-10 rounded-lg bg-cyan-500/15 flex items-center justify-center shrink-0">
+              <ShieldCheck className="w-5 h-5 text-cyan-400" />
+            </div>
+            <div>
+              <DialogTitle className="text-xl font-bold text-white">Privacy Policy</DialogTitle>
+              <DialogDescription className="text-white/40 text-xs mt-0.5">
+                Last updated: {today}
+              </DialogDescription>
+            </div>
+          </div>
+        </DialogHeader>
+        <Separator className="bg-white/10 shrink-0" />
+        <ScrollArea className="flex-1 max-h-[70vh]">
+          <div className="px-6 py-5 space-y-6 pr-4">
+            {sections.map((section, i) => (
+              <section key={i} className="space-y-2">
+                <h3 className="text-sm font-bold text-cyan-300 tracking-wide uppercase">
+                  {section.heading}
+                </h3>
+                <p className="text-[13px] text-white/55 leading-relaxed whitespace-pre-line">
+                  {section.body}
+                </p>
+              </section>
+            ))}
+          </div>
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
+  );
+}

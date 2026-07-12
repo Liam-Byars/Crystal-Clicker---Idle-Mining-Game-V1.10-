@@ -1,0 +1,1068 @@
+     1→'use client';
+     2→
+     3→import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+     4→import { motion, AnimatePresence } from 'framer-motion';
+     5→import { X, Lock, ChevronRight } from 'lucide-react';
+     6→import { Button } from '@/components/ui/button';
+     7→import { Badge } from '@/components/ui/badge';
+     8→import type { Area } from '@/stores';
+     9→
+    10→// ====== Helpers ======
+    11→function fmt(n: number): string {
+    12→  if (n < 0) return '-' + fmt(-n);
+    13→  if (n < 1000) return n < 10 ? n.toFixed(1) : Math.floor(n).toString();
+    14→  if (n < 1e6) return (n / 1e3).toFixed(1) + 'K';
+    15→  if (n < 1e9) return (n / 1e6).toFixed(2) + 'M';
+    16→  if (n < 1e12) return (n / 1e9).toFixed(2) + 'B';
+    17→  return (n / 1e12).toFixed(2) + 'T';
+    18→}
+    19→
+    20→// ====== Area Map Config ======
+    21→interface AreaPosition {
+    22→  id: string;
+    23→  x: number;
+    24→  y: number;
+    25→  biome: 'mountains' | 'forest' | 'beach' | 'underground' | 'canyon' | 'ice' | 'crystal';
+    26→}
+    27→
+    28→const AREA_POSITIONS: AreaPosition[] = [
+    29→  { id: 'iron_range', x: 185, y: 390, biome: 'mountains' },
+    30→  { id: 'boundary_waters', x: 360, y: 150, biome: 'forest' },
+    31→  { id: 'agate_beaches', x: 480, y: 540, biome: 'beach' },
+    32→  { id: 'twin_cities', x: 450, y: 330, biome: 'underground' },
+    33→  { id: 'mississippi_bluffs', x: 670, y: 370, biome: 'canyon' },
+    34→  { id: 'north_shore_caves', x: 740, y: 160, biome: 'ice' },
+    35→  { id: 'mall_of_america', x: 770, y: 520, biome: 'crystal' },
+    36→];
+    37→
+    38→const CONNECTION_ORDER = [
+    39→  'iron_range',
+    40→  'boundary_waters',
+    41→  'agate_beaches',
+    42→  'twin_cities',
+    43→  'mississippi_bluffs',
+    44→  'north_shore_caves',
+    45→  'mall_of_america',
+    46→];
+    47→
+    48→const AREA_COLORS: Record<string, { primary: string; secondary: string; bg: string; glow: string }> = {
+    49→  iron_range: { primary: '#dc2626', secondary: '#f87171', bg: 'rgba(220,38,38,0.15)', glow: 'rgba(220,38,38,0.5)' },
+    50→  boundary_waters: { primary: '#10b981', secondary: '#34d399', bg: 'rgba(16,185,129,0.15)', glow: 'rgba(16,185,129,0.5)' },
+    51→  agate_beaches: { primary: '#f59e0b', secondary: '#fbbf24', bg: 'rgba(245,158,11,0.15)', glow: 'rgba(245,158,11,0.5)' },
+    52→  twin_cities: { primary: '#64748b', secondary: '#94a3b8', bg: 'rgba(100,116,139,0.15)', glow: 'rgba(100,116,139,0.5)' },
+    53→  mississippi_bluffs: { primary: '#d946ef', secondary: '#e879f9', bg: 'rgba(217,70,239,0.15)', glow: 'rgba(217,70,239,0.5)' },
+    54→  north_shore_caves: { primary: '#8b5cf6', secondary: '#a78bfa', bg: 'rgba(139,92,246,0.15)', glow: 'rgba(139,92,246,0.5)' },
+    55→  mall_of_america: { primary: '#06b6d4', secondary: '#22d3ee', bg: 'rgba(6,182,212,0.15)', glow: 'rgba(6,182,212,0.5)' },
+    56→};
+    57→
+    58→// ====== Stars data (pre-generated for ocean) ======
+    59→const STARS = Array.from({ length: 60 }, (_, i) => ({
+    60→  id: i,
+    61→  cx: Math.random() * 1000,
+    62→  cy: Math.random() * 700,
+    63→  r: 0.4 + Math.random() * 1.2,
+    64→  delay: Math.random() * 4,
+    65→  duration: 2 + Math.random() * 3,
+    66→}));
+    67→
+    68→// ====== Cloud shapes ======
+    69→const CLOUDS = [
+    70→  { x: 50, y: 100, scale: 0.8, duration: 45, delay: 0 },
+    71→  { x: 600, y: 60, scale: 1.1, duration: 55, delay: -15 },
+    72→  { x: 300, y: 500, scale: 0.6, duration: 50, delay: -25 },
+    73→  { x: 800, y: 400, scale: 0.9, duration: 60, delay: -35 },
+    74→];
+    75→
+    76→// ====== Sparkle particles ======
+    77→const SPARKLE_PARTICLES = Array.from({ length: 4 }, (_, i) => ({
+    78→  id: i,
+    79→  delay: i * 0.8,
+    80→  angle: (i * 90 + Math.random() * 40) * (Math.PI / 180),
+    81→  dist: 20 + Math.random() * 15,
+    82→}));
+    83→
+    84→// ====== Original fantasy continent path ======
+    85→const CONTINENT_PATH = `M 160,180 C 180,120 250,70 340,80 C 400,85 440,55 520,75 C 580,90 640,60 720,95 C 780,120 830,170 850,240 C 865,290 860,350 845,400 C 830,440 805,490 780,530 C 755,570 720,600 670,620 C 620,640 560,645 500,635 C 440,625 390,610 350,585 C 310,560 270,530 240,495 C 210,460 185,420 170,375 C 155,330 140,280 140,240 C 140,210 148,195 160,180 Z`;
+    86→
+    87→// Continental shelf (slightly larger, faded)
+    88→const SHELF_PATH = `M 145,170 C 165,105 240,50 335,62 C 395,67 435,35 518,55 C 580,72 640,40 725,78 C 790,105 845,158 868,232 C 884,285 878,348 862,400 C 845,445 818,498 792,540 C 765,582 728,612 675,635 C 622,655 558,660 495,648 C 432,637 382,620 340,592 C 298,565 256,534 225,496 C 194,458 168,416 152,368 C 136,320 122,268 122,228 C 122,198 132,182 145,170 Z`;
+    89→
+    90→// ====== Props ======
+    91→interface WorldMapProps {
+    92→  areas: Area[];
+    93→  currentArea: string;
+    94→  crystals: number;
+    95→  onClose: () => void;
+    96→  switchArea: (id: string) => void;
+    97→  unlockArea: (id: string) => boolean;
+    98→}
+    99→
+   100→// ====== Terrain Decorations ======
+   101→function MountainDecorations({ x, y }: { x: number; y: number }) {
+   102→  return (
+   103→    <g>
+   104→      {/* Far background range */}
+   105→      <polygon points={`${x - 80},${y + 40} ${x - 50},${y - 20} ${x - 20},${y + 40}`} fill="#5c1a1a" opacity="0.5" />
+   106→      <polygon points={`${x + 20},${y + 40} ${x + 55},${y - 15} ${x + 80},${y + 40}`} fill="#5c1a1a" opacity="0.45" />
+   107→      {/* Main peaks - larger */}
+   108→      <polygon points={`${x - 55},${y + 35} ${x - 32},${y - 10} ${x - 10},${y + 35}`} fill="#7f1d1d" opacity="0.75" />
+   109→      <polygon points={`${x - 20},${y + 35} ${x},${y - 28} ${x + 20},${y + 35}`} fill="#991b1b" opacity="0.85" stroke="#b91c1c" strokeWidth="0.5" strokeOpacity="0.3" />
+   110→      <polygon points={`${x + 12},${y + 35} ${x + 35},${y - 5} ${x + 55},${y + 35}`} fill="#7f1d1d" opacity="0.7" />
+   111→      {/* Snow caps - more visible */}
+   112→      <polygon points={`${x - 36},${y - 6} ${x - 32},${y - 12} ${x - 28},${y - 6}`} fill="white" opacity="0.7" />
+   113→      <polygon points={`${x - 4},${y - 22} ${x},${y - 30} ${x + 4},${y - 22}`} fill="white" opacity="0.8" />
+   114→      <polygon points={`${x + 32},${y - 1} ${x + 36},${y - 6} ${x + 40},${y - 1}`} fill="white" opacity="0.6" />
+   115→      {/* Lava/ember glow at base */}
+   116→      <ellipse cx={x} cy={y + 35} rx="40" ry="6" fill="rgba(220,50,20,0.2)" />
+   117→      <ellipse cx={x} cy={y + 35} rx="25" ry="3" fill="rgba(255,100,30,0.15)" />
+   118→    </g>
+   119→  );
+   120→}
+   121→
+   122→function ForestDecorations({ x, y }: { x: number; y: number }) {
+   123→  return (
+   124→    <g>
+   125→      {/* Larger lake/pond */}
+   126→      <ellipse cx={x + 5} cy={y + 25} rx="28" ry="12" fill="rgba(56,189,248,0.2)" stroke="rgba(56,189,248,0.15)" strokeWidth="1" />
+   127→      {/* Trees - bigger, more visible */}
+   128→      {[{ dx: -45, dy: 10, h: 20 }, { dx: -20, dy: -12, h: 24 }, { dx: 5, dy: 8, h: 18 }, { dx: 28, dy: -8, h: 22 }, { dx: -30, dy: 32, h: 16 }, { dx: 18, dy: 28, h: 19 }, { dx: -55, dy: -8, h: 15 }, { dx: 42, dy: 18, h: 17 }, { dx: 0, dy: -28, h: 21 }, { dx: -15, dy: 18, h: 14 }].map((t, i) => (
+   129→        <g key={i} transform={`translate(${x + t.dx}, ${y + t.dy})`}>
+   130→          <line x1="0" y1="0" x2="0" y2="10" stroke="#5b3a1a" strokeWidth="2" opacity="0.7" />
+   131→          <polygon points={`-7,-2 0,${-t.h} 7,-2`} fill={`rgba(16,${130 + i * 10},${70 + i * 8},0.8)`} />
+   132→          <polygon points={`-4,-5 0,${-t.h + 4} 4,-5`} fill={`rgba(34,${170 + i * 8},${95 + i * 6},0.6)`} />
+   133→        </g>
+   134→      ))}
+   135→    </g>
+   136→  );
+   137→}
+   138→
+   139→function BeachDecorations({ x, y }: { x: number; y: number }) {
+   140→  return (
+   141→    <g>
+   142→      {/* Sand dunes - bigger */}
+   143→      <ellipse cx={x - 20} cy={y + 22} rx="35" ry="10" fill="rgba(245,180,60,0.2)" />
+   144→      <ellipse cx={x + 25} cy={y - 18} rx="28" ry="8" fill="rgba(245,180,60,0.18)" />
+   145→      {/* Waves - more prominent */}
+   146→      {[{ dx: -40, dy: -20 }, { dx: 5, dy: -30 }, { dx: 40, dy: -12 }, { dx: -20, dy: 15 }, { dx: 35, dy: 25 }, { dx: -5, dy: -40 }].map((t, i) => (
+   147→        <path
+   148→          key={i}
+   149→          d={`M ${x + t.dx - 18},${y + t.dy} Q ${x + t.dx},${y + t.dy - 8} ${x + t.dx + 18},${y + t.dy}`}
+   150→          fill="none"
+   151→          stroke={`rgba(56,189,248,${0.3 + i * 0.04})`}
+   152→          strokeWidth="2"
+   153→        />
+   154→      ))}
+   155→      {/* Scattered agate pebbles */}
+   156→      {[{ dx: -25, dy: -5, r: 3 }, { dx: 10, dy: 8, r: 2.5 }, { dx: -8, dy: 25, r: 2 }, { dx: 28, dy: -22, r: 3.5 }, { dx: 15, dy: -35, r: 2 }].map((t, i) => (
+   157→        <circle key={`p${i}`} cx={x + t.dx} cy={y + t.dy} r={t.r} fill={`rgba(245,158,11,${0.3 + i * 0.05})`} />
+   158→      ))}
+   159→    </g>
+   160→  );
+   161→}
+   162→
+   163→function UndergroundDecorations({ x, y }: { x: number; y: number }) {
+   164→  return (
+   165→    <g>
+   166→      {/* Tunnel/cave entrance shapes */}
+   167→      <path d={`M ${x - 35},${y + 15} Q ${x - 35},${y - 5} ${x - 20},${y - 5} L ${x - 10},${y - 5} Q ${x - 10},${y + 15} ${x - 25},${y + 15} Z`} fill="rgba(30,41,59,0.4)" stroke="rgba(100,116,139,0.2)" strokeWidth="0.5" />
+   168→      <path d={`M ${x + 10},${y + 10} Q ${x + 10},${y - 8} ${x + 22},${y - 8} L ${x + 30},${y - 8} Q ${x + 30},${y + 10} ${x + 20},${y + 10} Z`} fill="rgba(30,41,59,0.35)" stroke="rgba(100,116,139,0.2)" strokeWidth="0.5" />
+   169→      {/* Buildings/structures */}
+   170→      {[{ dx: -28, dy: -20 }, { dx: 10, dy: -25 }, { dx: -8, dy: 18 }, { dx: 25, dy: 14 }, { dx: -15, dy: -30 }].map((t, i) => (
+   171→        <rect
+   172→          key={i}
+   173→          x={x + t.dx - 3}
+   174→          y={y + t.dy - 3}
+   175→          width="6"
+   176→          height="6"
+   177→          rx="1"
+   178→          fill={`rgba(100,116,139,${0.2 + i * 0.04})`}
+   179→          stroke="rgba(148,163,184,0.15)"
+   180→          strokeWidth="0.5"
+   181→        />
+   182→      ))}
+   183→      {/* Underground tunnel lines */}
+   184→      <path d={`M ${x - 40},${y} Q ${x - 20},${y - 10} ${x},${y} Q ${x + 20},${y + 10} ${x + 40},${y}`} fill="none" stroke="rgba(100,116,139,0.2)" strokeWidth="1" strokeDasharray="4 3" />
+   185→    </g>
+   186→  );
+   187→}
+   188→
+   189→function CanyonDecorations({ x, y }: { x: number; y: number }) {
+   190→  return (
+   191→    <g>
+   192→      {/* Cliff faces */}
+   193→      <polygon points={`${x - 45},${y + 30} ${x - 30},${y - 15} ${x - 15},${y + 30}`} fill="rgba(217,70,239,0.12)" />
+   194→      <polygon points={`${x + 15},${y + 30} ${x + 32},${y - 10} ${x + 48},${y + 30}`} fill="rgba(217,70,239,0.1)" />
+   195→      {/* River/canyon lines */}
+   196→      {[{ dy: -22 }, { dy: -8 }, { dy: 8 }, { dy: 22 }].map((t, i) => (
+   197→        <polyline
+   198→          key={i}
+   199→          points={`${x - 38},${y + t.dy} ${x - 22},${y + t.dy - 8} ${x - 6},${y + t.dy + 5} ${x + 10},${y + t.dy - 6} ${x + 26},${y + t.dy + 4} ${x + 42},${y + t.dy - 2}`}
+   200→          fill="none"
+   201→          stroke={`rgba(${140 + i * 20},${60 + i * 10},239,${0.2 + i * 0.05})`}
+   202→          strokeWidth="1.5"
+   203→        />
+   204→      ))}
+   205→      {/* Geode clusters */}
+   206→      {[{ dx: -20, dy: -15 }, { dx: 15, dy: 20 }].map((t, i) => (
+   207→        <circle key={`g${i}`} cx={x + t.dx} cy={y + t.dy} r="4" fill="rgba(217,70,239,0.15)" stroke="rgba(232,121,249,0.2)" strokeWidth="0.5" />
+   208→      ))}
+   209→    </g>
+   210→  );
+   211→}
+   212→
+   213→function IceDecorations({ x, y }: { x: number; y: number }) {
+   214→  return (
+   215→    <g>
+   216→      {/* Ice sheet/frozen lake - bigger */}
+   217→      <ellipse cx={x + 5} cy={y + 18} rx="32" ry="15" fill="rgba(167,139,250,0.15)" stroke="rgba(200,200,255,0.15)" strokeWidth="1" />
+   218→      {/* Crystalline formations - larger */}
+   219→      {[{ dx: -35, dy: -15, s: 12 }, { dx: 22, dy: -22, s: 15 }, { dx: -10, dy: 25, s: 10 }, { dx: 40, dy: 8, s: 13 }, { dx: -45, dy: 10, s: 9 }, { dx: 12, dy: 30, s: 8 }, { dx: 35, dy: -10, s: 11 }].map((t, i) => (
+   220→        <polygon
+   221→          key={i}
+   222→          points={`${x + t.dx},${y + t.dy - t.s} ${x + t.dx + t.s * 0.6},${y + t.dy} ${x + t.dx},${y + t.dy + t.s} ${x + t.dx - t.s * 0.6},${y + t.dy}`}
+   223→          fill={`rgba(139,92,246,${0.2 + i * 0.03})`}
+   224→          stroke={`rgba(200,180,255,${0.25 + i * 0.03})`}
+   225→          strokeWidth="0.8"
+   226→        />
+   227→      ))}
+   228→      {/* Frost sparkles - larger */}
+   229→      {[{ dx: -18, dy: -30, r: 2.5 }, { dx: 30, dy: -12, r: 2 }, { dx: -38, dy: 18, r: 2.5 }, { dx: 15, dy: -35, r: 1.5 }].map((t, i) => (
+   230→        <circle key={`f${i}`} cx={x + t.dx} cy={y + t.dy} r={t.r} fill="rgba(200,200,255,0.4)" />
+   231→      ))}
+   232→    </g>
+   233→  );
+   234→}
+   235→
+   236→function CrystalDecorations({ x, y }: { x: number; y: number }) {
+   237→  return (
+   238→    <g>
+   239→      {/* Crystal palace outline - larger */}
+   240→      <polygon points={`${x},${y - 40} ${x + 28},${y - 20} ${x + 20},${y + 8} ${x - 20},${y + 8} ${x - 28},${y - 20}`} fill="rgba(6,182,212,0.1)" stroke="rgba(6,182,212,0.15)" strokeWidth="1" />
+   241→      {/* Floating crystals - larger */}
+   242→      {[{ dx: -40, dy: -12, s: 12 }, { dx: -15, dy: -28, s: 14 }, { dx: 22, dy: -10, s: 10 }, { dx: 42, dy: -22, s: 13 }, { dx: 10, dy: 20, s: 9 }, { dx: -30, dy: 22, s: 10 }, { dx: 35, dy: 12, s: 8 }, { dx: -45, dy: -25, s: 8 }].map((t, i) => (
+   243→        <polygon
+   244→          key={i}
+   245→          points={`${x + t.dx},${y + t.dy - t.s} ${x + t.dx + t.s * 0.6},${y + t.dy} ${x + t.dx},${y + t.dy + t.s} ${x + t.dx - t.s * 0.6},${y + t.dy}`}
+   246→          fill={`rgba(6,182,212,${0.15 + i * 0.03})`}
+   247→          stroke={`rgba(34,211,238,${0.2 + i * 0.03})`}
+   248→          strokeWidth="0.8"
+   249→        />
+   250→      ))}
+   251→      {/* Sparkle glints */}
+   252→      {[{ dx: -8, dy: -35, r: 2.5 }, { dx: 28, dy: -25, r: 2 }, { dx: -25, dy: 8, r: 2.5 }, { dx: 40, dy: -5, r: 1.5 }].map((t, i) => (
+   253→        <circle key={`s${i}`} cx={x + t.dx} cy={y + t.dy} r={t.r} fill="rgba(34,211,238,0.5)" />
+   254→      ))}
+   255→    </g>
+   256→  );
+   257→}
+   258→
+   259→function TerrainDetails({ biome, x, y }: { biome: string; x: number; y: number }) {
+   260→  switch (biome) {
+   261→    case 'mountains': return <MountainDecorations x={x} y={y} />;
+   262→    case 'forest': return <ForestDecorations x={x} y={y} />;
+   263→    case 'beach': return <BeachDecorations x={x} y={y} />;
+   264→    case 'underground': return <UndergroundDecorations x={x} y={y} />;
+   265→    case 'canyon': return <CanyonDecorations x={x} y={y} />;
+   266→    case 'ice': return <IceDecorations x={x} y={y} />;
+   267→    case 'crystal': return <CrystalDecorations x={x} y={y} />;
+   268→    default: return null;
+   269→  }
+   270→}
+   271→
+   272→// ====== Compass Rose ======
+   273→function CompassRose() {
+   274→  return (
+   275→    <g transform="translate(920, 80)">
+   276→      {/* Outer circle */}
+   277→      <circle cx="0" cy="0" r="32" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
+   278→      <circle cx="0" cy="0" r="28" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="0.5" />
+   279→      {/* North */}
+   280→      <polygon points="0,-24 4,-6 0,-10 -4,-6" fill="rgba(239,68,68,0.8)" />
+   281→      {/* South */}
+   282→      <polygon points="0,24 4,6 0,10 -4,6" fill="rgba(255,255,255,0.2)" />
+   283→      {/* East */}
+   284→      <polygon points="24,0 6,4 10,0 6,-4" fill="rgba(255,255,255,0.15)" />
+   285→      {/* West */}
+   286→      <polygon points="-24,0 -6,4 -10,0 -6,-4" fill="rgba(255,255,255,0.15)" />
+   287→      {/* Center dot */}
+   288→      <circle cx="0" cy="0" r="2.5" fill="rgba(239,68,68,0.6)" />
+   289→      {/* Labels */}
+   290→      <text x="0" y="-30" textAnchor="middle" fill="rgba(239,68,68,0.7)" fontSize="8" fontWeight="bold">N</text>
+   291→      <text x="0" y="38" textAnchor="middle" fill="rgba(255,255,255,0.3)" fontSize="7">S</text>
+   292→      <text x="36" y="3" textAnchor="middle" fill="rgba(255,255,255,0.25)" fontSize="7">E</text>
+   293→      <text x="-36" y="3" textAnchor="middle" fill="rgba(255,255,255,0.25)" fontSize="7">W</text>
+   294→    </g>
+   295→  );
+   296→}
+   297→
+   298→// ====== Cloud Shape ======
+   299→function CloudShape({ x, y, scale, duration, delay }: { x: number; y: number; scale: number; duration: number; delay: number }) {
+   300→  const style = {
+   301→    animation: `cloud-drift ${duration}s linear infinite`,
+   302→    animationDelay: `${delay}s`,
+   303→    transformOrigin: 'center',
+   304→  } as React.CSSProperties;
+   305→
+   306→  return (
+   307→    <g style={style}>
+   308→      <g transform={`translate(${x}, ${y}) scale(${scale})`} opacity="0.12">
+   309→        <ellipse cx="0" cy="0" rx="40" ry="18" fill="white" />
+   310→        <ellipse cx="-20" cy="5" rx="25" ry="14" fill="white" />
+   311→        <ellipse cx="22" cy="3" rx="28" ry="16" fill="white" />
+   312→        <ellipse cx="5" cy="-10" rx="22" ry="12" fill="white" />
+   313→        <ellipse cx="-10" cy="-8" rx="18" ry="10" fill="white" />
+   314→      </g>
+   315→    </g>
+   316→  );
+   317→}
+   318→
+   319→// ====== Main Component ======
+   320→export function WorldMap({ areas, currentArea, crystals, onClose, switchArea, unlockArea }: WorldMapProps) {
+   321→  const [hoveredArea, setHoveredArea] = useState<string | null>(null);
+   322→  const [selectedArea, setSelectedArea] = useState<string | null>(null);
+   323→  const [shakingNode, setShakingNode] = useState<string | null>(null);
+   324→  const [showInsufficient, setShowInsufficient] = useState<string | null>(null);
+   325→  const svgRef = useRef<SVGSVGElement>(null);
+   326→
+   327→  const areaMap = useMemo(() => {
+   328→    const m = new Map<string, Area>();
+   329→    areas.forEach(a => m.set(a.id, a));
+   330→    return m;
+   331→  }, [areas]);
+   332→
+   333→  const unlockedCount = areas.filter(a => a.unlocked).length;
+   334→
+   335→  const handleNodeClick = useCallback((areaId: string) => {
+   336→    const area = areaMap.get(areaId);
+   337→    if (!area) return;
+   338→
+   339→    if (area.unlocked) {
+   340→      if (areaId === currentArea) return;
+   341→      switchArea(areaId);
+   342→      onClose();
+   343→    } else if (crystals >= area.unlockCost) {
+   344→      const success = unlockArea(areaId);
+   345→      if (success) {
+   346→        switchArea(areaId);
+   347→        onClose();
+   348→      }
+   349→    } else {
+   350→      setShakingNode(areaId);
+   351→      setShowInsufficient(areaId);
+   352→      setTimeout(() => {
+   353→        setShakingNode(null);
+   354→        setShowInsufficient(null);
+   355→      }, 800);
+   356→    }
+   357→  }, [areaMap, currentArea, crystals, switchArea, unlockArea, onClose]);
+   358→
+   359→  const handleNodeHover = useCallback((areaId: string | null) => {
+   360→    setHoveredArea(areaId);
+   361→    if (areaId) setSelectedArea(areaId);
+   362→  }, []);
+   363→
+   364→  return (
+   365→    <AnimatePresence>
+   366→      <motion.div
+   367→        initial={{ opacity: 0 }}
+   368→        animate={{ opacity: 1 }}
+   369→        exit={{ opacity: 0 }}
+   370→        transition={{ duration: 0.3 }}
+   371→        className="fixed inset-0 z-50 overflow-hidden"
+   372→        style={{ backgroundColor: '#0a1628' }}
+   373→      >
+   374→        {/* ====== CSS Animations ====== */}
+   375→        <style>{`
+   376→          @keyframes dash-move {
+   377→            to { stroke-dashoffset: -24; }
+   378→          }
+   379→          @keyframes cloud-drift {
+   380→            0% { transform: translateX(-120px); }
+   381→            100% { transform: translateX(1120px); }
+   382→          }
+   383→          @keyframes pulse-ring {
+   384→            0%, 100% { transform: scale(1); opacity: 0.6; }
+   385→            50% { transform: scale(1.35); opacity: 0; }
+   386→          }
+   387→          @keyframes twinkle {
+   388→            0%, 100% { opacity: 0.2; }
+   389→            50% { opacity: 1; }
+   390→          }
+   391→          @keyframes sparkle-float {
+   392→            0% { transform: translateY(0) scale(1); opacity: 0.8; }
+   393→            100% { transform: translateY(-30px) scale(0); opacity: 0; }
+   394→          }
+   395→          @keyframes fog-drift {
+   396→            0%, 100% { opacity: 0.55; transform: scale(1); }
+   397→            50% { opacity: 0.7; transform: scale(1.05); }
+   398→          }
+   399→          @keyframes node-shake {
+   400→            0%, 100% { transform: translateX(0); }
+   401→            20% { transform: translateX(-4px); }
+   402→            40% { transform: translateX(4px); }
+   403→            60% { transform: translateX(-3px); }
+   404→            80% { transform: translateX(3px); }
+   405→          }
+   406→          @keyframes wave-pattern {
+   407→            0% { d: path("M0,8 Q25,0 50,8 T100,8"); }
+   408→            50% { d: path("M0,8 Q25,14 50,8 T100,8"); }
+   409→            100% { d: path("M0,8 Q25,0 50,8 T100,8"); }
+   410→          }
+   411→          .animate-dash { animation: dash-move 1.5s linear infinite; }
+   412→          .animate-twinkle { animation: twinkle 3s ease-in-out infinite; }
+   413→          .animate-fog { animation: fog-drift 4s ease-in-out infinite; }
+   414→          .animate-shake { animation: node-shake 0.5s ease-in-out; }
+   415→          .node-interactive { cursor: pointer; }
+   416→          .node-interactive:hover .node-circle { filter: brightness(1.3); }
+   417→          .sparkle-particle {
+   418→            animation: sparkle-float 2.5s ease-out infinite;
+   419→          }
+   420→        `}</style>
+   421→
+   422→        {/* ====== Header Bar ====== */}
+   423→        <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-4 py-3 bg-gradient-to-b from-[#0a1628] via-[#0a1628]/80 to-transparent pointer-events-none">
+   424→          <div className="pointer-events-auto">
+   425→            <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+   426→              <span className="text-2xl">🗺️</span>
+   427→              <span>Crystal Caverns World</span>
+   428→            </h2>
+   429→            <p className="text-xs text-gray-400 mt-0.5">Explore mines to unlock new crystals</p>
+   430→          </div>
+   431→          <div className="flex items-center gap-2 pointer-events-auto">
+   432→            <Badge variant="secondary" className="bg-gray-800 text-gray-300 text-xs border-gray-700">
+   433→              <span className="text-emerald-400 mr-1">{unlockedCount}</span>/{areas.length} Unlocked
+   434→            </Badge>
+   435→            <Button
+   436→              variant="ghost"
+   437→              size="sm"
+   438→              onClick={onClose}
+   439→              className="text-gray-400 hover:text-white h-9 w-9 p-0 rounded-full hover:bg-gray-800/80"
+   440→            >
+   441→              <X className="w-5 h-5" />
+   442→            </Button>
+   443→          </div>
+   444→        </div>
+   445→
+   446→        {/* ====== SVG Map ====== */}
+   447→        <div className="w-full h-full flex items-center justify-center pt-14 pb-16">
+   448→          <svg
+   449→            ref={svgRef}
+   450→            viewBox="0 0 1000 700"
+   451→            className="w-full h-full max-w-[1200px]"
+   452→            preserveAspectRatio="xMidYMid meet"
+   453→          >
+   454→            <defs>
+   455→              {/* Ocean gradient */}
+   456→              <linearGradient id="oceanGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+   457→                <stop offset="0%" stopColor="#0a1628" />
+   458→                <stop offset="50%" stopColor="#0f1f3a" />
+   459→                <stop offset="100%" stopColor="#1a2744" />
+   460→              </linearGradient>
+   461→
+   462→              {/* Continental shelf gradient */}
+   463→              <radialGradient id="shelfGradient" cx="50%" cy="50%" r="55%">
+   464→                <stop offset="0%" stopColor="rgba(30,60,90,0.4)" />
+   465→                <stop offset="70%" stopColor="rgba(20,40,70,0.3)" />
+   466→                <stop offset="100%" stopColor="rgba(10,22,40,0)" />
+   467→              </radialGradient>
+   468→
+   469→              {/* Land gradient - multi-hue for biome diversity */}
+   470→              <radialGradient id="landGradient" cx="45%" cy="40%" r="58%">
+   471→                <stop offset="0%" stopColor="#4a5d3e" />
+   472→                <stop offset="15%" stopColor="#3d5a3e" />
+   473→                <stop offset="30%" stopColor="#3a5040" />
+   474→                <stop offset="50%" stopColor="#2d4a35" />
+   475→                <stop offset="70%" stopColor="#2a4030" />
+   476→                <stop offset="85%" stopColor="#243528" />
+   477→                <stop offset="100%" stopColor="#1e2f20" />
+   478→              </radialGradient>
+   479→
+   480→              {/* Warm tint overlay for volcanic/mountain region (NW) */}
+   481→              <radialGradient id="landWarmTint" cx="22%" cy="55%" r="30%">
+   482→                <stop offset="0%" stopColor="rgba(180,80,40,0.15)" />
+   483→                <stop offset="60%" stopColor="rgba(180,80,40,0.05)" />
+   484→                <stop offset="100%" stopColor="transparent" />
+   485→              </radialGradient>
+   486→
+   487→              {/* Cool tint for icy region (NE-N) */}
+   488→              <radialGradient id="landCoolTint" cx="75%" cy="20%" r="28%">
+   489→                <stop offset="0%" stopColor="rgba(120,140,220,0.15)" />
+   490→                <stop offset="60%" stopColor="rgba(120,140,220,0.05)" />
+   491→                <stop offset="100%" stopColor="transparent" />
+   492→              </radialGradient>
+   493→
+   494→              {/* Sandy tint for beach region (S) */}
+   495→              <radialGradient id="landSandyTint" cx="50%" cy="78%" r="25%">
+   496→                <stop offset="0%" stopColor="rgba(200,170,80,0.12)" />
+   497→                <stop offset="60%" stopColor="rgba(200,170,80,0.04)" />
+   498→                <stop offset="100%" stopColor="transparent" />
+   499→              </radialGradient>
+   500→
+   501→              {/* Land texture pattern */}
+   502→              <pattern id="landTexture" patternUnits="userSpaceOnUse" width="8" height="8">
+   503→                <rect width="8" height="8" fill="transparent" />
+   504→                <circle cx="4" cy="4" r="0.3" fill="rgba(255,255,255,0.03)" />
+   505→              </pattern>
+   506→
+   507→              {/* Biome radial gradients - more vibrant */}
+   508→              {AREA_POSITIONS.map(pos => {
+   509→                const c = AREA_COLORS[pos.id] || AREA_COLORS.iron_range;
+   510→                return (
+   511→                  <radialGradient key={`biome-${pos.id}`} id={`biomeGrad-${pos.id}`} cx="50%" cy="50%" r="50%">
+   512→                    <stop offset="0%" stopColor={c.primary} stopOpacity="0.45" />
+   513→                    <stop offset="25%" stopColor={c.primary} stopOpacity="0.3" />
+   514→                    <stop offset="50%" stopColor={c.primary} stopOpacity="0.15" />
+   515→                    <stop offset="75%" stopColor={c.primary} stopOpacity="0.05" />
+   516→                    <stop offset="100%" stopColor={c.primary} stopOpacity="0" />
+   517→                  </radialGradient>
+   518→                );
+   519→              })}
+   520→
+   521→              {/* Glow filters for each area */}
+   522→              {AREA_POSITIONS.map(pos => {
+   523→                const c = AREA_COLORS[pos.id] || AREA_COLORS.iron_range;
+   524→                return (
+   525→                  <filter key={`glow-${pos.id}`} id={`glow-${pos.id}`} x="-50%" y="-50%" width="200%" height="200%">
+   526→                    <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
+   527→                    <feFlood floodColor={c.primary} floodOpacity="0.5" result="color" />
+   528→                    <feComposite in="color" in2="blur" operator="in" result="shadow" />
+   529→                    <feMerge>
+   530→                      <feMergeNode in="shadow" />
+   531→                      <feMergeNode in="SourceGraphic" />
+   532→                    </feMerge>
+   533→                  </filter>
+   534→                );
+   535→              })}
+   536→
+   537→              {/* Fog filter */}
+   538→              <filter id="fogFilter" x="-50%" y="-50%" width="200%" height="200%">
+   539→                <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="3" seed="42" result="noise" />
+   540→                <feColorMatrix in="noise" type="saturate" values="0" result="grayNoise" />
+   541→                <feComponentTransfer in="grayNoise" result="fogLayer">
+   542→                  <feFuncA type="linear" slope="0.6" />
+   543→                </feComponentTransfer>
+   544→                <feBlend in="fogLayer" in2="SourceGraphic" mode="multiply" />
+   545→              </filter>
+   546→
+   547→              {/* Dark overlay filter for locked areas */}
+   548→              <filter id="lockedDarken" x="-50%" y="-50%" width="200%" height="200%">
+   549→                <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="2" seed="7" result="noise" />
+   550→                <feColorMatrix in="noise" type="saturate" values="0" result="gn" />
+   551→                <feComponentTransfer in="gn" result="fl">
+   552→                  <feFuncA type="linear" slope="0.55" />
+   553→                </feComponentTransfer>
+   554→                <feFlood floodColor="#0a1628" floodOpacity="0.65" result="dark" />
+   555→                <feComposite in="dark" in2="SourceGraphic" operator="in" result="darkMask" />
+   556→                <feBlend in="darkMask" in2="fl" mode="screen" />
+   557→              </filter>
+   558→            </defs>
+   559→
+   560→            {/* ====== Layer 1: Ocean Background ====== */}
+   561→            <rect x="0" y="0" width="1000" height="700" fill="url(#oceanGradient)" />
+   562→
+   563→            {/* Subtle wave pattern in ocean */}
+   564→            {[
+   565→              { y: 650, opacity: 0.03 },
+   566→              { y: 50, opacity: 0.02 },
+   567→              { y: 680, opacity: 0.025 },
+   568→            ].map((wave, i) => (
+   569→              <g key={i} opacity={wave.opacity}>
+   570→                {Array.from({ length: 12 }, (_, j) => (
+   571→                  <path
+   572→                    key={j}
+   573→                    d={`M ${j * 90 - 10},${wave.y + i * 4} Q ${j * 90 + 35},${wave.y - 6 + i * 4} ${j * 90 + 80},${wave.y + i * 4}`}
+   574→                    fill="none"
+   575→                    stroke="rgba(100,160,220,0.4)"
+   576→                    strokeWidth="1"
+   577→                  />
+   578→                ))}
+   579→              </g>
+   580→            ))}
+   581→
+   582→            {/* ====== Layer 2: Stars ====== */}
+   583→            {STARS.map(star => (
+   584→              <circle
+   585→                key={star.id}
+   586→                cx={star.cx}
+   587→                cy={star.cy}
+   588→                r={star.r}
+   589→                fill="white"
+   590→                opacity="0.3"
+   591→                className="animate-twinkle"
+   592→                style={{
+   593→                  animationDelay: `${star.delay}s`,
+   594→                  animationDuration: `${star.duration}s`,
+   595→                }}
+   596→              />
+   597→            ))}
+   598→
+   599→            {/* ====== Layer 3: Continental Shelf ====== */}
+   600→            <path d={SHELF_PATH} fill="url(#shelfGradient)" />
+   601→
+   602→            {/* Small islands near coast */}
+   603→            <ellipse cx="105" cy="310" rx="18" ry="12" fill="#2a4030" stroke="rgba(100,180,130,0.12)" strokeWidth="1" />
+   604→            <ellipse cx="870" cy="440" rx="14" ry="9" fill="#2a4030" stroke="rgba(100,180,130,0.1)" strokeWidth="1" />
+   605→            <ellipse cx="830" cy="160" rx="10" ry="7" fill="#2a4030" stroke="rgba(100,180,130,0.08)" strokeWidth="0.5" />
+   606→
+   607→            {/* ====== Layer 4: Main Continent ====== */}
+   608→            <path d={CONTINENT_PATH} fill="url(#landGradient)" />
+   609→            <path d={CONTINENT_PATH} fill="url(#landWarmTint)" />
+   610→            <path d={CONTINENT_PATH} fill="url(#landCoolTint)" />
+   611→            <path d={CONTINENT_PATH} fill="url(#landSandyTint)" />
+   612→            <path d={CONTINENT_PATH} fill="url(#landTexture)" />
+   613→
+   614→            {/* Continent coastline glow */}
+   615→            <path
+   616→              d={CONTINENT_PATH}
+   617→              fill="none"
+   618→              stroke="rgba(100,180,130,0.2)"
+   619→              strokeWidth="2.5"
+   620→            />
+   621→            <path
+   622→              d={CONTINENT_PATH}
+   623→              fill="none"
+   624→              stroke="rgba(100,180,130,0.06)"
+   625→              strokeWidth="8"
+   626→            />
+   627→
+   628→            {/* ====== Layer 5: Biome Zones ====== */}
+   629→            {AREA_POSITIONS.map(pos => {
+   630→              return (
+   631→                <circle
+   632→                  key={`biome-zone-${pos.id}`}
+   633→                  cx={pos.x}
+   634→                  cy={pos.y}
+   635→                  r="130"
+   636→                  fill={`url(#biomeGrad-${pos.id})`}
+   637→                />
+   638→              );
+   639→            })}
+   640→
+   641→            {/* ====== Layer 6: Terrain Decorations ====== */}
+   642→            {AREA_POSITIONS.map(pos => (
+   643→              <TerrainDetails key={`terrain-${pos.id}`} biome={pos.biome} x={pos.x} y={pos.y} />
+   644→            ))}
+   645→
+   646→            {/* Decorative river running through the continent */}
+   647→            <path
+   648→              d="M 300,200 Q 350,260 400,280 Q 460,300 500,350 Q 550,410 580,460 Q 610,510 640,580 Q 660,620 680,640"
+   649→              fill="none"
+   650→              stroke="rgba(56,189,248,0.12)"
+   651→              strokeWidth="4"
+   652→              strokeLinecap="round"
+   653→            />
+   654→            <path
+   655→              d="M 300,200 Q 350,260 400,280 Q 460,300 500,350 Q 550,410 580,460 Q 610,510 640,580 Q 660,620 680,640"
+   656→              fill="none"
+   657→              stroke="rgba(56,189,248,0.06)"
+   658→              strokeWidth="8"
+   659→              strokeLinecap="round"
+   660→            />
+   661→
+   662→            {/* ====== Layer 7: Connection Paths ====== */}
+   663→            {CONNECTION_ORDER.slice(0, -1).map((fromId, idx) => {
+   664→              const toId = CONNECTION_ORDER[idx + 1];
+   665→              const from = AREA_POSITIONS.find(p => p.id === fromId);
+   666→              const to = AREA_POSITIONS.find(p => p.id === toId);
+   667→              if (!from || !to) return null;
+   668→
+   669→              const fromArea = areaMap.get(fromId);
+   670→              const toArea = areaMap.get(toId);
+   671→              const bothUnlocked = fromArea?.unlocked && toArea?.unlocked;
+   672→              const fromC = AREA_COLORS[fromId] || AREA_COLORS.iron_range;
+   673→
+   674→              // Control point for curved path
+   675→              const mx = (from.x + to.x) / 2;
+   676→              const my = (from.y + to.y) / 2;
+   677→              const dx = to.x - from.x;
+   678→              const dy = to.y - from.y;
+   679→              const cx = mx + dy * 0.15;
+   680→              const cy = my - dx * 0.15;
+   681→
+   682→              return (
+   683→                <g key={`conn-${fromId}-${toId}`}>
+   684→                  {/* Glow line (colored) */}
+   685→                  <path
+   686→                    d={`M ${from.x},${from.y} Q ${cx},${cy} ${to.x},${to.y}`}
+   687→                    fill="none"
+   688→                    stroke={bothUnlocked ? fromC.glow : 'rgba(255,255,255,0.02)'}
+   689→                    strokeWidth="6"
+   690→                    strokeLinecap="round"
+   691→                  />
+   692→                  {/* Dashed animated line (colored) */}
+   693→                  <path
+   694→                    d={`M ${from.x},${from.y} Q ${cx},${cy} ${to.x},${to.y}`}
+   695→                    fill="none"
+   696→                    stroke={bothUnlocked ? fromC.secondary : 'rgba(255,255,255,0.08)'}
+   697→                    strokeWidth="1.5"
+   698→                    strokeDasharray="8 4"
+   699→                    strokeLinecap="round"
+   700→                    className="animate-dash"
+   701→                  />
+   702→                </g>
+   703→              );
+   704→            })}
+   705→
+   706→            {/* ====== Layer 8: Area Nodes ====== */}
+   707→            {AREA_POSITIONS.map(pos => {
+   708→              const area = areaMap.get(pos.id);
+   709→              if (!area) return null;
+   710→
+   711→              const c = AREA_COLORS[pos.id] || AREA_COLORS.iron_range;
+   712→              const isCurrent = area.id === currentArea;
+   713→              const isHovered = hoveredArea === area.id;
+   714→              const isShaking = shakingNode === area.id;
+   715→              const isUnlocked = area.unlocked;
+   716→              const canAfford = crystals >= area.unlockCost;
+   717→              const areaUpgradeCount = area.upgrades.reduce((s, u) => s + u.level, 0);
+   718→              const areaMaxUpgrades = area.upgrades.length;
+   719→
+   720→              return (
+   721→                <g
+   722→                  key={`node-${pos.id}`}
+   723→                  className="node-interactive"
+   724→                  transform={isShaking ? `translate(${pos.x}, ${pos.y})` : undefined}
+   725→                  onClick={(e) => { e.stopPropagation(); handleNodeClick(pos.id); }}
+   726→                  onMouseEnter={() => handleNodeHover(pos.id)}
+   727→                  onMouseLeave={() => handleNodeHover(null)}
+   728→                  opacity={isUnlocked ? 1 : 0.55}
+   729→                >
+   730→                  <g transform={isShaking ? undefined : `translate(${pos.x}, ${pos.y})`} className={isShaking ? 'animate-shake' : ''}>
+   731→                    {/* Current area: pulsing ring */}
+   732→                    {isCurrent && isUnlocked && (
+   733→                      <>
+   734→                        <circle cx="0" cy="0" r="32" fill="none" stroke={c.primary} strokeWidth="2" opacity="0.6">
+   735→                          <animate
+   736→                            attributeName="r"
+   737→                            values="32;42;32"
+   738→                            dur="2s"
+   739→                            repeatCount="indefinite"
+   740→                          />
+   741→                          <animate
+   742→                            attributeName="opacity"
+   743→                            values="0.6;0;0.6"
+   744→                            dur="2s"
+   745→                            repeatCount="indefinite"
+   746→                          />
+   747→                        </circle>
+   748→                        <circle cx="0" cy="0" r="32" fill="none" stroke={c.primary} strokeWidth="1.5" opacity="0.4">
+   749→                          <animate
+   750→                            attributeName="r"
+   751→                            values="32;38;32"
+   752→                            dur="2s"
+   753→                            begin="0.5s"
+   754→                            repeatCount="indefinite"
+   755→                          />
+   756→                          <animate
+   757→                            attributeName="opacity"
+   758→                            values="0.4;0;0.4"
+   759→                            dur="2s"
+   760→                            begin="0.5s"
+   761→                            repeatCount="indefinite"
+   762→                          />
+   763→                        </circle>
+   764→                      </>
+   765→                    )}
+   766→
+   767→                    {/* Sparkle particles for unlocked areas */}
+   768→                    {isUnlocked && SPARKLE_PARTICLES.map(sp => {
+   769→                      const sx = Math.cos(sp.angle) * sp.dist;
+   770→                      const sy = Math.sin(sp.angle) * sp.dist;
+   771→                      return (
+   772→                        <circle
+   773→                          key={sp.id}
+   774→                          cx={sx}
+   775→                          cy={sy}
+   776→                          r="1.5"
+   777→                          fill={c.secondary}
+   778→                          className="sparkle-particle"
+   779→                          style={{ animationDelay: `${sp.delay}s` }}
+   780→                        />
+   781→                      );
+   782→                    })}
+   783→
+   784→                    {/* Hover scale effect via outer glow */}
+   785→                    {isHovered && isUnlocked && (
+   786→                      <circle cx="0" cy="0" r="34" fill="none" stroke={c.secondary} strokeWidth="2" opacity="0.3" />
+   787→                    )}
+   788→
+   789→                    {/* Main node background */}
+   790→                    <circle
+   791→                      cx="0"
+   792→                      cy="0"
+   793→                      r="28"
+   794→                      fill={isUnlocked ? `rgba(15,20,35,0.9)` : 'rgba(15,20,35,0.7)'}
+   795→                      stroke={isUnlocked ? c.primary : 'rgba(100,100,120,0.3)'}
+   796→                      strokeWidth={isCurrent ? 2.5 : isHovered && isUnlocked ? 2 : 1.5}
+   797→                      className="node-circle"
+   798→                      style={{ transition: 'all 0.2s ease' }}
+   799→                    />
+   800→
+   801→                    {/* Inner glow for unlocked */}
+   802→                    {isUnlocked && (
+   803→                      <circle
+   804→                        cx="0"
+   805→                        cy="0"
+   806→                        r="24"
+   807→                        fill="none"
+   808→                        stroke={c.primary}
+   809→                        strokeWidth="0.5"
+   810→                        opacity="0.3"
+   811→                      />
+   812→                    )}
+   813→
+   814→                    {/* Area icon */}
+   815→                    <text
+   816→                      x="0"
+   817→                      y="1"
+   818→                      textAnchor="middle"
+   819→                      dominantBaseline="central"
+   820→                      fontSize="20"
+   821→                      style={{ pointerEvents: 'none' }}
+   822→                    >
+   823→                      {isUnlocked ? area.icon : '🔒'}
+   824→                    </text>
+   825→
+   826→                    {/* Lock overlay icon for locked areas */}
+   827→                    {!isUnlocked && (
+   828→                      <>
+   829→                        <circle cx="0" cy="0" r="28" fill="rgba(10,22,40,0.5)" />
+   830→                        <text
+   831→                          x="0"
+   832→                          y="1"
+   833→                          textAnchor="middle"
+   834→                          dominantBaseline="central"
+   835→                          fontSize="14"
+   836→                          fill="rgba(150,150,170,0.8)"
+   837→                          style={{ pointerEvents: 'none' }}
+   838→                        >
+   839→                          🔒
+   840→                        </text>
+   841→                      </>
+   842→                    )}
+   843→
+   844→                    {/* Name label */}
+   845→                    <text
+   846→                      x="0"
+   847→                      y={isUnlocked ? '44' : '42'}
+   848→                      textAnchor="middle"
+   849→                      fill={isUnlocked ? 'white' : 'rgba(180,180,195,0.6)'}
+   850→                      fontSize="10"
+   851→                      fontWeight="600"
+   852→                      style={{ pointerEvents: 'none', textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}
+   853→                    >
+   854→                      {area.name}
+   855→                    </text>
+   856→
+   857→                    {/* Crystal type sub-label for unlocked */}
+   858→                    {isUnlocked && (
+   859→                      <text
+   860→                        x="0"
+   861→                        y="56"
+   862→                        textAnchor="middle"
+   863→                        fill={c.secondary}
+   864→                        fontSize="8"
+   865→                        style={{ pointerEvents: 'none', textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}
+   866→                      >
+   867→                        {area.crystalEmoji} {area.crystalType}
+   868→                      </text>
+   869→                    )}
+   870→
+   871→                    {/* Unlock cost for locked */}
+   872→                    {!isUnlocked && (
+   873→                      <text
+   874→                        x="0"
+   875→                        y="54"
+   876→                        textAnchor="middle"
+   877→                        fill={canAfford ? '#fbbf24' : 'rgba(150,150,170,0.4)'}
+   878→                        fontSize="8"
+   879→                        style={{ pointerEvents: 'none' }}
+   880→                      >
+   881→                        💎 {fmt(area.unlockCost)}
+   882→                      </text>
+   883→                    )}
+   884→
+   885→                    {/* Upgrade progress bar for unlocked non-current */}
+   886→                    {isUnlocked && !isCurrent && areaUpgradeCount > 0 && (
+   887→                      <g>
+   888→                        <rect x="-16" y="62" width="32" height="2" rx="1" fill="rgba(255,255,255,0.08)" />
+   889→                        <rect
+   890→                          x="-16"
+   891→                          y="62"
+   892→                          width={32 * (areaUpgradeCount / Math.max(areaMaxUpgrades, 1))}
+   893→                          height="2"
+   894→                          rx="1"
+   895→                          fill={c.primary}
+   896→                          opacity="0.7"
+   897→                        />
+   898→                      </g>
+   899→                    )}
+   900→                  </g>
+   901→
+   902→                  {/* Insufficient crystals toast */}
+   903→                  {showInsufficient === pos.id && (
+   904→                    <g transform={`translate(${pos.x}, ${pos.y - 45})`}>
+   905→                      <rect x="-42" y="-10" width="84" height="20" rx="10" fill="rgba(220,38,38,0.9)" />
+   906→                      <text x="0" y="3" textAnchor="middle" fill="white" fontSize="9" fontWeight="600">
+   907→                        Need {fmt(area.unlockCost - crystals)} more
+   908→                      </text>
+   909→                    </g>
+   910→                  )}
+   911→                </g>
+   912→              );
+   913→            })}
+   914→
+   915→            {/* ====== Layer 9: Fog of War on locked areas ====== */}
+   916→            {AREA_POSITIONS.map(pos => {
+   917→              const area = areaMap.get(pos.id);
+   918→              if (!area || area.unlocked) return null;
+   919→              return (
+   920→                <g key={`fog-${pos.id}`} className="animate-fog">
+   921→                  <circle
+   922→                    cx={pos.x}
+   923→                    cy={pos.y}
+   924→                    r="42"
+   925→                    fill="rgba(10,22,40,0.35)"
+   926→                    filter="url(#fogFilter)"
+   927→                    style={{ pointerEvents: 'none' }}
+   928→                  />
+   929→                </g>
+   930→              );
+   931→            })}
+   932→
+   933→            {/* ====== Layer 10: Clouds ====== */}
+   934→            {CLOUDS.map((cloud, i) => (
+   935→              <CloudShape key={i} {...cloud} />
+   936→            ))}
+   937→
+   938→            {/* ====== Layer 11: Compass Rose ====== */}
+   939→            <CompassRose />
+   940→          </svg>
+   941→        </div>
+   942→
+   943→        {/* ====== Bottom Info Panel ====== */}
+   944→        <AnimatePresence mode="wait">
+   945→          {selectedArea && areaMap.get(selectedArea) && (
+   946→            <motion.div
+   947→              key={selectedArea}
+   948→              initial={{ y: 40, opacity: 0 }}
+   949→              animate={{ y: 0, opacity: 1 }}
+   950→              exit={{ y: 40, opacity: 0 }}
+   951→              transition={{ duration: 0.25, ease: 'easeOut' }}
+   952→              className="absolute bottom-0 left-0 right-0 z-10 bg-gradient-to-t from-[#0a1628] via-[#0a1628]/95 to-transparent pt-10 pb-4 px-4 pointer-events-none"
+   953→            >
+   954→              {(() => {
+   955→                const area = areaMap.get(selectedArea)!;
+   956→                const c = AREA_COLORS[selectedArea] || AREA_COLORS.iron_range;
+   957→                const isCurrent = area.id === currentArea;
+   958→                const isUnlocked = area.unlocked;
+   959→                const canAfford = crystals >= area.unlockCost;
+   960→                const areaUpgradeCount = area.upgrades.reduce((s, u) => s + u.level, 0);
+   961→                const areaMaxUpgrades = area.upgrades.length;
+   962→                const progressPct = Math.max(0, (areaUpgradeCount / Math.max(areaMaxUpgrades, 1)) * 100);
+   963→
+   964→                return (
+   965→                  <div className="max-w-lg mx-auto pointer-events-auto">
+   966→                    <div className="flex items-start justify-between gap-3">
+   967→                      <div className="flex items-start gap-3 min-w-0">
+   968→                        {/* Area icon */}
+   969→                        <div
+   970→                          className="flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center text-2xl"
+   971→                          style={{ backgroundColor: isUnlocked ? c.bg : 'rgba(50,50,70,0.3)' }}
+   972→                        >
+   973→                          {isUnlocked ? area.icon : '🔒'}
+   974→                        </div>
+   975→                        {/* Info */}
+   976→                        <div className="min-w-0">
+   977→                          <div className="flex items-center gap-2">
+   978→                            <h3 className="text-base font-bold text-white truncate">{area.name}</h3>
+   979→                            {isCurrent && (
+   980→                              <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30 text-[10px] h-5 px-1.5">
+   981→                                ✦ Mining
+   982→                              </Badge>
+   983→                            )}
+   984→                          </div>
+   985→                          <p className="text-xs text-gray-400 mt-0.5">{area.description}</p>
+   986→                          {isUnlocked && (
+   987→                            <div className="flex items-center gap-2 mt-1.5">
+   988→                              <span className="text-xs" style={{ color: c.secondary }}>
+   989→                                {area.crystalEmoji} {area.crystalType}
+   990→                              </span>
+   991→                              {areaUpgradeCount > 0 && (
+   992→                                <span className="text-[10px] text-gray-500">
+   993→                                  {areaUpgradeCount}/{areaMaxUpgrades} upgrades
+   994→                                </span>
+   995→                              )}
+   996→                            </div>
+   997→                          )}
+   998→                          {!isUnlocked && (
+   999→                            <p className="text-xs mt-1" style={{ color: canAfford ? '#fbbf24' : 'rgba(180,180,195,0.4)' }}>
+  1000→                              💎 Unlock cost: {fmt(area.unlockCost)} crystals
+  1001→                              {!canAfford && (
+  1002→                                <span className="text-gray-600 ml-1">(need {fmt(area.unlockCost - crystals)} more)</span>
+  1003→                              )}
+  1004→                            </p>
+  1005→                          )}
+  1006→                        </div>
+  1007→                      </div>
+  1008→
+  1009→                      {/* Action button */}
+  1010→                      {!isUnlocked ? (
+  1011→                        <Button
+  1012→                          size="sm"
+  1013→                          disabled={!canAfford}
+  1014→                          onClick={() => handleNodeClick(selectedArea)}
+  1015→                          className="flex-shrink-0 text-xs h-8 px-4 font-semibold"
+  1016→                          style={{
+  1017→                            backgroundColor: canAfford ? c.primary : 'rgba(50,50,70,0.5)',
+  1018→                            color: canAfford ? 'white' : 'rgba(120,120,140,0.6)',
+  1019→                          }}
+  1020→                        >
+  1021→                          <span className="mr-1">💎</span>
+  1022→                          Unlock
+  1023→                        </Button>
+  1024→                      ) : !isCurrent ? (
+  1025→                        <Button
+  1026→                          size="sm"
+  1027→                          onClick={() => handleNodeClick(selectedArea)}
+  1028→                          className="flex-shrink-0 text-xs h-8 px-4 font-semibold text-white"
+  1029→                          style={{ backgroundColor: c.primary }}
+  1030→                        >
+  1031→                          Travel
+  1032→                          <ChevronRight className="w-3.5 h-3.5 ml-1" />
+  1033→                        </Button>
+  1034→                      ) : (
+  1035→                        <div className="flex-shrink-0 text-xs text-emerald-400 font-medium flex items-center gap-1 h-8 px-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+  1036→                          <span>📍</span>
+  1037→                          <span>Current Location</span>
+  1038→                        </div>
+  1039→                      )}
+  1040→                    </div>
+  1041→
+  1042→                    {/* Progress bar for unlocked */}
+  1043→                    {isUnlocked && areaUpgradeCount > 0 && (
+  1044→                      <div className="mt-3">
+  1045→                        <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}>
+  1046→                          <div
+  1047→                            className="h-full rounded-full transition-all duration-500"
+  1048→                            style={{ width: `${progressPct}%`, backgroundColor: c.primary }}
+  1049→                          />
+  1050→                        </div>
+  1051→                        <div className="flex justify-between mt-1">
+  1052→                          <span className="text-[10px] text-gray-500">Upgrade Progress</span>
+  1053→                          <span className="text-[10px] text-gray-500">{Math.round(progressPct)}%</span>
+  1054→                        </div>
+  1055→                      </div>
+  1056→                    )}
+  1057→                  </div>
+  1058→                );
+  1059→              })()}
+  1060→            </motion.div>
+  1061→          )}
+  1062→        </AnimatePresence>
+  1063→
+  1064→        {/* No click-away blocker needed - SVG handles its own events */}
+  1065→      </motion.div>
+  1066→    </AnimatePresence>
+  1067→  );
+  1068→}

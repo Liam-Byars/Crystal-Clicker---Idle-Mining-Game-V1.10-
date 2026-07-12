@@ -1,16 +1,89 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/lib/auth-context';
 import { isFirebaseConfigured } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
-import { Gem, LogIn, User } from 'lucide-react';
+import { Gem, User, FileText, ShieldCheck } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+
+function LegalDocumentDialog({
+  open,
+  onOpenChange,
+  title,
+  icon: Icon,
+  iconColor,
+  filePath,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: string;
+  icon: React.ElementType;
+  iconColor: string;
+  filePath: string;
+}) {
+  const [content, setContent] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLoading(true);
+    fetch(filePath)
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to load');
+        return res.text();
+      })
+      .then((text) => setContent(text))
+      .catch(() => setContent('Failed to load document.'))
+      .finally(() => setLoading(false));
+  }, [open, filePath]);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] p-0 gap-0 overflow-hidden bg-[#12122a] border-white/10 text-white/90">
+        <DialogHeader className="px-6 pt-6 pb-4 shrink-0">
+          <div className="flex items-center gap-3 mb-1">
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${iconColor}`}>
+              <Icon className="w-5 h-5" />
+            </div>
+            <DialogTitle className="text-xl font-bold text-white">{title}</DialogTitle>
+          </div>
+        </DialogHeader>
+        <Separator className="bg-white/10 shrink-0" />
+        <ScrollArea className="flex-1 max-h-[72vh]">
+          <div className="px-6 py-5 pr-4">
+            {loading && (
+              <div className="flex items-center justify-center py-12">
+                <div className="w-6 h-6 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+              </div>
+            )}
+            {!loading && content && (
+              <pre className="text-[13px] text-white/55 leading-relaxed whitespace-pre-wrap font-sans m-0">
+                {content}
+              </pre>
+            )}
+          </div>
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 export function SignInScreen() {
   const { signInWithGoogle, playAsGuest } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [signingIn, setSigningIn] = useState(false);
+  const [tosOpen, setTosOpen] = useState(false);
+  const [ppOpen, setPpOpen] = useState(false);
 
   const handleGoogleSignIn = async () => {
     setSigningIn(true);
@@ -141,7 +214,43 @@ export function SignInScreen() {
               : 'Playing as guest. Your progress is saved to your browser.'}
           </p>
         </motion.div>
+
+        {/* TOS & Privacy Policy links */}
+        <div className="flex items-center gap-4 text-xs text-white/30">
+          <button
+            onClick={() => setTosOpen(true)}
+            className="hover:text-white/60 transition-colors duration-200 underline underline-offset-2 decoration-white/20 hover:decoration-white/50 cursor-pointer"
+          >
+            Terms of Service
+          </button>
+          <span className="text-white/15">|</span>
+          <button
+            onClick={() => setPpOpen(true)}
+            className="hover:text-white/60 transition-colors duration-200 underline underline-offset-2 decoration-white/20 hover:decoration-white/50 cursor-pointer"
+          >
+            Privacy Policy
+          </button>
+        </div>
       </motion.div>
+
+      {/* Legal Document Dialogs — fetch plain .txt files from /public/legal/ */}
+      <LegalDocumentDialog
+        open={tosOpen}
+        onOpenChange={setTosOpen}
+        title="Terms of Service"
+        icon={FileText}
+        iconColor="bg-purple-500/15 text-purple-400"
+        filePath="/legal/terms-of-service.txt"
+      />
+      <LegalDocumentDialog
+        open={ppOpen}
+        onOpenChange={setPpOpen}
+        title="Privacy Policy"
+        icon={ShieldCheck}
+        filePath="/legal/privacy-policy.txt"
+        iconColor="bg-cyan-500/15 text-cyan-400"
+      />
     </div>
   );
 }
+
