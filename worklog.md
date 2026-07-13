@@ -227,3 +227,23 @@ Stage Summary:
 - TOS and PP are now standalone `.txt` documents in `public/legal/`
 - Sign-in screen fetches and displays them in themed scrollable dialogs
 - Files can also be accessed directly at `/legal/terms-of-service.txt` and `/legal/privacy-policy.txt`
+
+---
+Task ID: cron-compact-250242
+Agent: main (cron job)
+Task: Call POST /api/admin/compact-inactive to compact accounts inactive 365+ days
+
+Work Log:
+- Called POST /api/admin/compact-inactive
+- Received HTTP 500 (Internal Server Error)
+- Investigated: route file exists at `src/app/api/admin/compact-inactive/route.ts` but references Prisma schema fields/models that don't exist:
+  - `ClickerSave.status` — not in schema
+  - `ClickerSave.compactedData` — not in schema
+  - `AccountArchive` model — not in schema
+  - Prisma schema only has basic ClickerSave fields (id, userId, crystals, etc.)
+- This is a pre-built route that was created ahead of the schema changes (Phase 2 prep)
+
+Stage Summary:
+- 0 accounts compacted (route returns 500 due to missing schema columns)
+- To fix: add `status String @default("active")`, `compactedData String?` to ClickerSave model, create AccountArchive model, then run `npx prisma db push`
+- This is a known gap — the route was scaffolded early but the DB schema was never updated to support it
