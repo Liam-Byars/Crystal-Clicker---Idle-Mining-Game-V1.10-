@@ -51,22 +51,10 @@ function clearPersistedAuth() {
 }
 
 function getInitialState(): AuthState {
-  const persisted = loadPersistedAuth();
-  if (persisted) {
-    if (persisted.mode === 'guest') {
-      return {
-        user: null, loading: false, isGuest: true,
-        userId: persisted.userId, displayName: persisted.displayName || 'Guest Miner', photoURL: null,
-      };
-    }
-    // Google mode persisted - still need to verify with Firebase, so loading=true
-    return {
-      user: null, loading: isFirebaseConfigured, isGuest: false,
-      userId: null, displayName: null, photoURL: null,
-    };
-  }
+  // Always start loading on both server and client to avoid hydration mismatch.
+  // The useEffect will resolve the actual auth state after mount.
   return {
-    user: null, loading: isFirebaseConfigured, isGuest: false,
+    user: null, loading: true, isGuest: false,
     userId: null, displayName: null, photoURL: null,
   };
 }
@@ -75,37 +63,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AuthState>(getInitialState);
   const initialized = useRef(false);
 
-  // Handle Firebase onAuthStateChanged for Google auth
+  // Resolve auth state after mount (avoids hydration mismatch)
   useEffect(() => {
-    if (!isFirebaseConfigured || !auth) return;
     if (initialized.current) return;
     initialized.current = true;
 
     const persisted = loadPersistedAuth();
-    const isGooglePersisted = persisted?.mode === 'google';
 
-    const unsubscribe = auth.onAuthStateChanged((firebaseUser) => {
-      if (firebaseUser) {
-        persistAuth({
-          mode: 'google',
-          userId: firebaseUser.uid,
-          displayName: firebaseUser.displayName || undefined,
-          photoURL: firebaseUser.photoURL || undefined,
-        });
-        setState({
-          user: firebaseUser, loading: false, isGuest: false,
-          userId: firebaseUser.uid, displayName: firebaseUser.displayName,
-          photoURL: firebaseUser.photoURL,
-        });
-      } else if (isGooglePersisted) {
-        clearPersistedAuth();
-        setState(s => ({ ...s, loading: false }));
-      } else {
-        setState(s => ({ ...s, loading: false }));
-      }
-    });
+    // Guest session found — restore immediately
+    if (persisted?.mode === 'guest') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setState({
+        user: null, loading: false, isGuest: true,
+        userId: persisted.userId, displayName: persisted.displayName || 'Guest Miner', photoURL: null,
+      });
+      return;
+    }
 
-    return () => unsubscribe();
+    // Google session persisted — verify with Firebase
+    if (persisted?.mode === 'google' && isFirebaseConfigured && auth) {
+      const isGooglePersisted = true;
+      const unsubscribe = auth.onAuthStateChanged((firebaseUser) => {
+        if (firebaseUser) {
+          persistAuth({
+            mode: 'google',
+            userId: firebaseUser.uid,
+            displayName: firebaseUser.displayName || undefined,
+            photoURL: firebaseUser.photoURL || undefined,
+          });
+          setState({
+            user: firebaseUser, loading: false, isGuest: false,
+            userId: firebaseUser.uid, displayName: firebaseUser.displayName,
+            photoURL: firebaseUser.photoURL,
+          });
+        } else {
+          // Google session expired — clear and show sign-in
+          clearPersistedAuth();
+          setState({ user: null, loading: false, isGuest: false, userId: null, displayName: null, photoURL: null });
+        }
+      });
+      return () => unsubscribe();
+    }
+
+    // Google session persisted but Firebase not configured — clear it
+    if (persisted?.mode === 'google' && !isFirebaseConfigured) {
+      clearPersistedAuth();
+    }
+
+    // No persisted session — show sign-in screen
+    setState({ user: null, loading: false, isGuest: false, userId: null, displayName: null, photoURL: null });
   }, []);
 
   const signInWithGoogle = useCallback(async (): Promise<{ success: boolean; error?: string }> => {

@@ -247,3 +247,29 @@ Stage Summary:
 - 0 accounts compacted (route returns 500 due to missing schema columns)
 - To fix: add `status String @default("active")`, `compactedData String?` to ClickerSave model, create AccountArchive model, then run `npx prisma db push`
 - This is a known gap — the route was scaffolded early but the DB schema was never updated to support it
+
+---
+Task ID: hydration-fix-map-redesign
+Agent: main
+Task: Fix hydration mismatch error and redesign world map layout
+
+Work Log:
+- Fixed hydration mismatch in `src/lib/auth-context.tsx`:
+  - Changed `getInitialState()` to always return `loading: true` on both server and client
+  - Rewrote the mount `useEffect` to handle all auth resolution cases: guest restore, Google Firebase verify, Firebase not configured, no session
+  - Now both server and client initially render the loading spinner → client resolves after mount → no mismatch
+- Redesigned `src/components/world-map.tsx` from card grid to vertical journey path:
+  - Areas arranged as nodes on a center vertical line
+  - Info cards alternate LEFT and RIGHT (zigzag pattern) for visual interest
+  - Center dots show area icons (unlocked) or lock icons (locked)
+  - Current area has cyan glow + ping animation
+  - Connected by gradient lines (bright for unlocked, dim for locked)
+  - Scrollable with ScrollArea
+  - Responsive: max-w-md container, smaller text on mobile
+- Verified: no hydration errors in console, zigzag pattern confirmed via VLM, mobile viewport looks good
+
+Stage Summary:
+- Hydration mismatch FIXED — both server/client now render loading spinner initially
+- Map is now a vertical zigzag journey path instead of card grid
+- All 7 areas visible and scrollable
+- Console is clean (no React hydration warnings)
