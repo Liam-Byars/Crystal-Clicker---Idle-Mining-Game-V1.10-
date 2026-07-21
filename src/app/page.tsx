@@ -17,9 +17,10 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAuth } from '@/lib/auth-context';
 import { SignInScreen } from '@/components/sign-in-screen';
+import { TERMS_OF_SERVICE, PRIVACY_POLICY } from '@/lib/legal-content';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { LogOut, UserCircle, Volume2, VolumeX, LogIn } from 'lucide-react';
+import { LogOut, UserCircle, Volume2, VolumeX, LogIn, FileText, ShieldCheck } from 'lucide-react';
 
 // ====== Helpers ======
 function fmt(n: number): string {
@@ -110,6 +111,8 @@ export default function GamePage() {
   const crystalRef = useRef<HTMLDivElement>(null);
   const [sessionTime, setSessionTime] = useState(0);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [legalTosOpen, setLegalTosOpen] = useState(false);
+  const [legalPpOpen, setLegalPpOpen] = useState(false);
   const [sparkles, setSparkles] = useState<{id: number; x: number; y: number; delay: number}[]>([]);
   const sparkleIdRef = useRef(0);
 
@@ -478,6 +481,20 @@ export default function GamePage() {
                     Sign in with Google
                   </DropdownMenuItem>
                 )}
+                <DropdownMenuItem
+                  className="text-white/60 focus:text-white/80 focus:bg-white/5 cursor-pointer"
+                  onClick={() => setLegalTosOpen(true)}
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Terms of Service
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="text-white/60 focus:text-white/80 focus:bg-white/5 cursor-pointer"
+                  onClick={() => setLegalPpOpen(true)}
+                >
+                  <ShieldCheck className="w-4 h-4 mr-2" />
+                  Privacy Policy
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   className="text-red-400 focus:text-red-300 focus:bg-red-500/10 cursor-pointer"
                   onClick={logout}
@@ -1182,6 +1199,49 @@ export default function GamePage() {
                 Dismiss
               </Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* In-Game Legal Document Dialogs */}
+        <Dialog open={legalTosOpen} onOpenChange={setLegalTosOpen}>
+          <DialogContent className="sm:max-w-2xl max-h-[90vh] p-0 gap-0 overflow-hidden bg-[#12122a] border-white/10 text-white/90">
+            <DialogHeader className="px-6 pt-6 pb-4 shrink-0">
+              <div className="flex items-center gap-3 mb-1">
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-purple-500/15 text-purple-400">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <DialogTitle className="text-xl font-bold text-white">Terms of Service</DialogTitle>
+              </div>
+            </DialogHeader>
+            <Separator className="bg-white/10 shrink-0" />
+            <ScrollArea className="flex-1 max-h-[72vh]">
+              <div className="px-6 py-5 pr-4">
+                <pre className="text-[13px] text-white/55 leading-relaxed whitespace-pre-wrap font-sans m-0">
+                  {TERMS_OF_SERVICE}
+                </pre>
+              </div>
+            </ScrollArea>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={legalPpOpen} onOpenChange={setLegalPpOpen}>
+          <DialogContent className="sm:max-w-2xl max-h-[90vh] p-0 gap-0 overflow-hidden bg-[#12122a] border-white/10 text-white/90">
+            <DialogHeader className="px-6 pt-6 pb-4 shrink-0">
+              <div className="flex items-center gap-3 mb-1">
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-cyan-500/15 text-cyan-400">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <DialogTitle className="text-xl font-bold text-white">Privacy Policy</DialogTitle>
+              </div>
+            </DialogHeader>
+            <Separator className="bg-white/10 shrink-0" />
+            <ScrollArea className="flex-1 max-h-[72vh]">
+              <div className="px-6 py-5 pr-4">
+                <pre className="text-[13px] text-white/55 leading-relaxed whitespace-pre-wrap font-sans m-0">
+                  {PRIVACY_POLICY}
+                </pre>
+              </div>
+            </ScrollArea>
           </DialogContent>
         </Dialog>
       </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/lib/auth-context';
 import { isFirebaseConfigured } from '@/lib/firebase';
@@ -14,6 +14,11 @@ import {
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { TERMS_OF_SERVICE, PRIVACY_POLICY } from '@/lib/legal-content';
+
+// ⚠️ DO NOT REMOVE OR MODIFY the legal-content import above.
+// Legal documents are locked in src/lib/legal-content.ts to prevent accidental deletion.
+// The .txt copies in public/legal/ are kept for direct URL access only.
 
 function LegalDocumentDialog({
   open,
@@ -21,32 +26,15 @@ function LegalDocumentDialog({
   title,
   icon: Icon,
   iconColor,
-  filePath,
+  content,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
   icon: React.ElementType;
   iconColor: string;
-  filePath: string;
+  content: string;
 }) {
-  const [content, setContent] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (!open) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLoading(true);
-    fetch(filePath)
-      .then((res) => {
-        if (!res.ok) throw new Error('Failed to load');
-        return res.text();
-      })
-      .then((text) => setContent(text))
-      .catch(() => setContent('Failed to load document.'))
-      .finally(() => setLoading(false));
-  }, [open, filePath]);
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] p-0 gap-0 overflow-hidden bg-[#12122a] border-white/10 text-white/90">
@@ -61,16 +49,9 @@ function LegalDocumentDialog({
         <Separator className="bg-white/10 shrink-0" />
         <ScrollArea className="flex-1 max-h-[72vh]">
           <div className="px-6 py-5 pr-4">
-            {loading && (
-              <div className="flex items-center justify-center py-12">
-                <div className="w-6 h-6 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
-              </div>
-            )}
-            {!loading && content && (
-              <pre className="text-[13px] text-white/55 leading-relaxed whitespace-pre-wrap font-sans m-0">
-                {content}
-              </pre>
-            )}
+            <pre className="text-[13px] text-white/55 leading-relaxed whitespace-pre-wrap font-sans m-0">
+              {content}
+            </pre>
           </div>
         </ScrollArea>
       </DialogContent>
@@ -233,24 +214,23 @@ export function SignInScreen() {
         </div>
       </motion.div>
 
-      {/* Legal Document Dialogs — fetch plain .txt files from /public/legal/ */}
+      {/* Legal Document Dialogs — content embedded from src/lib/legal-content.ts (locked) */}
       <LegalDocumentDialog
         open={tosOpen}
         onOpenChange={setTosOpen}
         title="Terms of Service"
         icon={FileText}
         iconColor="bg-purple-500/15 text-purple-400"
-        filePath="/legal/terms-of-service.txt"
+        content={TERMS_OF_SERVICE}
       />
       <LegalDocumentDialog
         open={ppOpen}
         onOpenChange={setPpOpen}
         title="Privacy Policy"
         icon={ShieldCheck}
-        filePath="/legal/privacy-policy.txt"
         iconColor="bg-cyan-500/15 text-cyan-400"
+        content={PRIVACY_POLICY}
       />
     </div>
   );
 }
-

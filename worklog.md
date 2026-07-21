@@ -273,3 +273,30 @@ Stage Summary:
 - Map is now a vertical zigzag journey path instead of card grid
 - All 7 areas visible and scrollable
 - Console is clean (no React hydration warnings)
+
+---
+Task ID: lock-legal-docs
+Agent: main
+Task: Lock TOS/PP legal documents in code so they cannot be accidentally deleted, and add in-game access
+
+Work Log:
+- Created `src/lib/legal-content.ts` — exports `TERMS_OF_SERVICE` and `PRIVACY_POLICY` as string constants with a DO NOT MODIFY warning header
+- Updated `src/components/sign-in-screen.tsx` — removed fetch-based `LegalDocumentDialog` (which relied on .txt files in public/), now imports content directly from `legal-content.ts` and passes it as a prop (no loading state needed, instant render)
+- Updated `src/app/page.tsx`:
+  - Added imports for `TERMS_OF_SERVICE`, `PRIVACY_POLICY`, `FileText`, `ShieldCheck`
+  - Added `legalTosOpen` and `legalPpOpen` state variables
+  - Added “Terms of Service” and “Privacy Policy” menu items to the in-game user dropdown menu
+  - Added two Dialog components at the end of the component for in-game legal document viewing
+- Kept `public/legal/terms-of-service.txt` and `public/legal/privacy-policy.txt` for direct URL access
+- Lint: passes clean (0 errors)
+- Browser QA verified:
+  - Sign-in screen: TOS and PP buttons open dialogs with embedded content (no fetch delay)
+  - In-game: User menu dropdown shows TOS, PP, Sign in with Google (if guest), and Log out
+  - In-game TOS/PP dialogs render full legal text correctly
+  - Zero console errors throughout
+
+Stage Summary:
+- Legal documents are now LOCKED in `src/lib/legal-content.ts` — they cannot be accidentally deleted like the .txt files in public/ could
+- TOS/PP accessible from both sign-in screen AND in-game user menu
+- No fetch delay — content renders instantly from code constants
+- Minimal code changes (3 files touched, no structural changes to game logic)
