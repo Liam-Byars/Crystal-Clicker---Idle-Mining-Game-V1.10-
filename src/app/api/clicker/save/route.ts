@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { firestoreSave, isFirestoreConfigured } from '@/lib/firestore';
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,21 +11,62 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'userId is required' }, { status: 400 });
     }
 
-    const data = {
-      crystals: body.crystals, totalClicks: body.totalClicks, totalEarned: body.totalEarned,
-      clickPower: body.clickPower, multiplier: body.multiplier, autoRate: body.autoRate,
-      prestige: body.prestige, prestigePoints: body.prestigePoints,
-      upgrades: JSON.stringify(body.upgrades), achievements: JSON.stringify(body.achievements),
-      goldenClicks: body.goldenClicks, maxCombo: body.maxCombo,
-      lastOnlineTime: body.lastOnlineTime ?? Date.now(), totalEvents: body.totalEvents ?? 0,
+    // Build the full save data object
+    const saveData = {
+      crystals: body.crystals,
+      totalClicks: body.totalClicks,
+      totalEarned: body.totalEarned,
+      clickPower: body.clickPower,
+      multiplier: body.multiplier,
+      autoRate: body.autoRate,
+      prestige: body.prestige,
+      prestigePoints: body.prestigePoints,
+      upgrades: body.upgrades,
+      achievements: body.achievements,
+      goldenClicks: body.goldenClicks,
+      totalCrits: body.totalCrits ?? 0,
+      maxCombo: body.maxCombo,
+      lastOnlineTime: body.lastOnlineTime ?? Date.now(),
+      totalEvents: body.totalEvents ?? 0,
+      currentArea: body.currentArea ?? 'naica',
+      unlockedAreas: body.unlockedAreas ?? ['naica'],
+    };
+
+    // Write to SQLite (local server database)
+    const sqliteData = {
+      crystals: saveData.crystals,
+      totalClicks: saveData.totalClicks,
+      totalEarned: saveData.totalEarned,
+      clickPower: saveData.clickPower,
+      multiplier: saveData.multiplier,
+      autoRate: saveData.autoRate,
+      prestige: saveData.prestige,
+      prestigePoints: saveData.prestigePoints,
+      upgrades: JSON.stringify(saveData.upgrades),
+      achievements: JSON.stringify(saveData.achievements),
+      goldenClicks: saveData.goldenClicks,
+      totalCrits: saveData.totalCrits,
+      maxCombo: saveData.maxCombo,
+      lastOnlineTime: saveData.lastOnlineTime,
+      totalEvents: saveData.totalEvents,
+      currentArea: saveData.currentArea,
+      unlockedAreas: JSON.stringify(saveData.unlockedAreas),
     };
 
     const existing = await db.clickerSave.findUnique({ where: { userId } });
     if (existing) {
-      await db.clickerSave.update({ where: { userId }, data });
+      await db.clickerSave.update({ where: { userId }, data: sqliteData });
     } else {
-      await db.clickerSave.create({ data: { ...data, userId } });
+      await db.clickerSave.create({ data: { ...sqliteData, userId } });
     }
+
+    // Write to Firestore (cloud database) — fire and forget, don't block response
+    if (isFirestoreConfigured) {
+      firestoreSave(userId, saveData).catch((e) => {
+        console.error('Firestore save background error:', e);
+      });
+    }
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Save error:', error);

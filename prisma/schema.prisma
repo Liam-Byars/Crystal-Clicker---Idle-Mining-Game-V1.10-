@@ -40,8 +40,11 @@ model ClickerSave {
   achievements  String   @default("[]")
   goldenClicks  Int      @default(0)
   maxCombo      Int      @default(0)
+  totalCrits    Int      @default(0)
   lastOnlineTime Float   @default(0)
   totalEvents   Int      @default(0)
+  currentArea   String   @default("naica")
+  unlockedAreas String   @default("[\"naica\"]")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
