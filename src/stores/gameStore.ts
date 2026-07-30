@@ -840,7 +840,7 @@ function recalcStats(upgrades: Upgrade[]) {
       }
     }
   }
-  return { clickPower, autoRate, multiplier, goldenChance: Math.min(goldenChance, 0.5), critChance: Math.min(critChance, 0.8) };
+  return { clickPower, autoRate, multiplier, goldenChance: Math.min(goldenChance, 0.75), critChance: Math.min(critChance, 1.0) };
 }
 
 // ====== Store ======
