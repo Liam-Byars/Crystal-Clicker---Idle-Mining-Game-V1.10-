@@ -625,31 +625,73 @@ const ACHIEVEMENT_DEFS = [
   { id: 'clicks_1000', name: 'Click Master', description: 'Click 1,000 times', icon: '🏆' },
   { id: 'clicks_10000', name: 'Click Legend', description: 'Click 10,000 times', icon: '👑' },
   { id: 'clicks_50000', name: 'Click God', description: 'Click 50,000 times', icon: '🌟' },
+  { id: 'clicks_100k', name: 'Beyond Human', description: 'Click 100,000 times', icon: '🤯' },
+  { id: 'clicks_500k', name: 'Click Dimension', description: 'Click 500,000 times', icon: '🌌' },
+  { id: 'clicks_1m', name: 'Eternal Clicker', description: 'Click 1,000,000 times', icon: '♾️' },
   { id: 'crystals_100', name: 'Crystal Collector', description: 'Earn 100 total crystals', icon: '💎' },
   { id: 'crystals_1000', name: 'Crystal Hoarder', description: 'Earn 1,000 total crystals', icon: '💰' },
   { id: 'crystals_10000', name: 'Crystal Tycoon', description: 'Earn 10,000 total crystals', icon: '🏦' },
   { id: 'crystals_100000', name: 'Crystal Empire', description: 'Earn 100,000 total crystals', icon: '🏰' },
   { id: 'crystals_1m', name: 'Crystal God', description: 'Earn 1,000,000 total crystals', icon: '🌍' },
+  { id: 'crystals_10m', name: 'Crystal Universe', description: 'Earn 10M total crystals', icon: '🪐' },
+  { id: 'crystals_1b', name: 'Crystal Multiverse', description: 'Earn 1B total crystals', icon: '🌌' },
+  { id: 'crystals_1t', name: 'Crystal Infinity', description: 'Earn 1T total crystals', icon: '🌀' },
   { id: 'upgrade_first', name: 'First Upgrade', description: 'Buy your first upgrade', icon: '⬆️' },
   { id: 'upgrade_10', name: 'Upgrade Enthusiast', description: 'Buy 10 total upgrades', icon: '🔧' },
   { id: 'upgrade_50', name: 'Upgrade Master', description: 'Buy 50 total upgrades', icon: '🛠️' },
+  { id: 'upgrade_100', name: 'Upgrade Expert', description: 'Buy 100 total upgrades', icon: '🔧' },
+  { id: 'upgrade_500', name: 'Upgrade Legend', description: 'Buy 500 total upgrades', icon: '⚙️' },
+  { id: 'upgrade_1000', name: 'Upgrade God', description: 'Buy 1,000 total upgrades', icon: '🏗️' },
   { id: 'combo_5', name: 'Combo Starter', description: 'Reach a 5x combo', icon: '🔥' },
   { id: 'combo_10', name: 'Combo Master', description: 'Reach a 10x combo', icon: '💥' },
   { id: 'combo_25', name: 'Combo Legend', description: 'Reach a 25x combo', icon: '🌀' },
   { id: 'combo_50', name: 'Combo God', description: 'Reach a 50x combo', icon: '☄️' },
   { id: 'crit_first', name: 'Critical Thinker', description: 'Land your first critical hit', icon: '🎯' },
   { id: 'crit_100', name: 'Critical Master', description: 'Land 100 critical hits', icon: '💫' },
+  { id: 'crit_500', name: 'Critical Legend', description: 'Land 500 critical hits', icon: '💥' },
+  { id: 'crit_1000', name: 'Critical God', description: 'Land 1,000 critical hits', icon: '⚡' },
   { id: 'golden_first', name: 'Lucky Strike', description: 'Click a golden crystal', icon: '🥇' },
   { id: 'golden_10', name: 'Golden Touch', description: 'Click 10 golden crystals', icon: '✨' },
   { id: 'golden_50', name: 'Golden King', description: 'Click 50 golden crystals', icon: '👑' },
+  { id: 'golden_100', name: 'Golden Emperor', description: 'Click 100 golden crystals', icon: '🏅' },
+  { id: 'golden_500', name: 'Golden Deity', description: 'Click 500 golden crystals', icon: '🌟' },
   { id: 'prestige_1', name: 'Rebirth', description: 'Prestige for the first time', icon: '🔄' },
   { id: 'prestige_5', name: 'Experienced Soul', description: 'Prestige 5 times', icon: '🌈' },
+  { id: 'prestige_10', name: 'Prestige Veteran', description: 'Prestige 10 times', icon: '🔮' },
+  { id: 'prestige_25', name: 'Prestige Legend', description: 'Prestige 25 times', icon: '👑' },
+  { id: 'prestige_50', name: 'Transcendent', description: 'Prestige 50 times', icon: '🌌' },
   { id: 'auto_10', name: 'Automated', description: 'Have 10+ auto crystals/sec', icon: '⚙️' },
   { id: 'auto_100', name: 'Factory Owner', description: 'Have 100+ auto crystals/sec', icon: '🏭' },
+  { id: 'auto_500', name: 'Industrialist', description: 'Have 500+ auto crystals/sec', icon: '🏗️' },
+  { id: 'auto_1000', name: 'Auto God', description: 'Have 1,000+ auto crystals/sec', icon: '🤖' },
   { id: 'speed_5', name: 'Speed Demon', description: 'Reach 5+ clicks per second', icon: '⚡' },
   { id: 'speed_10', name: 'Click Machine', description: 'Reach 10+ clicks per second', icon: '🤖' },
+  { id: 'speed_15', name: 'Inhuman Speed', description: 'Reach 15+ clicks per second', icon: '💨' },
+  { id: 'speed_20', name: 'Speed Lord', description: 'Reach 20+ clicks per second', icon: '🌪️' },
   { id: 'event_first', name: 'Eventful', description: 'Experience your first event', icon: '🎉' },
   { id: 'event_10', name: 'Event Veteran', description: 'Experience 10 events', icon: '🎊' },
+  { id: 'event_25', name: 'Event Master', description: 'Experience 25 events', icon: '🎪' },
+  { id: 'event_50', name: 'Event Lord', description: 'Experience 50 events', icon: '🎭' },
+  { id: 'areas_3', name: 'World Traveler', description: 'Unlock 3 mine locations', icon: '✈️' },
+  { id: 'areas_5', name: 'Globe Trotter', description: 'Unlock 5 mine locations', icon: '🌎' },
+  { id: 'areas_10', name: 'Mining Mogul', description: 'Unlock 10 mine locations', icon: '🗺️' },
+  { id: 'areas_15', name: 'Planetary Explorer', description: 'Unlock 15 mine locations', icon: '🚀' },
+  { id: 'areas_all', name: 'Master of the Cosmos', description: 'Unlock all mine locations', icon: '🌌' },
+  { id: 'multiplier_5', name: 'Power Surge', description: 'Reach a 5x multiplier', icon: '📈' },
+  { id: 'multiplier_10', name: 'Multiplier King', description: 'Reach a 10x multiplier', icon: '🚀' },
+  { id: 'multiplier_50', name: 'Exponential Growth', description: 'Reach a 50x multiplier', icon: '📈' },
+  { id: 'multiplier_100', name: 'Multiplier God', description: 'Reach a 100x multiplier', icon: '💠' },
+  { id: 'clickpower_10', name: 'Strong Arm', description: 'Reach 10+ click power', icon: '💪' },
+  { id: 'clickpower_100', name: 'Crystal Crusher', description: 'Reach 100+ click power', icon: '🔨' },
+  { id: 'clickpower_1000', name: 'Crystal Annihilator', description: 'Reach 1,000+ click power', icon: '💣' },
+  { id: 'session_10k', name: 'Productive Session', description: 'Earn 10,000 crystals in one session', icon: '📊' },
+  { id: 'session_1m', name: 'Epic Session', description: 'Earn 1M crystals in one session', icon: '🏆' },
+  { id: 'session_1b', name: 'Legendary Session', description: 'Earn 1B crystals in one session', icon: '👑' },
+  { id: 'prestige_points_10', name: 'Prestige Power', description: 'Accumulate 10+ prestige points', icon: '✨' },
+  { id: 'prestige_points_50', name: 'Prestige Force', description: 'Accumulate 50+ prestige points', icon: '💫' },
+  { id: 'prestige_points_100', name: 'Prestige Almighty', description: 'Accumulate 100+ prestige points', icon: '🌟' },
+  { id: 'offline_earn', name: 'Idle Riches', description: 'Earn crystals while offline', icon: '😴' },
+  { id: 'offline_big', name: 'Sleeping Millionaire', description: 'Earn 1M+ crystals while offline', icon: '🛌' },
   { id: 'reached_zz', name: 'Beyond Infinity', description: 'Reach ZZ crystals — the absolute limit', icon: '🌀' },
 ] as const;
 
@@ -659,37 +701,80 @@ function buildAchievementConditions(): Achievement[] {
     unlocked: false,
     condition: (s: GameState) => {
       const ul = s.upgrades.reduce((sum, u) => sum + u.level, 0);
+      const areaCount = s.unlockedAreas.length;
       switch (a.id) {
         case 'first_click': return s.totalClicks >= 1;
         case 'clicks_100': return s.totalClicks >= 100;
         case 'clicks_1000': return s.totalClicks >= 1000;
         case 'clicks_10000': return s.totalClicks >= 10000;
         case 'clicks_50000': return s.totalClicks >= 50000;
+        case 'clicks_100k': return s.totalClicks >= 100000;
+        case 'clicks_500k': return s.totalClicks >= 500000;
+        case 'clicks_1m': return s.totalClicks >= 1000000;
         case 'crystals_100': return s.totalEarned >= 100;
         case 'crystals_1000': return s.totalEarned >= 1000;
         case 'crystals_10000': return s.totalEarned >= 10000;
         case 'crystals_100000': return s.totalEarned >= 100000;
         case 'crystals_1m': return s.totalEarned >= 1000000;
+        case 'crystals_10m': return s.totalEarned >= 10000000;
+        case 'crystals_1b': return s.totalEarned >= 1e9;
+        case 'crystals_1t': return s.totalEarned >= 1e12;
         case 'upgrade_first': return ul >= 1;
         case 'upgrade_10': return ul >= 10;
         case 'upgrade_50': return ul >= 50;
+        case 'upgrade_100': return ul >= 100;
+        case 'upgrade_500': return ul >= 500;
+        case 'upgrade_1000': return ul >= 1000;
         case 'combo_5': return s.maxCombo >= 5;
         case 'combo_10': return s.maxCombo >= 10;
         case 'combo_25': return s.maxCombo >= 25;
         case 'combo_50': return s.maxCombo >= 50;
         case 'crit_first': return s.totalCrits >= 1;
         case 'crit_100': return s.totalCrits >= 100;
+        case 'crit_500': return s.totalCrits >= 500;
+        case 'crit_1000': return s.totalCrits >= 1000;
         case 'golden_first': return s.goldenClicks >= 1;
         case 'golden_10': return s.goldenClicks >= 10;
         case 'golden_50': return s.goldenClicks >= 50;
+        case 'golden_100': return s.goldenClicks >= 100;
+        case 'golden_500': return s.goldenClicks >= 500;
         case 'prestige_1': return s.prestige >= 1;
         case 'prestige_5': return s.prestige >= 5;
+        case 'prestige_10': return s.prestige >= 10;
+        case 'prestige_25': return s.prestige >= 25;
+        case 'prestige_50': return s.prestige >= 50;
         case 'auto_10': return s.autoRate >= 10;
         case 'auto_100': return s.autoRate >= 100;
+        case 'auto_500': return s.autoRate >= 500;
+        case 'auto_1000': return s.autoRate >= 1000;
         case 'speed_5': return s.clicksPerSecond >= 5;
         case 'speed_10': return s.clicksPerSecond >= 10;
+        case 'speed_15': return s.clicksPerSecond >= 15;
+        case 'speed_20': return s.clicksPerSecond >= 20;
         case 'event_first': return s.totalEvents >= 1;
         case 'event_10': return s.totalEvents >= 10;
+        case 'event_25': return s.totalEvents >= 25;
+        case 'event_50': return s.totalEvents >= 50;
+        case 'areas_3': return areaCount >= 3;
+        case 'areas_5': return areaCount >= 5;
+        case 'areas_10': return areaCount >= 10;
+        case 'areas_15': return areaCount >= 15;
+        case 'areas_all': return areaCount >= AREAS.length;
+        case 'multiplier_5': return s.multiplier >= 5;
+        case 'multiplier_10': return s.multiplier >= 10;
+        case 'multiplier_50': return s.multiplier >= 50;
+        case 'multiplier_100': return s.multiplier >= 100;
+        case 'clickpower_10': return s.clickPower >= 10;
+        case 'clickpower_100': return s.clickPower >= 100;
+        case 'clickpower_1000': return s.clickPower >= 1000;
+        case 'session_10k': return s.sessionEarned >= 10000;
+        case 'session_1m': return s.sessionEarned >= 1000000;
+        case 'session_1b': return s.sessionEarned >= 1e9;
+        case 'prestige_points_10': return s.prestigePoints >= 10;
+        case 'prestige_points_50': return s.prestigePoints >= 50;
+        case 'prestige_points_100': return s.prestigePoints >= 100;
+        case 'offline_earn': return s.offlineEarned > 0;
+        case 'offline_big': return s.offlineEarned >= 1000000;
         case 'reached_zz': return s.crystals >= 1e2040;
         default: return false;
       }
