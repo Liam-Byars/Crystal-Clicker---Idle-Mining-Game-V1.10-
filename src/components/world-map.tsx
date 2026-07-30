@@ -61,8 +61,7 @@ function MineCard({
       `}
       whileTap={isUnlocked && !isCurrent ? { scale: 0.96 } : undefined}
     >
-      {/* Icon + Active badge */
-      <div className="flex items-start justify-between mb-1.5">
+      {/* Icon + Active badge */}      <div className="flex items-start justify-between mb-1.5">
         <div className={`
           w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center text-xl sm:text-2xl flex-shrink-0
           ${isCurrent
