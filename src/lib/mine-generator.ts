@@ -422,17 +422,18 @@ function formatNumber(n: number): string {
   const suffixes = ['', 'K', 'M', 'B', 'T'];
   const doubleLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   if (exp < 3) return n.toFixed(0);
-  if (exp < 12) {
+  if (exp < 15) {
     const si = Math.floor((exp - 3) / 3);
     return (n / Math.pow(1000, si + 1)).toFixed(1) + suffixes[si + 1];
   }
-  const dlIdx = Math.floor((exp - 12) / 3);
+  const dlIdx = Math.floor((exp - 15) / 3);
   const first = Math.floor(dlIdx / 26);
   const second = dlIdx % 26;
   if (first >= 26) return 'ZZ+';
   const letter1 = doubleLetters[first];
   const letter2 = doubleLetters[second];
-  return letter1 + letter2;
+  const divisor = Math.pow(10, 15 + dlIdx * 3);
+  return (n / divisor).toFixed(1) + letter1 + letter2;
 }
 
 /** Cycle through a themed array with wrapping */

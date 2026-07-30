@@ -1,0 +1,611 @@
+     1→// Mine Generator for Crystal Clicker
+     2→// Generates 300 additional mining areas and their upgrades
+     3→// This file is self-contained and exports typed arrays matching gameStore.ts interfaces
+     4→
+     5→// ====== Type Imports ======
+     6→interface Area {
+     7→  id: string;
+     8→  name: string;
+     9→  location: string;
+    10→  flag: string;
+    11→  gem: string;
+    12→  description: string;
+    13→  icon: string;
+    14→  unlockAt: number;
+    15→  gradient: string;
+    16→  glowColor: string;
+    17→  bgAccent: string;
+    18→}
+    19→
+    20→interface Upgrade {
+    21→  id: string;
+    22→  name: string;
+    23→  description: string;
+    24→  icon: string;
+    25→  baseCost: number;
+    26→  costMultiplier: number;
+    27→  level: number;
+    28→  effect: 'clickPower' | 'autoRate' | 'multiplier' | 'goldenChance' | 'critChance';
+    29→  value: number;
+    30→  maxLevel?: number;
+    31→}
+    32→
+    33→// ====== Constants ======
+    34→const TOTAL_MINES = 300;
+    35→const EXPONENT_START = 49;
+    36→const EXPONENT_END = 300;
+    37→const EXPONENT_RANGE = EXPONENT_END - EXPONENT_START;
+    38→
+    39→// ====== Theme Data ======
+    40→// Each theme has pools of names, locations, gems, icons, descriptions
+    41→// Theme boundaries: Deep Space (0-36), Galactic Core (37-76), Intergalactic (77-126),
+    42→// Dimensional (127-176), Cosmic Horror (177-226), Abstract (227-276), Beyond (277+)
+    43→
+    44→const THEMES = {
+    45→  deepSpace: {
+    46→    names: [
+    47→      'Andromeda Spiral', 'Triangulum Depths', 'Whirlpool Galaxy', 'Sombrero Nebula',
+    48→      'Pinwheel Galaxy', 'Centaurus A Core', 'Barnard\'s Loop', 'Veil Nebula Heart',
+    49→      'Horsehead Nebula', 'Eagle Nebula Spire', 'Crab Nebula Pulsar', 'Ring Nebula Eye',
+    50→      'Carina Nebula Core', 'Orion Arm Depths', 'Perseus Arm Rift', 'Sagittarius Arm Flow',
+    51→      'Cygnus X-1 Field', 'Vela Supernova', 'Cassiopeia A Remnant', 'Gum Nebula Expanse',
+    52→      'North America Nebula', 'Pelican Nebula Wing', 'Rosette Nebula Center', 'Flame Nebula Core',
+    53→      'Monkey Head Nebula', 'Tarantula Nebula Web', 'Lagoon Nebula Shore', 'Omega Nebula Peak',
+    54→      'Trifid Nebula Fork', 'Helix Nebula Eye', 'Cat\'s Eye Nebula', 'Dumbbell Nebula Glow',
+    55→      'Saturn Nebula Ring', 'Bug Nebula Wings', 'Ant Nebula Core', 'Butterfly Nebula Wing',
+    56→    ],
+    57→    locations: [
+    58→      'Andromeda Galaxy', 'Triangulum Galaxy', 'Whirlpool Galaxy', 'Virgo Cluster',
+    59→      'Sombrero Galaxy', 'Centaurus A', 'Orion Arm', 'Perseus Arm',
+    60→      'Sagittarius Arm', 'Cygnus Arm', 'Local Bubble', 'Gould Belt',
+    61→      'Orion Nebula', 'Carina Nebula', 'Eagle Nebula', 'Crab Nebula',
+    62→      'Ring Nebula', 'Veil Nebula', 'Helix Nebula', 'Cat\'s Eye Nebula',
+    63→    ],
+    64→    gems: [
+    65→      'Andromedite', 'Triangulum Crystal', 'Whirlpool Quartz', 'Sombrero Sapphire',
+    66→      'Pinwheel Opal', 'Centaurite', 'Barnard Gem', 'Veil Emerald',
+    67→      'Horsehead Ruby', 'Eagle Crystal', 'Crab Pulsar Gem', 'Ring Diamond',
+    68→      'Carina Fire Opal', 'Orion Arm Crystal', 'Perseus Garnet', 'Sagittarius Topaz',
+    69→      'Cygnus Sapphire', 'Vela Amethyst', 'Cassiopeia Diamond', 'Gum Pearl',
+    70→    ],
+    71→    icons: [
+    72→      '🌌', '🌀', '✨', '💫', '⭐', '🌟', '🔮', '💎',
+    73→      '💠', '⚡', '🪐', '☄️', '🌌', '🌀', '✨', '💫',
+    74→      '⭐', '🌟', '🔮', '💎',
+    75→    ],
+    76→    descs: [
+    77→      'Crystals born in the spiral arms of a distant galaxy',
+    78→      'Stellar remnants compressed into luminous gems',
+    79→      'Nebular dust condensed over millions of years',
+    80→      'Pulsar radiation forging exotic crystalline structures',
+    81→      'Quasar emissions crystallized at the edge of visibility',
+    82→      'Supernova remnants yielding impossibly dense gems',
+    83→      'Dark nebulae hiding veins of unknown crystal',
+    84→      'Stellar nursery gems still warm from formation',
+    85→      'Binary star system producing synchronized crystal growth',
+    86→      'Cosmic ray bombardment creating unique gem matrices',
+    87→    ],
+    88→  },
+    89→  galacticCore: {
+    90→    names: [
+    91→      'Sagittarius A* Perimeter', 'Galactic Bar Depths', 'Nuclear Star Cluster',
+    92→      'Supermassive Core Rift', 'Accretion Disk Shards', 'Magnetar Field Forge',
+    93→      'Galactic Center Pulse', 'Core Winding Spire', 'Central Bulge Crystal Cavern',
+    94→      'Stellar Black Hole Ring', 'Gravitational Lens Vein', 'Sgr A* Event Shell',
+    95→      'Galactic Nucleus Heart', 'Core Stream Crystal Flow', 'Magnetar Storm Gemfield',
+    96→      'Supermassive Anomaly', 'Nuclear Reaction Crystals', 'Core Collapse Remnant',
+    97→      'Gravitational Well Depths', 'Galactic Rotation Hub', 'Inner Bar Crystal Lode',
+    98→      'Central Mass Extractor', 'Core Magnetic Thread', 'Sagittarius Stream Crystal',
+    99→      'Nuclear Furnace Gems', 'Accretion Shock Crystal', 'Core Plasma Crystal',
+   100→      'Galactic Anchor Point', 'Supermassive Ring Shard', 'Magnetar Pulse Crystal',
+   101→      'Core Singularity Gem', 'Galactic Pivot Crystal', 'Nuclear Bulge Opal',
+   102→      'Central Void Crystal', 'Sgr A* Corona Gem', 'Core Dynamo Crystal',
+   103→      'Galactic Heart Gem', 'Supermassive Crown Crystal',
+   104→    ],
+   105→    locations: [
+   106→      'Galactic Center', 'Sagittarius A*', 'Nuclear Bulge', 'Galactic Bar',
+   107→      'Supermassive Core', 'Accretion Disk', 'Magnetar Field', 'Core Winding',
+   108→      'Central Bulge', 'Stellar Graveyard', 'Dark Matter Halo', 'Core Stream',
+   109→    ],
+   110→    gems: [
+   111→      'Graviton Crystal', 'Singularity Gem', 'Accretion Diamond', 'Magnetar Shard',
+   112→      'Core Plasma Gem', 'Nuclear Crystal', 'Supermassive Opal', 'Event Horizon Ruby',
+   113→      'Dark Matter Crystal', 'Core Remnant Gem', 'Gravitational Lens Sapphire', 'Plasma Diamond',
+   114→      'Magnetar Emerald', 'Galactic Nucleus Crystal', 'Core Anomaly Gem',
+   115→    ],
+   116→    icons: [
+   117→      '🌀', '⚫', '🔴', '🟤', '⚡', '💫', '🕳️', '🔥',
+   118→      '💥', '⚛️', '🌀', '⚫', '🔴', '🟤', '⚡', '💫',
+   119→    ],
+   120→    descs: [
+   121→      'Crystals formed in the gravitational maelstrom of the galactic center',
+   122→      'Supermassive black hole accretion disk yielding impossible gems',
+   123→      'Magnetar magnetic fields forging exotic crystalline matter',
+   124→      'Dark matter concentrations crystallized by extreme gravity',
+   125→      'Nuclear reactions in the core producing trans-stellar gems',
+   126→      'Gravitational lensing revealing crystal veins in spacetime',
+   127→      'Stellar remnants orbiting the core compressed into gems',
+   128→      'Accretion shock waves creating unique crystal formations',
+   129→    ],
+   130→  },
+   131→  intergalactic: {
+   132→    names: [
+   133→      'Virgo Supercluster Core', 'Great Attractor Depths', 'Laniakea Heart',
+   134→      'Cosmic Web Junction', 'Boötes Void Edge', 'Sloan Great Wall Crystal',
+   135→      'Perseus-Pisces Filament', 'Shapley Supercluster', 'Hydra-Centaurus Ridge',
+   136→      'Pisces-Cetus Wall Vein', 'Sculptor Void Crystal', 'Coma Cluster Core',
+   137→      'Norma Cluster Gemfield', 'Hercules Supercluster', 'Leo Supercluster Rift',
+   138→      'Ursa Major Filament', 'Cetus Void Crystal', 'Eridanus Void Depths',
+   139→      'Microscopium Void Gem', 'Canes Venatici Cluster', 'Fornax Cluster Crystal',
+   140→      'Centaurus Wall Spine', 'Pavo-Indus Supercluster', 'Shapley Attractor Core',
+   141→      'Virgo Filament Crystal', 'Great Wall Extension', 'Boötes Void Center',
+   142→      'Cosmic Web Node', 'Intergalactic Bridge Crystal', 'Void Wall Gemfield',
+   143→      'Supercluster Remnant', 'Filament Junction Crystal', 'Cluster Core Diamond',
+   144→      'Void Boundary Gem', 'Cosmic Thread Crystal', 'Web Spine Sapphire',
+   145→      'Galaxy Stream Crystal', 'Void Ocean Ruby', 'Filament End Crystal',
+   146→    ],
+   147→    locations: [
+   148→      'Virgo Supercluster', 'Laniakea', 'Great Attractor', 'Cosmic Web',
+   149→      'Boötes Void', 'Sloan Great Wall', 'Shapley Supercluster', 'Perseus-Pisces',
+   150→      'Hydra-Centaurus', 'Intergalactic Void', 'Coma Cluster', 'Norma Cluster',
+   151→    ],
+   152→    gems: [
+   153→      'Void Crystal', 'Filament Gem', 'Web Sapphire', 'Cluster Diamond',
+   154→      'Supercluster Ruby', 'Void Opal', 'Cosmic Thread Crystal', 'Wall Emerald',
+   155→      'Attractor Garnet', 'Bridge Crystal', 'Node Diamond', 'Rift Sapphire',
+   156→      'Stream Topaz', 'Void Pearl', 'Filament Amethyst',
+   157→    ],
+   158→    icons: [
+   159→      '🌑', '🕸️', '🌌', '🔮', '💎', '⚫', '💫', '✨',
+   160→      '🪐', '🌀', '🌑', '🕸️', '🌌', '🔮', '💎', '⚫',
+   161→    ],
+   162→    descs: [
+   163→      'Crystals drifting in the vast emptiness between galaxies',
+   164→      'Cosmic web filaments laced with crystalline structures',
+   165→      'Galaxy clusters harboring rare intergalactic gems',
+   166→      'Void boundaries where crystallized dark energy forms',
+   167→      'Supercluster collisions forging super-dense crystal deposits',
+   168→      'Filament junctions concentrating exotic matter into gems',
+   169→      'Ancient voids containing primordial crystal formations',
+   170→      'Intergalactic bridges with crystallized plasma strands',
+   171→    ],
+   172→  },
+   173→  dimensional: {
+   174→    names: [
+   175→      'Dimensional Rift Alpha', 'Parallel Universe Echo', 'Timeline Branch Crystal',
+   176→      'Brane Collision Vein', 'String Theory Gemfield', 'Quantum Foam Crystal',
+   177→      'Multiverse Junction', 'Phase Space Diamond', 'Hilbert Space Ruby',
+   178→      'Minkowski Spacetime Gem', 'Wormhole Tunnel Crystal', 'Quantum Entangle Gem',
+   179→      'Dimension Fold Sapphire', 'Reality Shimmer Opal', 'Probability Crystal Vein',
+   180→      'Eigenstate Diamond', 'Superposition Gem', 'Quantum Tunnel Crystal',
+   181→      'Brane World Sapphire', 'Membrane Crystal Field', 'Extra Dimension Crystal',
+   182→      'Calabi-Yau Gem', 'Compactified Dimension Ruby', 'String Resonance Crystal',
+   183→      'Multiverse Core Diamond', 'Timeline Convergence Gem', 'Reality Anchor Crystal',
+   184→      'Dimension Barrier Sapphire', 'Quantum Fluctuation Gem', 'Phase Transition Crystal',
+   185→      'Brane Tear Diamond', 'Spacetime Fabric Gem', 'Dimension Weave Crystal',
+   186→      'Quantum Decoherence Ruby', 'Reality Fork Sapphire', 'Timeline Merge Gem',
+   187→      'Multiverse Echo Crystal', 'Dimensional Rift Omega', 'Reality Core Diamond',
+   188→    ],
+   189→    locations: [
+   190→      'Dimensional Rift', 'Parallel Universe', 'Multiverse', 'Brane Space',
+   191→      'Quantum Realm', 'Phase Space', 'Wormhole', 'Spacetime Fabric',
+   192→      'Extra Dimensions', 'Reality Boundary', 'Timeline Branch', 'Quantum Foam',
+   193→    ],
+   194→    gems: [
+   195→      'Dimension Crystal', 'Brane Gem', 'Quantum Diamond', 'Timeline Ruby',
+   196→      'Multiverse Sapphire', 'Phase Crystal', 'String Resonance Gem', 'Reality Opal',
+   197→      'Eigenstate Diamond', 'Superposition Gem', 'Wormhole Crystal', 'Quantum Emerald',
+   198→      'Dimensional Fold Gem', 'Probability Crystal', 'Hilbert Diamond',
+   199→    ],
+   200→    icons: [
+   201→      '🌀', '🔮', '♾️', '🔀', '🌀', '💎', '⚡', '🌌',
+   202→      '💫', '🔮', '♾️', '🔀', '🌀', '💎', '⚡', '🌌',
+   203→    ],
+   204→    descs: [
+   205→      'Crystals existing simultaneously in multiple dimensions',
+   206→      'Brane collision zones producing gems from colliding realities',
+   207→      'Quantum superposition gems that exist until observed',
+   208→      'Wormhole-extracted crystals from parallel timelines',
+   209→      'String theory vibrations crystallized into physical form',
+   210→      'Phase space regions where probability becomes solid crystal',
+   211→      'Extra-dimensional gem formations beyond 3D perception',
+   212→      'Reality boundary crystals at the edge of existence',
+   213→    ],
+   214→  },
+   215→  cosmicHorror: {
+   216→    names: [
+   217→      'Azathoth\'s Dream Crystal', 'Yog-Sothoth Gate Gem', 'Nyarlathotep Crawling Chaos',
+   218→      'Cthulhu Tomb Crystal', 'Shoggoth Pit Gem', 'Elder Thing Relic',
+   219→      'Y\'ha-nthlei Deep Crystal', 'R\'lyeh Sunken Gem', 'Carcosa Pale Crystal',
+   220→      'Hastur Yellow Sign Gem', 'Tindalos Angular Crystal', 'Yith Gem Vault',
+   221→      'Mi-Go Mining Outpost', 'Dark Young Crystal Grove', 'Shamballah Hidden Gem',
+   222→      'Kadath Crystal Peak', 'Unknown Kadath Gem', 'Plateau of Leng Crystal',
+   223→      'Nameless City Gem', 'Cyclopean Ruins Crystal', 'Non-Euclidean Gem Cavern',
+   224→      'Eldritch Void Crystal', 'Incomprehensible Depth Gem', 'Madness Vein Crystal',
+   225→      'Whispering Shadow Gem', 'Abyssal Horror Crystal', 'Primordial Entity Gem',
+   226→      'Void God\'s Tear Crystal', 'Omniscient Terror Gem', 'Cosmic Dread Crystal',
+   227→      'Unspeakable Void Gem', 'Eternal Nightmare Crystal', 'Ancient Horror Gem',
+   228→      'Chaos Entity Crystal', 'Void Whisper Gem', 'Reality Fracture Crystal',
+   229→      'Infinite Madness Gem', 'Abomination Core Crystal', 'Beyond Sanity Gem',
+   230→    ],
+   231→    locations: [
+   232→      'The Void Beyond', 'Eldritch Realm', 'R\'lyeh', 'Carcosa',
+   233→      'Unknown Kadath', 'The Dreamlands', 'Plateau of Leng', 'Y\'ha-nthlei',
+   234→      'Abyssal Depths', 'The Nameless City', 'Non-Euclidean Space', 'The Outer Dark',
+   235→    ],
+   236→    gems: [
+   237→      'Madness Crystal', 'Void Gem', 'Eldritch Diamond', 'Horror Ruby',
+   238→      'Chaos Sapphire', 'Dread Opal', 'Whisper Gem', 'Abyssal Crystal',
+   239→      'Terror Diamond', 'Nightmare Emerald', 'Entity Gem', 'Fracture Crystal',
+   240→      'Shadow Ruby', 'Primordial Gem', 'Sanity Crystal',
+   241→    ],
+   242→    icons: [
+   243→      '👁️', '🐙', '🌀', '🔮', '💀', '🌑', '⛔', '🫀',
+   244→      '🕳️', '👁️', '🐙', '🌀', '🔮', '💀', '🌑', '⛔',
+   245→    ],
+   246→    descs: [
+   247→      'Crystals that whisper forbidden knowledge to those who hold them',
+   248→      'Gems formed in the non-Euclidean geometry of elder realms',
+   249→      'Crystallized fragments of cosmic entities\' dreams',
+   250→      'Gems that exist in angles impossible for mortal perception',
+   251→      'Crystals from cities built before the dawn of time',
+   252→      'Void-matter gems that drive lesser minds to madness',
+   253→      'Crystallized entropy from dying universes beyond our own',
+   254→      'Gems pulsing with the heartbeat of sleeping cosmic horrors',
+   255→    ],
+   256→  },
+   257→  abstract: {
+   258→    names: [
+   259→      'Gödel\'s Incompleteness Gem', 'Riemann Zeta Crystal', 'Euler\'s Identity Diamond',
+   260→      'Fibonacci Spiral Crystal', 'Golden Ratio Gem', 'Prime Number Void Crystal',
+   261→      'Infinity Prism Gem', 'Zero Point Crystal', 'Pi Dimension Sapphire',
+   262→      'Euler-Mascheroni Gem', 'Cantor Set Crystal', 'Mandelbrot Fractal Gem',
+   263→      'Julia Set Crystal', 'Feigenbaum Constant Gem', 'Aleph Null Crystal',
+   264→      'Aleph One Sapphire', 'Continuum Hypothesis Gem', 'Poincaré Conjecture Crystal',
+   265→      'Fermat\'s Last Theorem Gem', 'Four Color Crystal', 'Gödel Number Diamond',
+   266→      'Turing Machine Crystal', 'Von Neumann Gem', 'Bayes\' Theorem Crystal',
+   267→      'Shannon Entropy Gem', 'Maxwell\'s Demon Crystal', 'Schrödinger\'s Cat Gem',
+   268→      'Heisenberg Uncertainty Crystal', 'Planck Scale Diamond', 'String Landscape Gem',
+   269→      'Calabi-Yau Manifold Crystal', 'M-Theory Brane Gem', 'AdS/CFT Crystal',
+   270→      'Holographic Principle Gem', 'Noether\'s Theorem Crystal', 'Lagrange Point Diamond',
+   271→      'Hamiltonian Gem', 'Feynman Path Crystal', 'Wick Rotation Gem',
+   272→      'Renormalization Crystal', 'Asymptotic Freedom Gem', 'Platonic Ideal Crystal',
+   273→    ],
+   274→    locations: [
+   275→      'Mathematical Plane', 'Abstract Space', 'Conceptual Realm', 'Idea Space',
+   276→      'Logical Domain', 'Theorem Space', 'Axiom Field', 'Proof Universe',
+   277→      'Hilbert Space', 'Phase Space', 'State Space', 'Configuration Space',
+   278→    ],
+   279→    gems: [
+   280→      'Infinity Gem', 'Zero Crystal', 'Pi Diamond', 'Euler Gem',
+   281→      'Fibonacci Crystal', 'Prime Opal', 'Fractal Sapphire', 'Aleph Ruby',
+   282→      'Theorem Crystal', 'Axiom Diamond', 'Proof Gem', 'Logic Crystal',
+   283→      'Concept Gem', 'Abstract Emerald', 'Ideal Crystal',
+   284→    ],
+   285→    icons: [
+   286→      '∞', 'π', '∑', '∏', '∫', '√', 'Δ', 'Ω',
+   287→      'λ', 'φ', 'ε', 'θ', '∞', 'π', '∑', '∏',
+   288→    ],
+   289→    descs: [
+   290→      'Crystals crystallized from pure mathematical truth',
+   291→      'Fractal gems with infinite surface area and zero volume',
+   292→      'Gems existing in the space between mathematical concepts',
+   293→      'Crystals formed from the fabric of logic itself',
+   294→      'Prime number crystals that can never be factored',
+   295→      'Infinity gems containing more than any finite number',
+   296→      'Conceptual crystals that embody abstract ideas',
+   297→      'Gems from the boundary between computable and uncomputable',
+   298→    ],
+   299→  },
+   300→  beyond: {
+   301→    names: [
+   302→      'Omnipresence Crystal', 'Omniscience Gem', 'Omnipotence Diamond',
+   303→      'Absolute Infinity Core', 'Eternal Now Crystal', 'Boundless Expanse Gem',
+   304→      'Ultimate Reality Diamond', 'Supreme Being Crystal', 'Alpha and Omega Gem',
+   305→      'Endless Recursion Crystal', 'Infinite Regress Gem', 'Ultimate Cause Crystal',
+   306→      'Final Frontier Diamond', 'Last Horizon Gem', 'Absolute End Crystal',
+   307→      'Totality Core Gem', 'Everything Crystal', 'All-Encompassing Diamond',
+   308→      'Supreme Unity Gem', 'Final Unity Crystal', 'Cosmic Apex Diamond',
+   309→      'Ultimate Singularity Gem', 'Absolute Zero Crystal', 'Infinite Being Gem',
+   310→      'Eternal Existence Crystal', 'Timeless Gem', 'Spaceless Diamond',
+   311→      'Causeless Cause Crystal', 'Unmoved Mover Gem', 'Prime Mover Crystal',
+   312→      'First Cause Diamond', 'Absolute One Gem', 'Supreme Entity Crystal',
+   313→      'Ultimate Truth Diamond', 'Final Answer Crystal', 'Last Question Gem',
+   314→      'Omega Point Crystal', 'Eschaton Diamond', 'Telos Gem',
+   315→      'Absolute Finality Crystal', 'Beyond Beyond Gem', 'The Last Crystal',
+   316→    ],
+   317→    locations: [
+   318→      'Beyond Existence', 'The Absolute', 'Omniverse', 'Totality',
+   319→      'The Everything', 'Supreme Reality', 'Eternal Realm', 'Infinite Domain',
+   320→      'Ultimate Horizon', 'Final Frontier', 'The End', 'Beyond The End',
+   321→    ],
+   322→    gems: [
+   323→      'Omniscience Crystal', 'Omnipotence Gem', 'Eternity Diamond', 'Infinity Crystal',
+   324→      'Absolute Gem', 'Totality Sapphire', 'Supreme Ruby', 'Ultimate Emerald',
+   325→      'Final Diamond', 'Beyond Gem', 'Omega Crystal', 'Telos Sapphire',
+   326→      'Apex Diamond', 'Zenith Gem', 'Pinnacle Crystal',
+   327→    ],
+   328→    icons: [
+   329→      '🔮', '👁️', '♾️', '🌟', '💫', '✨', '⭐', '☀️',
+   330→      '🌟', '💫', '✨', '⭐', '☀️', '🔮', '👁️', '♾️',
+   331→    ],
+   332→    descs: [
+   333→      'Crystals that exist at the boundary of all possible realities',
+   334→      'Gems embodying the concept of absolute infinity itself',
+   335→      'Crystals from beyond the final frontier of existence',
+   336→      'Gems that contain all knowledge across all possible universes',
+   337→      'Crystals at the absolute end of time and space',
+   338→      'Gems from the omniverse encompassing everything that could ever be',
+   339→      'Crystals at the apex of all possible hierarchies of infinity',
+   340→      'The final gems before the concept of gems ceases to have meaning',
+   341→    ],
+   342→  },
+   343→} as const;
+   344→
+   345→type ThemeKey = keyof typeof THEMES;
+   346→
+   347→// ====== Color Palettes ======
+   348→const COLOR_PALETTES = [
+   349→  // Purple/Violet
+   350→  { gradient: 'from-purple-500 via-violet-600 to-purple-800', glow: 'rgba(168, 85, 247, 0.5)', bg: 'bg-purple-950/20' },
+   351→  { gradient: 'from-violet-400 via-purple-600 to-indigo-800', glow: 'rgba(167, 139, 250, 0.5)', bg: 'bg-violet-950/20' },
+   352→  { gradient: 'from-fuchsia-500 via-purple-700 to-violet-900', glow: 'rgba(217, 70, 239, 0.5)', bg: 'bg-fuchsia-950/20' },
+   353→  // Red/Orange
+   354→  { gradient: 'from-red-500 via-orange-600 to-red-800', glow: 'rgba(239, 68, 68, 0.5)', bg: 'bg-red-950/20' },
+   355→  { gradient: 'from-orange-400 via-red-500 to-rose-700', glow: 'rgba(251, 146, 60, 0.5)', bg: 'bg-orange-950/20' },
+   356→  { gradient: 'from-rose-400 via-pink-600 to-red-900', glow: 'rgba(244, 114, 182, 0.5)', bg: 'bg-rose-950/20' },
+   357→  // Green/Teal
+   358→  { gradient: 'from-emerald-400 via-teal-600 to-green-800', glow: 'rgba(52, 211, 153, 0.5)', bg: 'bg-emerald-950/20' },
+   359→  { gradient: 'from-teal-400 via-cyan-600 to-emerald-800', glow: 'rgba(45, 212, 191, 0.5)', bg: 'bg-teal-950/20' },
+   360→  { gradient: 'from-green-400 via-lime-600 to-emerald-800', glow: 'rgba(74, 222, 128, 0.5)', bg: 'bg-green-950/20' },
+   361→  // Cyan/Blue
+   362→  { gradient: 'from-cyan-400 via-sky-600 to-blue-800', glow: 'rgba(34, 211, 238, 0.5)', bg: 'bg-cyan-950/20' },
+   363→  { gradient: 'from-sky-400 via-cyan-600 to-teal-800', glow: 'rgba(56, 189, 248, 0.5)', bg: 'bg-sky-950/20' },
+   364→  { gradient: 'from-blue-400 via-indigo-600 to-slate-800', glow: 'rgba(96, 165, 250, 0.5)', bg: 'bg-blue-950/20' },
+   365→  // Yellow/Amber
+   366→  { gradient: 'from-yellow-300 via-amber-500 to-orange-700', glow: 'rgba(253, 224, 71, 0.5)', bg: 'bg-yellow-950/20' },
+   367→  { gradient: 'from-amber-400 via-yellow-500 to-amber-700', glow: 'rgba(251, 191, 36, 0.5)', bg: 'bg-amber-950/20' },
+   368→  { gradient: 'from-lime-300 via-yellow-500 to-amber-700', glow: 'rgba(163, 230, 53, 0.5)', bg: 'bg-lime-950/20' },
+   369→  // Pink/Fuchsia
+   370→  { gradient: 'from-pink-400 via-fuchsia-500 to-purple-700', glow: 'rgba(244, 114, 182, 0.5)', bg: 'bg-pink-950/20' },
+   371→  { gradient: 'from-fuchsia-400 via-pink-600 to-rose-800', glow: 'rgba(232, 121, 249, 0.5)', bg: 'bg-fuchsia-950/20' },
+   372→  { gradient: 'from-rose-300 via-pink-500 to-fuchsia-700', glow: 'rgba(253, 164, 175, 0.5)', bg: 'bg-rose-950/20' },
+   373→  // Dark/Mysterious
+   374→  { gradient: 'from-slate-500 via-gray-700 to-slate-900', glow: 'rgba(148, 163, 184, 0.4)', bg: 'bg-slate-950/30' },
+   375→  { gradient: 'from-zinc-500 via-neutral-700 to-zinc-900', glow: 'rgba(161, 161, 170, 0.4)', bg: 'bg-zinc-950/30' },
+   376→  { gradient: 'from-gray-600 via-slate-800 to-gray-950', glow: 'rgba(107, 114, 128, 0.4)', bg: 'bg-gray-950/30' },
+   377→  // Special
+   378→  { gradient: 'from-white via-gray-200 to-slate-400', glow: 'rgba(255, 255, 255, 0.6)', bg: 'bg-white/10' },
+   379→  { gradient: 'from-amber-200 via-yellow-100 to-white', glow: 'rgba(253, 230, 138, 0.7)', bg: 'bg-amber-950/10' },
+   380→  { gradient: 'from-cyan-200 via-teal-300 to-emerald-400', glow: 'rgba(153, 246, 228, 0.6)', bg: 'bg-cyan-950/10' },
+   381→];
+   382→
+   383→// ====== Utility Functions ======
+   384→
+   385→/** Get theme key for a given mine index (0-299) */
+   386→function getThemeKey(index: number): ThemeKey {
+   387→  if (index < 37) return 'deepSpace';
+   388→  if (index < 77) return 'galacticCore';
+   389→  if (index < 127) return 'intergalactic';
+   390→  if (index < 177) return 'dimensional';
+   391→  if (index < 227) return 'cosmicHorror';
+   392→  if (index < 277) return 'abstract';
+   393→  return 'beyond';
+   394→}
+   395→
+   396→/** Get theme-local index (0-based within the theme) */
+   397→function getThemeLocalIndex(index: number): number {
+   398→  if (index < 37) return index;
+   399→  if (index < 77) return index - 37;
+   400→  if (index < 127) return index - 77;
+   401→  if (index < 177) return index - 127;
+   402→  if (index < 227) return index - 177;
+   403→  if (index < 277) return index - 227;
+   404→  return index - 277;
+   405→}
+   406→
+   407→/** Generate unlockAt value with slightly non-linear scaling */
+   408→function generateUnlockAt(index: number): number {
+   409→  // Non-linear: use a slight curve so early mines are closer together
+   410→  // and later mines spread out more
+   411→  const t = index / (TOTAL_MINES - 1); // 0 to 1
+   412→  // Apply a slight power curve (cubic) for non-linearity
+   413→  const curved = Math.pow(t, 1.15);
+   414→  const exponent = EXPONENT_START + curved * EXPONENT_RANGE;
+   415→  const raw = Math.pow(10, Math.min(exponent, 300)); // Cap at 10^300 (JS safe)
+   416→  return raw;
+   417→}
+   418→
+   419→/** Format a large number for description text */
+   420→function formatNumber(n: number): string {
+   421→  const exp = Math.floor(Math.log10(n));
+   422→  const suffixes = ['', 'K', 'M', 'B', 'T'];
+   423→  const doubleLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+   424→  if (exp < 3) return n.toFixed(0);
+   425→  if (exp < 12) {
+   426→    const si = Math.floor((exp - 3) / 3);
+   427→    return (n / Math.pow(1000, si + 1)).toFixed(1) + suffixes[si + 1];
+   428→  }
+   429→  const dlIdx = Math.floor((exp - 12) / 3);
+   430→  const first = Math.floor(dlIdx / 26);
+   431→  const second = dlIdx % 26;
+   432→  if (first >= 26) return 'ZZ+';
+   433→  const letter1 = doubleLetters[first];
+   434→  const letter2 = doubleLetters[second];
+   435→  return letter1 + letter2;
+   436→}
+   437→
+   438→/** Cycle through a themed array with wrapping */
+   439→function pickFrom<T>(arr: readonly T[], index: number): T {
+   440→  return arr[index % arr.length];
+   441→}
+   442→
+   443→/** Generate a unique snake_case id from a name */
+   444→function nameToId(name: string, index: number): string {
+   445→  // Convert name to snake_case, ensure uniqueness with index suffix
+   446→  const base = name
+   447→    .toLowerCase()
+   448→    .replace(/[^a-z0-9]+/g, '_')
+   449→    .replace(/^_|_$/g, '')
+   450→    .substring(0, 40); // Limit length
+   451→  return `gen_${index}_${base}`;
+   452→}
+   453→
+   454→/** Calculate upgrade values based on mine index */
+   455→function getUpgradeValues(index: number): {
+   456→  clickPower: number;
+   457→  autoRate: number;
+   458→  resonance: number;
+   459→  luckValue: number;
+   460→  ultimate: number;
+   461→} {
+   462→  // Values grow exponentially - roughly 10x every ~20 mines
+   463→  // Starting from the last hand-crafted mine values:
+   464→  // clickPower: 2e24, autoRate: 1e24, resonance: 5e13, ultimate: 1e14
+   465→  const growthFactor = Math.min(Math.pow(10, (index / TOTAL_MINES) * (Math.log10(1e2040 / 1e14))), 1e280);
+   466→  const baseClick = 2e24;
+   467→  const baseAuto = 1e24;
+   468→  const baseResonance = 5e13;
+   469→  const baseUltimate = 1e14;
+   470→
+   471→  return {
+   472→    clickPower: baseClick * growthFactor,
+   473→    autoRate: baseAuto * growthFactor,
+   474→    resonance: baseResonance * growthFactor,
+   475→    luckValue: Math.max(0.00005, 0.0003 * Math.pow(0.98, index)),
+   476→    ultimate: baseUltimate * growthFactor,
+   477→  };
+   478→}
+   479→
+   480→// ====== Main Generation ======
+   481→
+   482→function generateAreas(): Area[] {
+   483→  const areas: Area[] = [];
+   484→
+   485→  for (let i = 0; i < TOTAL_MINES; i++) {
+   486→    const themeKey = getThemeKey(i);
+   487→    const theme = THEMES[themeKey];
+   488→    const localIdx = getThemeLocalIndex(i);
+   489→    const unlockAt = generateUnlockAt(i);
+   490→    const palette = COLOR_PALETTES[i % COLOR_PALETTES.length];
+   491→
+   492→    const name = pickFrom(theme.names, localIdx);
+   493→    const id = nameToId(name, i);
+   494→
+   495→    areas.push({
+   496→      id,
+   497→      name,
+   498→      location: pickFrom(theme.locations, localIdx),
+   499→      flag: pickFrom(theme.icons, localIdx),
+   500→      gem: pickFrom(theme.gems, localIdx),
+   501→      description: pickFrom(theme.descs, localIdx),
+   502→      icon: pickFrom(theme.icons, localIdx),
+   503→      unlockAt,
+   504→      gradient: palette.gradient,
+   505→      glowColor: palette.glow,
+   506→      bgAccent: palette.bg,
+   507→    });
+   508→  }
+   509→
+   510→  return areas;
+   511→}
+   512→
+   513→function generateUpgrades(areas: Area[]): Record<string, Upgrade[]> {
+   514→  const result: Record<string, Upgrade[]> = {};
+   515→
+   516→  for (let i = 0; i < areas.length; i++) {
+   517→    const area = areas[i];
+   518→    const values = getUpgradeValues(i);
+   519→    const unlockAt = area.unlockAt;
+   520→    const isGoldenLuck = i % 2 === 0;
+   521→    const luckEffect = isGoldenLuck ? 'goldenChance' as const : 'critChance' as const;
+   522→    const luckName = isGoldenLuck ? 'Golden Fortune' : 'Critical Fortune';
+   523→    const luckDesc = isGoldenLuck
+   524→      ? `+${(values.luckValue * 100).toFixed(4)}% golden chance per level`
+   525→      : `+${(values.luckValue * 100).toFixed(4)}% crit chance per level`;
+   526→    const luckMaxLevel = Math.max(5, 25 - Math.floor(i / 60));
+   527→
+   528→    const clickVal = values.clickPower;
+   529→    const autoVal = values.autoRate;
+   530→    const resVal = values.resonance;
+   531→    const ultVal = values.ultimate;
+   532→
+   533→    const pickDesc = `+${formatNumber(clickVal)} click power per level`;
+   534→    const drillDesc = `+${formatNumber(autoVal)} crystals/sec`;
+   535→    const resDesc = `x${formatNumber(resVal)} multiplier per level`;
+   536→    const ultDesc = `x${formatNumber(ultVal)} multiplier per level`;
+   537→
+   538→    result[area.id] = [
+   539→      {
+   540→        id: `${area.id}_pick`,
+   541→        name: `${area.gem} Pick`,
+   542→        description: pickDesc,
+   543→        icon: '🔨',
+   544→        baseCost: unlockAt * 0.1,
+   545→        costMultiplier: 1.6,
+   546→        level: 0,
+   547→        effect: 'clickPower',
+   548→        value: clickVal,
+   549→        maxLevel: 2000,
+   550→      },
+   551→      {
+   552→        id: `${area.id}_drill`,
+   553→        name: `${area.gem} Drill`,
+   554→        description: drillDesc,
+   555→        icon: '⚙️',
+   556→        baseCost: unlockAt * 0.2,
+   557→        costMultiplier: 1.6,
+   558→        level: 0,
+   559→        effect: 'autoRate',
+   560→        value: autoVal,
+   561→        maxLevel: 2000,
+   562→      },
+   563→      {
+   564→        id: `${area.id}_resonance`,
+   565→        name: `${area.gem} Resonance`,
+   566→        description: resDesc,
+   567→        icon: '🎵',
+   568→        baseCost: unlockAt * 0.3,
+   569→        costMultiplier: 1.8,
+   570→        level: 0,
+   571→        effect: 'multiplier',
+   572→        value: resVal,
+   573→        maxLevel: 2000,
+   574→      },
+   575→      {
+   576→        id: `${area.id}_luck`,
+   577→        name: luckName,
+   578→        description: luckDesc,
+   579→        icon: '🍀',
+   580→        baseCost: unlockAt * 2.5,
+   581→        costMultiplier: 2.0,
+   582→        level: 0,
+   583→        effect: luckEffect,
+   584→        value: values.luckValue,
+   585→        maxLevel: luckMaxLevel,
+   586→      },
+   587→      {
+   588→        id: `${area.id}_ultimate`,
+   589→        name: `${area.name} Core`,
+   590→        description: ultDesc,
+   591→        icon: area.icon,
+   592→        baseCost: unlockAt * 5,
+   593→        costMultiplier: 2.5,
+   594→        level: 0,
+   595→        effect: 'multiplier',
+   596→        value: ultVal,
+   597→        maxLevel: 2000,
+   598→      },
+   599→    ];
+   600→  }
+   601→
+   602→  return result;
+   603→}
+   604→
+   605→// ====== Generate and Export ======
+   606→const _areas = generateAreas();
+   607→const _upgrades = generateUpgrades(_areas);
+   608→
+   609→export const GENERATED_AREAS: Area[] = _areas;
+   610→export const GENERATED_UPGRADES: Record<string, Upgrade[]> = _upgrades;
+   611→

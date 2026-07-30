@@ -695,7 +695,12 @@ const ACHIEVEMENT_DEFS = [
   { id: 'prestige_points_100', name: 'Prestige Almighty', description: 'Accumulate 100+ prestige points', icon: '🌟' },
   { id: 'offline_earn', name: 'Idle Riches', description: 'Earn crystals while offline', icon: '😴' },
   { id: 'offline_big', name: 'Sleeping Millionaire', description: 'Earn 1M+ crystals while offline', icon: '🛌' },
-  { id: 'reached_zz', name: 'Beyond Infinity', description: 'Reach ZZ crystals — the absolute limit', icon: '🌀' },
+  { id: 'reached_100t', name: 'Centurion Miner', description: 'Reach 100T (100 trillion) total crystals', icon: '💎' },
+  { id: 'reached_aa', name: 'Double Letter Era', description: 'Reach 1AA crystals — entering the deep numbers', icon: '🔤' },
+  { id: 'reached_az', name: 'Alphabet Complete', description: 'Reach 1AZ crystals — first letter cycle done', icon: '✅' },
+  { id: 'reached_ba', name: 'Second Cycle', description: 'Reach 1BA crystals — the second alphabet begins', icon: '🔁' },
+  { id: 'reached_dz', name: 'Deep Number Realm', description: 'Reach 1DZ crystals — deep into the number realm', icon: '🌌' },
+  { id: 'reached_max_tier', name: 'Beyond Computation', description: 'Reach 1e300 crystals — near the limits of JavaScript', icon: '🌀' },
 ] as const;
 
 function buildAchievementConditions(): Achievement[] {
@@ -778,7 +783,12 @@ function buildAchievementConditions(): Achievement[] {
         case 'prestige_points_100': return s.prestigePoints >= 100;
         case 'offline_earn': return s.offlineEarned > 0;
         case 'offline_big': return s.offlineEarned >= 1000000;
-        case 'reached_zz': return s.crystals >= 1e2040;
+        case 'reached_100t': return s.totalEarned >= 1e14;
+        case 'reached_aa': return s.totalEarned >= 1e15;
+        case 'reached_az': return s.totalEarned >= 1e90;
+        case 'reached_ba': return s.totalEarned >= 1e93;
+        case 'reached_dz': return s.totalEarned >= 1e141;
+        case 'reached_max_tier': return s.totalEarned >= 1e300;
         default: return false;
       }
     },
