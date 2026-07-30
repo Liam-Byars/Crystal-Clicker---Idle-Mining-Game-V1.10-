@@ -5,29 +5,40 @@ import { motion } from 'framer-motion';
 import { useGameStore, AREAS, type Area } from '@/stores';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Lock, MapPin, ChevronRight } from 'lucide-react';
+import { Lock, MapPin, Navigation } from 'lucide-react';
 
 function fmtReq(n: number): string {
   if (n < 1000) return n.toString();
   if (n < 1e6) return (n / 1e3).toFixed(0) + 'K';
   if (n < 1e9) return (n / 1e6).toFixed(0) + 'M';
-  return (n / 1e9).toFixed(0) + 'B';
+  if (n < 1e12) return (n / 1e9).toFixed(0) + 'B';
+  if (n < 1e15) return (n / 1e12).toFixed(0) + 'T';
+  // Extended suffixes AA, AB, AC...
+  if (n < 1e18) return (n / 1e15).toFixed(1) + 'AA';
+  if (n < 1e21) return (n / 1e18).toFixed(1) + 'AB';
+  if (n < 1e24) return (n / 1e21).toFixed(1) + 'AC';
+  if (n < 1e27) return (n / 1e24).toFixed(1) + 'AD';
+  if (n < 1e30) return (n / 1e27).toFixed(1) + 'AE';
+  if (n < 1e33) return (n / 1e30).toFixed(1) + 'AF';
+  if (n < 1e36) return (n / 1e33).toFixed(1) + 'AG';
+  if (n < 1e39) return (n / 1e36).toFixed(1) + 'AH';
+  if (n < 1e42) return (n / 1e39).toFixed(1) + 'AI';
+  if (n < 1e45) return (n / 1e42).toFixed(1) + 'AJ';
+  if (n < 1e48) return (n / 1e45).toFixed(1) + 'AK';
+  if (n < 1e51) return (n / 1e48).toFixed(1) + 'AL';
+  return (n / 1e51).toFixed(1) + 'AM';
 }
 
-function AreaNode({
+function MineCard({
   area,
   isCurrent,
   isUnlocked,
   progress,
-  isLast,
-  side,
 }: {
   area: Area;
   isCurrent: boolean;
   isUnlocked: boolean;
   progress: number;
-  isLast: boolean;
-  side: 'left' | 'right';
 }) {
   const switchArea = useGameStore(s => s.switchArea);
 
@@ -36,145 +47,77 @@ function AreaNode({
   };
 
   return (
-    <div className="relative flex" style={{ minHeight: isLast ? '80px' : '96px' }}>
-      {/* Center vertical line (runs behind everything) */}
-      {!isLast && (
-        <div
-          className="absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-0.5 z-0"
-          style={{
-            background: isUnlocked
-              ? 'linear-gradient(to bottom, rgba(34,211,238,0.25), rgba(100,116,139,0.1))'
-              : 'rgba(75,85,99,0.1)',
-            top: '24px',
-          }}
-        />
-      )}
-
-      {/* Center node dot */}
-      <div className="absolute left-1/2 -translate-x-1/2 top-0 z-10">
-        <motion.div
-          className={`
-            w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center text-lg sm:text-xl
-            border-2 flex-shrink-0
-            ${isCurrent
-              ? 'border-cyan-400 shadow-[0_0_14px_rgba(34,211,238,0.5)] bg-gray-800'
-              : isUnlocked
-                ? 'border-gray-500/80 bg-gray-800/90'
-                : 'border-gray-700/50 bg-gray-900/80 opacity-40'
-            }
-          `}
-          animate={isCurrent ? { scale: [1, 1.06, 1] } : {}}
-          transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
-        >
-          {isUnlocked ? area.icon : <Lock className="w-3.5 h-3.5 text-gray-600" />}
-        </motion.div>
+    <motion.button
+      onClick={handleClick}
+      disabled={!isUnlocked}
+      className={`
+        relative w-full text-left rounded-xl border p-2.5 sm:p-3 transition-all duration-200
+        ${isCurrent
+          ? 'border-cyan-500/50 bg-cyan-950/30 shadow-lg shadow-cyan-500/10 cursor-default'
+          : isUnlocked
+            ? 'border-gray-700/30 bg-gray-800/40 hover:bg-gray-700/50 hover:border-gray-500/40 cursor-pointer active:scale-[0.97]'
+            : 'border-gray-800/20 bg-gray-900/20 opacity-40 cursor-not-allowed'
+        }
+      `}
+      whileTap={isUnlocked && !isCurrent ? { scale: 0.96 } : undefined}
+    >
+      {/* Icon + Active badge */
+      <div className="flex items-start justify-between mb-1.5">
+        <div className={`
+          w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center text-xl sm:text-2xl flex-shrink-0
+          ${isCurrent
+            ? 'bg-cyan-500/15 border border-cyan-500/30'
+            : isUnlocked
+              ? 'bg-gray-700/40'
+              : 'bg-gray-800/40'
+          }
+        `}>
+          {isUnlocked ? area.icon : <Lock className="w-4 h-4 text-gray-600" />}
+        </div>
         {isCurrent && (
-          <div className="absolute inset-0 rounded-full border-2 border-cyan-400/30 animate-ping" />
+          <span className="text-[8px] sm:text-[9px] font-bold uppercase tracking-wider text-cyan-400 bg-cyan-500/10 px-1.5 py-0.5 rounded border border-cyan-500/20 flex items-center gap-0.5">
+            <Navigation className="w-2.5 h-2.5" />
+            Active
+          </span>
         )}
       </div>
 
-      {/* LEFT side card */}
-      {side === 'left' && (
-        <div className="w-[calc(50%-28px)] pr-3 flex items-start pt-1">
-          <div
-            onClick={handleClick}
-            className={`
-              w-full p-3 rounded-xl border transition-all duration-200
-              ${isCurrent
-                ? 'border-cyan-500/40 bg-cyan-950/25 shadow-md shadow-cyan-500/5'
-                : isUnlocked
-                  ? 'border-gray-700/30 bg-gray-800/35 hover:bg-gray-800/55 hover:border-gray-600/40 cursor-pointer'
-                  : 'border-gray-800/20 bg-gray-900/20 opacity-50 cursor-not-allowed'
-              }
-            `}
-          >
-            <div className="flex items-center justify-between gap-2 mb-0.5">
-              <h3 className={`text-sm font-semibold truncate ${isCurrent ? 'text-cyan-300' : 'text-gray-200'}`}>
-                {area.name}
-              </h3>
-              {isCurrent && (
-                <span className="text-[8px] font-bold uppercase tracking-wider text-cyan-400 bg-cyan-500/10 px-1.5 py-0.5 rounded flex-shrink-0 border border-cyan-500/20">
-                  Active
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-1.5 mb-1.5">
-              <span className="text-[11px] text-gray-500 flex items-center gap-1">
-                <MapPin className="w-3 h-3" />
-                {area.flag} {area.location}
-              </span>
-              <span className="text-gray-700">·</span>
-              <span className="text-[11px] text-gray-400 font-medium">{area.gem}</span>
-            </div>
-            {isUnlocked ? (
-              <span className="text-[10px] text-gray-500 flex items-center gap-1">
-                {!isCurrent && <ChevronRight className="w-3 h-3" />}
-                {isCurrent ? 'Currently mining' : 'Tap to switch'}
-              </span>
-            ) : (
-              <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-gray-500">Need {fmtReq(area.unlockAt)} total</span>
-                  <span className="text-[10px] text-gray-400 font-medium">{Math.min(progress * 100, 100).toFixed(0)}%</span>
-                </div>
-                <Progress value={Math.min(progress * 100, 100)} className="h-1 bg-gray-800" />
-              </div>
-            )}
+      {/* Mine name */}
+      <h3 className={`text-xs sm:text-sm font-semibold truncate mb-0.5 ${isCurrent ? 'text-cyan-300' : 'text-gray-200'}`}>
+        {area.name}
+      </h3>
+
+      {/* Location + gem */}
+      <div className="flex items-center gap-1 mb-1.5">
+        <span className="text-[10px] sm:text-[11px] text-gray-500 flex items-center gap-0.5 truncate">
+          <MapPin className="w-2.5 h-2.5 flex-shrink-0" />
+          {area.flag} {area.location}
+        </span>
+      </div>
+      <div className="text-[10px] sm:text-[11px] text-gray-400 font-medium mb-2 truncate">
+        {area.gem}
+      </div>
+
+      {/* Status */}
+      {isUnlocked ? (
+        <div className="text-[10px] text-gray-500">
+          {isCurrent ? '✦ Currently mining' : '→ Tap to travel'}
+        </div>
+      ) : (
+        <div className="space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-[9px] sm:text-[10px] text-gray-500">Need {fmtReq(area.unlockAt)} total</span>
+            <span className="text-[9px] sm:text-[10px] text-gray-400 font-medium">{Math.min(progress * 100, 100).toFixed(0)}%</span>
           </div>
+          <Progress value={Math.min(progress * 100, 100)} className="h-1 bg-gray-800" />
         </div>
       )}
 
-      {/* RIGHT side spacer (when card is on left) or card (when on right) */}
-      <div className="w-[calc(50%-28px)] pl-3 flex items-start pt-1">
-        {side === 'right' ? (
-          <div
-            onClick={handleClick}
-            className={`
-              w-full p-3 rounded-xl border transition-all duration-200
-              ${isCurrent
-                ? 'border-cyan-500/40 bg-cyan-950/25 shadow-md shadow-cyan-500/5'
-                : isUnlocked
-                  ? 'border-gray-700/30 bg-gray-800/35 hover:bg-gray-800/55 hover:border-gray-600/40 cursor-pointer'
-                  : 'border-gray-800/20 bg-gray-900/20 opacity-50 cursor-not-allowed'
-              }
-            `}
-          >
-            <div className="flex items-center justify-between gap-2 mb-0.5">
-              <h3 className={`text-sm font-semibold truncate ${isCurrent ? 'text-cyan-300' : 'text-gray-200'}`}>
-                {area.name}
-              </h3>
-              {isCurrent && (
-                <span className="text-[8px] font-bold uppercase tracking-wider text-cyan-400 bg-cyan-500/10 px-1.5 py-0.5 rounded flex-shrink-0 border border-cyan-500/20">
-                  Active
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-1.5 mb-1.5">
-              <span className="text-[11px] text-gray-500 flex items-center gap-1">
-                <MapPin className="w-3 h-3" />
-                {area.flag} {area.location}
-              </span>
-              <span className="text-gray-700">·</span>
-              <span className="text-[11px] text-gray-400 font-medium">{area.gem}</span>
-            </div>
-            {isUnlocked ? (
-              <span className="text-[10px] text-gray-500 flex items-center gap-1">
-                {!isCurrent && <ChevronRight className="w-3 h-3" />}
-                {isCurrent ? 'Currently mining' : 'Tap to switch'}
-              </span>
-            ) : (
-              <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-gray-500">Need {fmtReq(area.unlockAt)} total</span>
-                  <span className="text-[10px] text-gray-400 font-medium">{Math.min(progress * 100, 100).toFixed(0)}%</span>
-                </div>
-                <Progress value={Math.min(progress * 100, 100)} className="h-1 bg-gray-800" />
-              </div>
-            )}
-          </div>
-        ) : null}
-      </div>
-    </div>
+      {/* Current mine glow effect */}
+      {isCurrent && (
+        <div className="absolute inset-0 rounded-xl pointer-events-none border border-cyan-400/20 animate-pulse" />
+      )}
+    </motion.button>
   );
 }
 
@@ -185,24 +128,22 @@ export function WorldMap() {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="px-1 pb-3">
-        <h2 className="text-lg font-bold text-gray-200 mb-1">Mining Journey</h2>
-        <p className="text-xs text-gray-500">
-          Travel the world mining rare gems. Unlock new areas as you earn.
+      <div className="px-1 pb-2 sm:pb-3">
+        <h2 className="text-lg font-bold text-gray-200 mb-0.5">Mining Map</h2>
+        <p className="text-[11px] text-gray-500">
+          Tap an unlocked mine to travel there. Earn more to unlock new locations.
         </p>
       </div>
 
       <ScrollArea className="flex-1 min-h-0">
-        <div className="py-2 pb-8 max-w-md mx-auto px-2">
-          {AREAS.map((area, index) => (
-            <AreaNode
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 p-1 pb-8">
+          {AREAS.map((area) => (
+            <MineCard
               key={area.id}
               area={area}
               isCurrent={currentArea === area.id}
               isUnlocked={unlockedAreas.includes(area.id)}
               progress={area.unlockAt > 0 ? totalEarned / area.unlockAt : 1}
-              isLast={index === AREAS.length - 1}
-              side={index % 2 === 0 ? 'left' : 'right'}
             />
           ))}
         </div>
