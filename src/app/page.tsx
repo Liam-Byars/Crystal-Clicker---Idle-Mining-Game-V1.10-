@@ -739,22 +739,8 @@ export default function GamePage() {
 
           {/* ====== RIGHT: Tabs Panel ====== */}
           <div className="flex-1 flex flex-col min-h-0 p-4 lg:p-6">
-            {/* Top Bar: Buy Quantity + Session Info */}
-            <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-              {/* Buy Quantity Toggle */}
-              <div className="flex items-center gap-1 bg-gray-900/60 rounded-lg p-1">
-                {([1, 10, 100, 'max'] as BuyQuantity[]).map(q => (
-                  <Button
-                    key={String(q)}
-                    size="sm"
-                    variant={buyQuantity === q ? 'default' : 'ghost'}
-                    onClick={() => setBuyQuantity(q)}
-                    className={`text-xs px-3 h-7 ${buyQuantity === q ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'text-gray-400 hover:text-white'}`}
-                  >
-                    {q === 'max' ? 'Max' : `x${q}`}
-                  </Button>
-                ))}
-              </div>
+            {/* Top Bar: Session Info */}
+            <div className="flex items-center justify-end mb-4 flex-wrap gap-2">
 
               {/* Session Info */}
               <div className="flex items-center gap-3 text-xs text-gray-500">
@@ -858,8 +844,24 @@ export default function GamePage() {
               <TabsContent value="upgrades" className="flex-1 min-h-0 mt-0">
                 <ScrollArea className="h-[calc(100vh-340px)] lg:h-[calc(100vh-320px)]">
                   <div className="space-y-2 pr-3 pb-4">
-                    <div className="mb-2 text-xs text-gray-500 flex items-center gap-1">
-                      {(() => { const a = AREAS.find(ar => ar.id === currentArea); return a ? `${a.icon} ${a.name} — ${a.gem}` : ''; })()} upgrades
+                    <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+                      <div className="text-xs text-gray-500 flex items-center gap-1">
+                        {(() => { const a = AREAS.find(ar => ar.id === currentArea); return a ? `${a.icon} ${a.name} — ${a.gem}` : ''; })()} upgrades
+                      </div>
+                      {/* Buy Quantity Toggle */}
+                      <div className="flex items-center gap-1 bg-gray-900/60 rounded-lg p-1">
+                        {([1, 10, 100, 'max'] as BuyQuantity[]).map(q => (
+                          <Button
+                            key={String(q)}
+                            size="sm"
+                            variant={buyQuantity === q ? 'default' : 'ghost'}
+                            onClick={() => setBuyQuantity(q)}
+                            className={`text-xs px-3 h-7 ${buyQuantity === q ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'text-gray-400 hover:text-white'}`}
+                          >
+                            {q === 'max' ? 'Max' : `x${q}`}
+                          </Button>
+                        ))}
+                      </div>
                     </div>
                     {['clickPower', 'autoRate', 'multiplier', 'goldenChance', 'critChance'].map(effect => {
                       const categoryUpgrades = areaUpgrades.filter(u => u.effect === effect);
