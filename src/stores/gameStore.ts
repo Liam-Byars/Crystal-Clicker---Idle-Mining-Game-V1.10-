@@ -350,6 +350,7 @@ const ACHIEVEMENT_DEFS = [
   { id: 'speed_10', name: 'Click Machine', description: 'Reach 10+ clicks per second', icon: '🤖' },
   { id: 'event_first', name: 'Eventful', description: 'Experience your first event', icon: '🎉' },
   { id: 'event_10', name: 'Event Veteran', description: 'Experience 10 events', icon: '🎊' },
+  { id: 'reached_zz', name: 'Beyond Infinity', description: 'Reach ZZ crystals — the absolute limit', icon: '🌀' },
 ] as const;
 
 function buildAchievementConditions(): Achievement[] {
@@ -389,6 +390,7 @@ function buildAchievementConditions(): Achievement[] {
         case 'speed_10': return s.clicksPerSecond >= 10;
         case 'event_first': return s.totalEvents >= 1;
         case 'event_10': return s.totalEvents >= 10;
+        case 'reached_zz': return s.crystals >= 1e2040;
         default: return false;
       }
     },
@@ -830,8 +832,9 @@ export const useGameStore = create<GameState>((set, get) => ({
     const stats = recalcStats(upgrades);
     const lastOnline = (data.lastOnlineTime as number) || Date.now();
     const elapsed = Date.now() - lastOnline;
+    const prestigeMult = 1 + (data.prestige as number || 0) * 0.1;
     const offlineEarned = stats.autoRate > 0 && elapsed >= 60000
-      ? Math.round(stats.autoRate * (Math.min(elapsed, 8 * 3600000) / 1000) * 0.5 * 100) / 100
+      ? Math.round(stats.autoRate * prestigeMult * (Math.min(elapsed, 8 * 3600000) / 1000) * 0.5 * 100) / 100
       : 0;
     const currentArea = (data.currentArea as string) || 'naica';
     const unlockedAreas = (data.unlockedAreas as string[]) || ['naica'];

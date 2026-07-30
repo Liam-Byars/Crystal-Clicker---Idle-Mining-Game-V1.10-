@@ -294,3 +294,37 @@
 .cps-glow {
   animation: cps-glow 2s ease-in-out infinite;
 }
+
+/* ====== ZZ REACH CELEBRATION ====== */
+@keyframes zz-vortex-spin {
+  0% { transform: rotate(0deg) scale(0.5); opacity: 0; }
+  30% { transform: rotate(180deg) scale(1.2); opacity: 1; }
+  70% { transform: rotate(540deg) scale(1.1); opacity: 1; }
+  100% { transform: rotate(720deg) scale(2); opacity: 0; }
+}
+
+@keyframes zz-ring-expand {
+  0% { transform: scale(0); opacity: 0.8; border-width: 4px; }
+  100% { transform: scale(4); opacity: 0; border-width: 1px; }
+}
+
+@keyframes zz-rainbow {
+  0% { color: #ff6b6b; text-shadow: 0 0 20px #ff6b6b, 0 0 40px #ff6b6b; }
+  16% { color: #feca57; text-shadow: 0 0 20px #feca57, 0 0 40px #feca57; }
+  33% { color: #48dbfb; text-shadow: 0 0 20px #48dbfb, 0 0 40px #48dbfb; }
+  50% { color: #ff9ff3; text-shadow: 0 0 20px #ff9ff3, 0 0 40px #ff9ff3; }
+  66% { color: #54a0ff; text-shadow: 0 0 20px #54a0ff, 0 0 40px #54a0ff; }
+  83% { color: #5f27cd; text-shadow: 0 0 20px #5f27cd, 0 0 40px #5f27cd; }
+  100% { color: #ff6b6b; text-shadow: 0 0 20px #ff6b6b, 0 0 40px #ff6b6b; }
+}
+
+@keyframes zz-particle {
+  0% { transform: translate(0, 0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--px), var(--py)) scale(0); opacity: 0; }
+}
+
+@keyframes zz-bg-pulse {
+  0%, 100% { background: radial-gradient(circle, rgba(168,85,247,0.15) 0%, transparent 70%); }
+  33% { background: radial-gradient(circle, rgba(251,191,36,0.15) 0%, transparent 70%); }
+  66% { background: radial-gradient(circle, rgba(34,211,238,0.15) 0%, transparent 70%); }
+}

@@ -300,3 +300,39 @@ Stage Summary:
 - TOS/PP accessible from both sign-in screen AND in-game user menu
 - No fetch delay — content renders instantly from code constants
 - Minimal code changes (3 files touched, no structural changes to game logic)
+
+---
+Task ID: number-format-prestige-offline
+Agent: main
+Task: Extend number formatting to AA-ZZ, add ZZ celebration, fix prestige in offline calc
+
+Work Log:
+- Extended `fmt()` in page.tsx to support double-letter suffixes beyond T (trillion):
+  - T = 1e12, AA = 1e15, AB = 1e18, ... ZZ = 1e2040 (676 tiers)
+  - Each tier is 1000x the previous
+  - Beyond ZZ falls back to scientific notation
+- Added `reached_zz` achievement (🌀 "Beyond Infinity") — triggers at 1e2040 crystals
+- Added ZZ celebration overlay animation:
+  - Full-screen overlay with dual vortex spinners (counter-rotating)
+  - 4 expanding ring waves (staggered)
+  - 24 rainbow-colored particles shooting outward
+  - Rainbow-cycling "ZZ" text with spring animation
+  - "BEYOND INFINITY" subtitle
+  - Auto-dismisses after 5 seconds
+  - All CSS animations defined in globals.css
+- Fixed prestige multiplier not being included in offline earnings calculation
+  - Added `prestigeMult = 1 + prestige * 0.1` to offline calc in loadSave()
+- Added missing fields to Prisma schema: `totalCrits`, `currentArea`, `unlockedAreas`
+- Wired Firestore back into save/load API routes (dual-write to SQLite + Firestore)
+- Added x100 to buy quantity toggle (was only x1, x10, Max)
+- Moved buy quantity toggle into Upgrades tab under area name
+- Lint: passes clean (0 errors)
+- Browser QA: no console errors, game loads and plays correctly
+
+Stage Summary:
+- Numbers now format all the way from K → M → B → T → AA → AB → ... → ZZ (then scientific)
+- Reaching ZZ triggers a vortex/particle celebration animation + achievement
+- Offline earnings now correctly include prestige bonus (+10% per prestige)
+- Save data now writes to both SQLite (local) and Firestore (cloud)
+- Buy quantity toggle has 4 options: x1, x10, x100, Max
+- Buy quantity moved to sit under the area name in Upgrades tab

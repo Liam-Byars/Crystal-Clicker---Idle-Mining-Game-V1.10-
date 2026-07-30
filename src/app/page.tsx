@@ -29,7 +29,18 @@ function fmt(n: number): string {
   if (n < 1e6) return (n / 1e3).toFixed(1) + 'K';
   if (n < 1e9) return (n / 1e6).toFixed(2) + 'M';
   if (n < 1e12) return (n / 1e9).toFixed(2) + 'B';
-  return (n / 1e12).toFixed(2) + 'T';
+  if (n < 1e15) return (n / 1e12).toFixed(2) + 'T';
+  // AA-ZZ double-letter suffixes (676 tiers, each 1000x)
+  const exp = Math.floor(Math.log10(n));
+  const tier = Math.floor((exp - 15) / 3);
+  if (tier >= 0 && tier < 676) {
+    const first = String.fromCharCode(65 + Math.floor(tier / 26));
+    const second = String.fromCharCode(65 + (tier % 26));
+    const divisor = Math.pow(10, 15 + tier * 3);
+    return (n / divisor).toFixed(2) + first + second;
+  }
+  // Beyond ZZ
+  return n.toExponential(2);
 }
 
 function fmtTime(ms: number): string {
@@ -115,6 +126,8 @@ export default function GamePage() {
   const [legalPpOpen, setLegalPpOpen] = useState(false);
   const [sparkles, setSparkles] = useState<{id: number; x: number; y: number; delay: number}[]>([]);
   const sparkleIdRef = useRef(0);
+  const [zzCelebration, setZzCelebration] = useState(false);
+  const prevNotifRef = useRef<string | null>(null);
 
   // ====== Auth ======
   const { user, loading: authLoading, isGuest, logout, signInWithGoogle, userId, displayName, photoURL } = useAuth();
@@ -307,6 +320,12 @@ export default function GamePage() {
   // ====== Achievement sound on unlock ======
   useEffect(() => {
     if (currentNotification) sfxAchieve();
+    // Trigger ZZ celebration
+    if (currentNotification && currentNotification.id === 'reached_zz' && prevNotifRef.current !== 'reached_zz') {
+      setZzCelebration(true);
+      setTimeout(() => setZzCelebration(false), 5000);
+    }
+    if (currentNotification) prevNotifRef.current = currentNotification.id;
   }, [currentNotification]);
 
   // ====== Save on page close/refresh ======
@@ -565,6 +584,80 @@ export default function GamePage() {
                   style={{ width: `${((30 - notificationTimer) / 30) * 100}%` }}
                 />
               </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ====== ZZ CELEBRATION OVERLAY ====== */}
+        <AnimatePresence>
+          {zzCelebration && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.5 }}
+              className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none"
+            >
+              {/* Background pulse */}
+              <div className="absolute inset-0" style={{ animation: 'zz-bg-pulse 2s ease-in-out infinite' }} />
+
+              {/* Expanding rings */}
+              {[0, 300, 600, 900].map(delay => (
+                <div
+                  key={delay}
+                  className="absolute w-32 h-32 rounded-full border-2 border-purple-400/60"
+                  style={{ animation: `zz-ring-expand 1.5s ease-out ${delay}ms forwards` }}
+                />
+              ))}
+
+              {/* Vortex spinner */}
+              <div
+                className="absolute w-40 h-40 rounded-full border-t-4 border-r-4 border-b-4 border-purple-400/80 border-l-4 border-cyan-400/80"
+                style={{ animation: 'zz-vortex-spin 2s ease-in-out forwards' }}
+              />
+              <div
+                className="absolute w-28 h-28 rounded-full border-t-2 border-l-2 border-yellow-400/70 border-r-2 border-pink-400/70"
+                style={{ animation: 'zz-vortex-spin 1.5s ease-in-out 0.2s reverse forwards' }}
+              />
+
+              {/* Particles */}
+              {Array.from({ length: 24 }).map((_, i) => {
+                const angle = (i / 24) * Math.PI * 2;
+                const dist = 120 + Math.random() * 80;
+                return (
+                  <div
+                    key={i}
+                    className="absolute w-2 h-2 rounded-full"
+                    style={{
+                      background: ['#ff6b6b','#feca57','#48dbfb','#ff9ff3','#54a0ff','#5f27cd','#00d2d3','#ff9f43'][i % 8],
+                      left: '50%', top: '50%',
+                      marginLeft: '-4px', marginTop: '-4px',
+                      '--px': `${Math.cos(angle) * dist}px`,
+                      '--py': `${Math.sin(angle) * dist}px`,
+                      animation: `zz-particle 1.2s ease-out ${i * 40}ms forwards`,
+                      boxShadow: `0 0 6px ${['#ff6b6b','#feca57','#48dbfb','#ff9ff3','#54a0ff','#5f27cd','#00d2d3','#ff9f43'][i % 8]}`,
+                    } as React.CSSProperties}
+                  />
+                );
+              })}
+
+              {/* Center text */}
+              <motion.div
+                initial={{ scale: 0, rotate: -10 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ type: 'spring', damping: 12, stiffness: 200, delay: 0.3 }}
+                className="relative z-10 text-center"
+              >
+                <div className="text-6xl sm:text-8xl font-black" style={{ animation: 'zz-rainbow 1.5s linear infinite' }}>
+                  ZZ
+                </div>
+                <div className="text-lg sm:text-2xl font-bold text-white/90 mt-2 tracking-widest">
+                  BEYOND INFINITY
+                </div>
+                <div className="text-sm text-white/50 mt-1">
+                  🌀 Achievement Unlocked
+                </div>
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
