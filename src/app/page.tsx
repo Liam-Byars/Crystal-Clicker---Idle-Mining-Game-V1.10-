@@ -743,7 +743,7 @@ export default function GamePage() {
             <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
               {/* Buy Quantity Toggle */}
               <div className="flex items-center gap-1 bg-gray-900/60 rounded-lg p-1">
-                {([1, 10, 'max'] as BuyQuantity[]).map(q => (
+                {([1, 10, 100, 'max'] as BuyQuantity[]).map(q => (
                   <Button
                     key={String(q)}
                     size="sm"

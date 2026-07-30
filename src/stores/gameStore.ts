@@ -75,7 +75,7 @@ export interface Area {
   bgAccent: string;
 }
 
-export type BuyQuantity = 1 | 10 | 'max';
+export type BuyQuantity = 1 | 10 | 100 | 'max';
 
 export interface GameState {
   // Core resources
