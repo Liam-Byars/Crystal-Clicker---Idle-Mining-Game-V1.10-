@@ -431,7 +431,7 @@ const AREA_UPGRADES: Record<string, Upgrade[]> = {
     { id: 'ratnapura_mining_team', name: 'Mining Team', description: '+20 crystals/sec', icon: '👷', baseCost: 5000, costMultiplier: 1.6, level: 0, effect: 'autoRate', value: 20, maxLevel: 2000},
     { id: 'ratnapura_blue_aura', name: 'Blue Aura', description: 'x1.3 multiplier per level', icon: '🔵', baseCost: 3000, costMultiplier: 1.8, level: 0, effect: 'multiplier', value: 0.3, maxLevel: 2000},
     { id: 'ratnapura_star_sapphire', name: 'Star Sapphire', description: '+2% golden chance per level', icon: '⭐', baseCost: 8000, costMultiplier: 2.0, level: 0, effect: 'goldenChance', value: 0.02, maxLevel: 25 },
-    { id: 'ratnapura_cavern_heart', name: 'Cavern Heart', description: 'x2 click power, x1.5 auto rate', icon: '🌊', baseCost: 50000, costMultiplier: 2.2, level: 0, effect: 'multiplier', value: 0.5, maxLevel: 2000},
+    { id: 'ratnapura_cavern_heart', name: 'Cavern Heart', description: 'x1.5 multiplier per level', icon: '🌊', baseCost: 50000, costMultiplier: 2.2, level: 0, effect: 'multiplier', value: 0.5, maxLevel: 2000},
   ],
   muzo: [
     { id: 'muzo_emerald_golem', name: 'Emerald Golem', description: '+200 click power per level', icon: '🤖', baseCost: 100000, costMultiplier: 1.6, level: 0, effect: 'clickPower', value: 200, maxLevel: 2000},
@@ -445,7 +445,7 @@ const AREA_UPGRADES: Record<string, Upgrade[]> = {
     { id: 'coober_pedy_digger_fleet', name: 'Digger Fleet', description: '+500 crystals/sec', icon: '🚜', baseCost: 2000000, costMultiplier: 1.6, level: 0, effect: 'autoRate', value: 500, maxLevel: 2000},
     { id: 'coober_pedy_iridescent_lens', name: 'Iridescent Lens', description: 'x1.5 multiplier per level', icon: '🌈', baseCost: 1500000, costMultiplier: 1.8, level: 0, effect: 'multiplier', value: 0.5, maxLevel: 2000},
     { id: 'coober_pedy_flash_fire', name: 'Flash Fire Opal', description: '+1.5% golden chance per level', icon: '🔥', baseCost: 3000000, costMultiplier: 2.0, level: 0, effect: 'goldenChance', value: 0.015, maxLevel: 20 },
-    { id: 'coober_pedy_underground_city', name: 'Underground City', description: 'x3 multiplier, +1000 auto rate', icon: '🏘️', baseCost: 20000000, costMultiplier: 2.5, level: 0, effect: 'multiplier', value: 2.0, maxLevel: 2000},
+    { id: 'coober_pedy_underground_city', name: 'Underground City', description: 'x3 multiplier per level', icon: '🏘️', baseCost: 20000000, costMultiplier: 2.5, level: 0, effect: 'multiplier', value: 2.0, maxLevel: 2000},
   ],
   ilakaka: [
     { id: 'ilakaka_rare_finder', name: 'Rare Finder', description: '+3,000 click power per level', icon: '🔍', baseCost: 10000000, costMultiplier: 1.6, level: 0, effect: 'clickPower', value: 3000, maxLevel: 2000},
