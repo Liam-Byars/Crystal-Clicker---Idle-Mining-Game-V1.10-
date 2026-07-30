@@ -364,3 +364,37 @@ Stage Summary:
 - Each area has 5 themed upgrades with 100 total new upgrades (141 total across all areas)
 - x100 buy quantity now works correctly (was silently broken before)
 - Level badges show `Lv.X/2000` format for capped upgrades
+
+---
+Task ID: 2-a
+Agent: main
+Task: Create mine-generator.ts with 300 additional mines and 1500 upgrades
+
+Work Log:
+- Created `/home/z/my-project/src/lib/mine-generator.ts` — self-contained TypeScript generator
+- Analyzed existing 27 hand-crafted mines (indices 0-22, unlockAt 0 to 5e48) and their upgrade patterns
+- Studied AREA_UPGRADES structure: 5 upgrades per area (pick, drill, resonance, luck, ultimate)
+- Identified luck alternation pattern: even indices = goldenChance, odd = critChance, with decreasing value
+- Identified value scaling: resonance ~10% of ultimate, clickPower ~2x autoRate
+- Defined 7 themed groups with 20-40 template names/locations/gems/icons/descriptions each:
+  - Deep Space (0-36): Galaxies, nebulae, quasars, pulsars
+  - Galactic Core (37-76): Black holes, magnetars, dark matter regions
+  - Intergalactic (77-126): Galaxy clusters, voids, filaments, walls
+  - Dimensional (127-176): Dimensional rifts, parallel universes, timelines
+  - Cosmic Horror (177-226): Eldritch realms, void entities, incomprehensible dimensions
+  - Abstract (227-276): Mathematical concepts, platonic ideals, conceptual realms
+  - Beyond (277-299): Omnipresence, omniscience, absolute infinity tiers
+- Implemented non-linear unlockAt scaling: 1e49 → 1e2040 using t^1.15 power curve
+- Created 24 color palettes cycling through purple, red/orange, green/teal, cyan/blue, yellow/amber, pink/fuchsia, dark, and special themes
+- Upgrade values grow exponentially with mine tier, matching hand-crafted pattern
+- Upgrade baseCosts scale as fractions of unlockAt (pick 0.1x, drill 0.2x, resonance 0.3x, luck 2.5x, ultimate 5x)
+- Luck maxLevel decreases from 25 to 5 over the 300 mines
+- Exports: `GENERATED_AREAS: Area[]` and `GENERATED_UPGRADES: Record<string, Upgrade[]>`
+- Lint passes clean (0 errors in new file)
+- No other files modified
+
+Stage Summary:
+- 300 additional mines generated programmatically, filling the gap from 1e49 to 1e2040 (ZZ range)
+- 1,500 upgrades generated (5 per mine) following exact same structure as hand-crafted ones
+- File is self-contained with local type definitions (does not import from gameStore to avoid circular deps)
+- Ready to be imported by gameStore.ts and merged into AREAS and AREA_UPGRADES

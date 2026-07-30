@@ -1,0 +1,638 @@
+   618→// Helper to get upgrades for a specific area
+   619→export function getUpgradesForArea(areaId: string, allUpgrades: Upgrade[]): Upgrade[] {
+   620→  if (areaId === 'naica') return allUpgrades.filter(u => NAICA_UPGRADE_IDS.has(u.id));
+   621→  return allUpgrades.filter(u => u.id.startsWith(areaId + '_'));
+   622→}
+   623→
+   624→const ACHIEVEMENT_DEFS = [
+   625→  { id: 'first_click', name: 'First Spark', description: 'Click the crystal for the first time', icon: '⚡' },
+   626→  { id: 'clicks_100', name: 'Dedicated Clicker', description: 'Click 100 times', icon: '👆' },
+   627→  { id: 'clicks_1000', name: 'Click Master', description: 'Click 1,000 times', icon: '🏆' },
+   628→  { id: 'clicks_10000', name: 'Click Legend', description: 'Click 10,000 times', icon: '👑' },
+   629→  { id: 'clicks_50000', name: 'Click God', description: 'Click 50,000 times', icon: '🌟' },
+   630→  { id: 'clicks_100k', name: 'Beyond Human', description: 'Click 100,000 times', icon: '🤯' },
+   631→  { id: 'clicks_500k', name: 'Click Dimension', description: 'Click 500,000 times', icon: '🌌' },
+   632→  { id: 'clicks_1m', name: 'Eternal Clicker', description: 'Click 1,000,000 times', icon: '♾️' },
+   633→  { id: 'crystals_100', name: 'Crystal Collector', description: 'Earn 100 total crystals', icon: '💎' },
+   634→  { id: 'crystals_1000', name: 'Crystal Hoarder', description: 'Earn 1,000 total crystals', icon: '💰' },
+   635→  { id: 'crystals_10000', name: 'Crystal Tycoon', description: 'Earn 10,000 total crystals', icon: '🏦' },
+   636→  { id: 'crystals_100000', name: 'Crystal Empire', description: 'Earn 100,000 total crystals', icon: '🏰' },
+   637→  { id: 'crystals_1m', name: 'Crystal God', description: 'Earn 1,000,000 total crystals', icon: '🌍' },
+   638→  { id: 'crystals_10m', name: 'Crystal Universe', description: 'Earn 10M total crystals', icon: '🪐' },
+   639→  { id: 'crystals_1b', name: 'Crystal Multiverse', description: 'Earn 1B total crystals', icon: '🌌' },
+   640→  { id: 'crystals_1t', name: 'Crystal Infinity', description: 'Earn 1T total crystals', icon: '🌀' },
+   641→  { id: 'upgrade_first', name: 'First Upgrade', description: 'Buy your first upgrade', icon: '⬆️' },
+   642→  { id: 'upgrade_10', name: 'Upgrade Enthusiast', description: 'Buy 10 total upgrades', icon: '🔧' },
+   643→  { id: 'upgrade_50', name: 'Upgrade Master', description: 'Buy 50 total upgrades', icon: '🛠️' },
+   644→  { id: 'upgrade_100', name: 'Upgrade Expert', description: 'Buy 100 total upgrades', icon: '🔧' },
+   645→  { id: 'upgrade_500', name: 'Upgrade Legend', description: 'Buy 500 total upgrades', icon: '⚙️' },
+   646→  { id: 'upgrade_1000', name: 'Upgrade God', description: 'Buy 1,000 total upgrades', icon: '🏗️' },
+   647→  { id: 'combo_5', name: 'Combo Starter', description: 'Reach a 5x combo', icon: '🔥' },
+   648→  { id: 'combo_10', name: 'Combo Master', description: 'Reach a 10x combo', icon: '💥' },
+   649→  { id: 'combo_25', name: 'Combo Legend', description: 'Reach a 25x combo', icon: '🌀' },
+   650→  { id: 'combo_50', name: 'Combo God', description: 'Reach a 50x combo', icon: '☄️' },
+   651→  { id: 'crit_first', name: 'Critical Thinker', description: 'Land your first critical hit', icon: '🎯' },
+   652→  { id: 'crit_100', name: 'Critical Master', description: 'Land 100 critical hits', icon: '💫' },
+   653→  { id: 'crit_500', name: 'Critical Legend', description: 'Land 500 critical hits', icon: '💥' },
+   654→  { id: 'crit_1000', name: 'Critical God', description: 'Land 1,000 critical hits', icon: '⚡' },
+   655→  { id: 'golden_first', name: 'Lucky Strike', description: 'Click a golden crystal', icon: '🥇' },
+   656→  { id: 'golden_10', name: 'Golden Touch', description: 'Click 10 golden crystals', icon: '✨' },
+   657→  { id: 'golden_50', name: 'Golden King', description: 'Click 50 golden crystals', icon: '👑' },
+   658→  { id: 'golden_100', name: 'Golden Emperor', description: 'Click 100 golden crystals', icon: '🏅' },
+   659→  { id: 'golden_500', name: 'Golden Deity', description: 'Click 500 golden crystals', icon: '🌟' },
+   660→  { id: 'prestige_1', name: 'Rebirth', description: 'Prestige for the first time', icon: '🔄' },
+   661→  { id: 'prestige_5', name: 'Experienced Soul', description: 'Prestige 5 times', icon: '🌈' },
+   662→  { id: 'prestige_10', name: 'Prestige Veteran', description: 'Prestige 10 times', icon: '🔮' },
+   663→  { id: 'prestige_25', name: 'Prestige Legend', description: 'Prestige 25 times', icon: '👑' },
+   664→  { id: 'prestige_50', name: 'Transcendent', description: 'Prestige 50 times', icon: '🌌' },
+   665→  { id: 'auto_10', name: 'Automated', description: 'Have 10+ auto crystals/sec', icon: '⚙️' },
+   666→  { id: 'auto_100', name: 'Factory Owner', description: 'Have 100+ auto crystals/sec', icon: '🏭' },
+   667→  { id: 'auto_500', name: 'Industrialist', description: 'Have 500+ auto crystals/sec', icon: '🏗️' },
+   668→  { id: 'auto_1000', name: 'Auto God', description: 'Have 1,000+ auto crystals/sec', icon: '🤖' },
+   669→  { id: 'speed_5', name: 'Speed Demon', description: 'Reach 5+ clicks per second', icon: '⚡' },
+   670→  { id: 'speed_10', name: 'Click Machine', description: 'Reach 10+ clicks per second', icon: '🤖' },
+   671→  { id: 'speed_15', name: 'Inhuman Speed', description: 'Reach 15+ clicks per second', icon: '💨' },
+   672→  { id: 'speed_20', name: 'Speed Lord', description: 'Reach 20+ clicks per second', icon: '🌪️' },
+   673→  { id: 'event_first', name: 'Eventful', description: 'Experience your first event', icon: '🎉' },
+   674→  { id: 'event_10', name: 'Event Veteran', description: 'Experience 10 events', icon: '🎊' },
+   675→  { id: 'event_25', name: 'Event Master', description: 'Experience 25 events', icon: '🎪' },
+   676→  { id: 'event_50', name: 'Event Lord', description: 'Experience 50 events', icon: '🎭' },
+   677→  { id: 'areas_3', name: 'World Traveler', description: 'Unlock 3 mine locations', icon: '✈️' },
+   678→  { id: 'areas_5', name: 'Globe Trotter', description: 'Unlock 5 mine locations', icon: '🌎' },
+   679→  { id: 'areas_10', name: 'Mining Mogul', description: 'Unlock 10 mine locations', icon: '🗺️' },
+   680→  { id: 'areas_15', name: 'Planetary Explorer', description: 'Unlock 15 mine locations', icon: '🚀' },
+   681→  { id: 'areas_all', name: 'Master of the Cosmos', description: 'Unlock all mine locations', icon: '🌌' },
+   682→  { id: 'multiplier_5', name: 'Power Surge', description: 'Reach a 5x multiplier', icon: '📈' },
+   683→  { id: 'multiplier_10', name: 'Multiplier King', description: 'Reach a 10x multiplier', icon: '🚀' },
+   684→  { id: 'multiplier_50', name: 'Exponential Growth', description: 'Reach a 50x multiplier', icon: '📈' },
+   685→  { id: 'multiplier_100', name: 'Multiplier God', description: 'Reach a 100x multiplier', icon: '💠' },
+   686→  { id: 'clickpower_10', name: 'Strong Arm', description: 'Reach 10+ click power', icon: '💪' },
+   687→  { id: 'clickpower_100', name: 'Crystal Crusher', description: 'Reach 100+ click power', icon: '🔨' },
+   688→  { id: 'clickpower_1000', name: 'Crystal Annihilator', description: 'Reach 1,000+ click power', icon: '💣' },
+   689→  { id: 'session_10k', name: 'Productive Session', description: 'Earn 10,000 crystals in one session', icon: '📊' },
+   690→  { id: 'session_1m', name: 'Epic Session', description: 'Earn 1M crystals in one session', icon: '🏆' },
+   691→  { id: 'session_1b', name: 'Legendary Session', description: 'Earn 1B crystals in one session', icon: '👑' },
+   692→  { id: 'prestige_points_10', name: 'Prestige Power', description: 'Accumulate 10+ prestige points', icon: '✨' },
+   693→  { id: 'prestige_points_50', name: 'Prestige Force', description: 'Accumulate 50+ prestige points', icon: '💫' },
+   694→  { id: 'prestige_points_100', name: 'Prestige Almighty', description: 'Accumulate 100+ prestige points', icon: '🌟' },
+   695→  { id: 'offline_earn', name: 'Idle Riches', description: 'Earn crystals while offline', icon: '😴' },
+   696→  { id: 'offline_big', name: 'Sleeping Millionaire', description: 'Earn 1M+ crystals while offline', icon: '🛌' },
+   697→  { id: 'reached_zz', name: 'Beyond Infinity', description: 'Reach ZZ crystals — the absolute limit', icon: '🌀' },
+   698→] as const;
+   699→
+   700→function buildAchievementConditions(): Achievement[] {
+   701→  return ACHIEVEMENT_DEFS.map(a => ({
+   702→    ...a,
+   703→    unlocked: false,
+   704→    condition: (s: GameState) => {
+   705→      const ul = s.upgrades.reduce((sum, u) => sum + u.level, 0);
+   706→      const areaCount = s.unlockedAreas.length;
+   707→      switch (a.id) {
+   708→        case 'first_click': return s.totalClicks >= 1;
+   709→        case 'clicks_100': return s.totalClicks >= 100;
+   710→        case 'clicks_1000': return s.totalClicks >= 1000;
+   711→        case 'clicks_10000': return s.totalClicks >= 10000;
+   712→        case 'clicks_50000': return s.totalClicks >= 50000;
+   713→        case 'clicks_100k': return s.totalClicks >= 100000;
+   714→        case 'clicks_500k': return s.totalClicks >= 500000;
+   715→        case 'clicks_1m': return s.totalClicks >= 1000000;
+   716→        case 'crystals_100': return s.totalEarned >= 100;
+   717→        case 'crystals_1000': return s.totalEarned >= 1000;
+   718→        case 'crystals_10000': return s.totalEarned >= 10000;
+   719→        case 'crystals_100000': return s.totalEarned >= 100000;
+   720→        case 'crystals_1m': return s.totalEarned >= 1000000;
+   721→        case 'crystals_10m': return s.totalEarned >= 10000000;
+   722→        case 'crystals_1b': return s.totalEarned >= 1e9;
+   723→        case 'crystals_1t': return s.totalEarned >= 1e12;
+   724→        case 'upgrade_first': return ul >= 1;
+   725→        case 'upgrade_10': return ul >= 10;
+   726→        case 'upgrade_50': return ul >= 50;
+   727→        case 'upgrade_100': return ul >= 100;
+   728→        case 'upgrade_500': return ul >= 500;
+   729→        case 'upgrade_1000': return ul >= 1000;
+   730→        case 'combo_5': return s.maxCombo >= 5;
+   731→        case 'combo_10': return s.maxCombo >= 10;
+   732→        case 'combo_25': return s.maxCombo >= 25;
+   733→        case 'combo_50': return s.maxCombo >= 50;
+   734→        case 'crit_first': return s.totalCrits >= 1;
+   735→        case 'crit_100': return s.totalCrits >= 100;
+   736→        case 'crit_500': return s.totalCrits >= 500;
+   737→        case 'crit_1000': return s.totalCrits >= 1000;
+   738→        case 'golden_first': return s.goldenClicks >= 1;
+   739→        case 'golden_10': return s.goldenClicks >= 10;
+   740→        case 'golden_50': return s.goldenClicks >= 50;
+   741→        case 'golden_100': return s.goldenClicks >= 100;
+   742→        case 'golden_500': return s.goldenClicks >= 500;
+   743→        case 'prestige_1': return s.prestige >= 1;
+   744→        case 'prestige_5': return s.prestige >= 5;
+   745→        case 'prestige_10': return s.prestige >= 10;
+   746→        case 'prestige_25': return s.prestige >= 25;
+   747→        case 'prestige_50': return s.prestige >= 50;
+   748→        case 'auto_10': return s.autoRate >= 10;
+   749→        case 'auto_100': return s.autoRate >= 100;
+   750→        case 'auto_500': return s.autoRate >= 500;
+   751→        case 'auto_1000': return s.autoRate >= 1000;
+   752→        case 'speed_5': return s.clicksPerSecond >= 5;
+   753→        case 'speed_10': return s.clicksPerSecond >= 10;
+   754→        case 'speed_15': return s.clicksPerSecond >= 15;
+   755→        case 'speed_20': return s.clicksPerSecond >= 20;
+   756→        case 'event_first': return s.totalEvents >= 1;
+   757→        case 'event_10': return s.totalEvents >= 10;
+   758→        case 'event_25': return s.totalEvents >= 25;
+   759→        case 'event_50': return s.totalEvents >= 50;
+   760→        case 'areas_3': return areaCount >= 3;
+   761→        case 'areas_5': return areaCount >= 5;
+   762→        case 'areas_10': return areaCount >= 10;
+   763→        case 'areas_15': return areaCount >= 15;
+   764→        case 'areas_all': return areaCount >= AREAS.length;
+   765→        case 'multiplier_5': return s.multiplier >= 5;
+   766→        case 'multiplier_10': return s.multiplier >= 10;
+   767→        case 'multiplier_50': return s.multiplier >= 50;
+   768→        case 'multiplier_100': return s.multiplier >= 100;
+   769→        case 'clickpower_10': return s.clickPower >= 10;
+   770→        case 'clickpower_100': return s.clickPower >= 100;
+   771→        case 'clickpower_1000': return s.clickPower >= 1000;
+   772→        case 'session_10k': return s.sessionEarned >= 10000;
+   773→        case 'session_1m': return s.sessionEarned >= 1000000;
+   774→        case 'session_1b': return s.sessionEarned >= 1e9;
+   775→        case 'prestige_points_10': return s.prestigePoints >= 10;
+   776→        case 'prestige_points_50': return s.prestigePoints >= 50;
+   777→        case 'prestige_points_100': return s.prestigePoints >= 100;
+   778→        case 'offline_earn': return s.offlineEarned > 0;
+   779→        case 'offline_big': return s.offlineEarned >= 1000000;
+   780→        case 'reached_zz': return s.crystals >= 1e2040;
+   781→        default: return false;
+   782→      }
+   783→    },
+   784→  }));
+   785→}
+   786→
+   787→// ====== Utility Functions ======
+   788→export const getUpgradeCost = (u: Upgrade) => Math.floor(u.baseCost * Math.pow(u.costMultiplier, u.level));
+   789→export const getCostForLevel = (u: Upgrade, lvl: number) => Math.floor(u.baseCost * Math.pow(u.costMultiplier, lvl));
+   790→
+   791→export const getMaxBuyCount = (u: Upgrade, money: number): number => {
+   792→  const cap = u.maxLevel ? u.maxLevel - u.level : 10000;
+   793→  let total = 0; let count = 0;
+   794→  for (let i = 0; i < cap; i++) {
+   795→    const c = getCostForLevel(u, u.level + i);
+   796→    if (total + c > money) break;
+   797→    total += c; count++;
+   798→  }
+   799→  return count;
+   800→};
+   801→
+   802→export const getTotalCostN = (u: Upgrade, n: number): number => {
+   803→  let t = 0;
+   804→  for (let i = 0; i < n; i++) t += getCostForLevel(u, u.level + i);
+   805→  return t;
+   806→};
+   807→
+   808→const POWER_UP_DEFS: Omit<PowerUp, 'timer'>[] = [
+   809→  { id: 'double_click', name: 'Double Power!', icon: '💪', effect: 'doubleClick', duration: 300, value: 2 },
+   810→  { id: 'triple_auto', name: 'Triple Auto!', icon: '⚡', effect: 'tripleAuto', duration: 300, value: 3 },
+   811→  { id: 'instant_bonus', name: 'Crystal Rain!', icon: '🌧️', effect: 'instantBonus', duration: 0, value: 0 },
+   812→];
+   813→
+   814→const EVENT_DEFS: Omit<GameEvent, 'timer'>[] = [
+   815→  { id: 'crystal_storm', name: 'Crystal Storm', description: 'Auto income doubled!', icon: '🌩️', effect: 'doubleAuto', duration: 600, value: 2 },
+   816→  { id: 'lucky_hour', name: 'Lucky Hour', description: 'All clicks deal double!', icon: '🍀', effect: 'doubleClick', duration: 600, value: 2 },
+   817→  { id: 'golden_fever', name: 'Golden Fever', description: '3x golden spawn rate!', icon: '🌟', effect: 'tripleGolden', duration: 600, value: 3 },
+   818→];
+   819→
+   820→const MILESTONE_DEFS: Omit<Milestone, 'celebrated'>[] = [
+   821→  { id: 1, value: 100, label: '100 Crystals!', icon: '💎' },
+   822→  { id: 2, value: 1000, label: '1,000 Crystals!', icon: '💰' },
+   823→  { id: 3, value: 10000, label: '10K Crystals!', icon: '🏆' },
+   824→  { id: 4, value: 100000, label: '100K Crystals!', icon: '🏰' },
+   825→  { id: 5, value: 1000000, label: '1M Crystals!', icon: '👑' },
+   826→  { id: 6, value: 10000000, label: '10M Crystals!', icon: '🌍' },
+   827→  { id: 7, value: 100000000, label: '100M Crystals!', icon: '🪐' },
+   828→  { id: 8, value: 1000000000, label: '1B Crystals!', icon: '⭐' },
+   829→];
+   830→
+   831→function recalcStats(upgrades: Upgrade[]) {
+   832→  let clickPower = 1; let autoRate = 0; let multiplier = 1;
+   833→  let goldenChance = 0.03; let critChance = 0.05;
+   834→  for (const u of upgrades) {
+   835→    for (let i = 0; i < u.level; i++) {
+   836→      switch (u.effect) {
+   837→        case 'clickPower': clickPower += u.value; break;
+   838→        case 'autoRate': autoRate += u.value; break;
+   839→        case 'multiplier': multiplier += u.value; break;
+   840→        case 'goldenChance': goldenChance += u.value; break;
+   841→        case 'critChance': critChance += u.value; break;
+   842→      }
+   843→    }
+   844→  }
+   845→  return { clickPower, autoRate, multiplier, goldenChance: Math.min(goldenChance, 0.75), critChance: Math.min(critChance, 1.0) };
+   846→}
+   847→
+   848→// ====== Store ======
+   849→export const useGameStore = create<GameState>((set, get) => ({
+   850→  crystals: 0, totalClicks: 0, totalEarned: 0, clickPower: 1, multiplier: 1, autoRate: 0,
+   851→  prestige: 0, prestigePoints: 0,
+   852→  combo: 0, comboTimer: 0, maxCombo: 0, lastClickTime: 0,
+   853→  clickTimestamps: [], clicksPerSecond: 0,
+   854→  critChance: 0.05, critMultiplier: 5, totalCrits: 0,
+   855→  goldenClicks: 0, goldenChance: 0.03, goldenActive: false, goldenTimer: 0, goldenClickValue: 0,
+   856→  activePowerUp: null, powerUpTimer: 0,
+   857→  activeEvent: null, eventTimer: 0, totalEvents: 0,
+   858→  buyQuantity: 1 as BuyQuantity,
+   859→  sessionStartTime: Date.now(), sessionClicks: 0, sessionEarned: 0,
+   860→  milestones: MILESTONE_DEFS.map(m => ({ ...m, celebrated: false })),
+   861→  lastOnlineTime: Date.now(), offlineEarned: 0, showOfflineBonus: false,
+   862→  floatingTexts: [], floatingTextId: 0,
+   863→  achievementQueue: [], currentNotification: null, notificationTimer: 0,
+   864→  ripples: [], rippleId: 0,
+   865→  currentArea: 'naica',
+   866→  unlockedAreas: ['naica'],
+   867→  upgrades: [
+   868→    ...DEFAULT_UPGRADES.map(u => ({ ...u })),
+   869→    ...Object.values(AREA_UPGRADES).flat().map(u => ({ ...u })),
+   870→  ],
+   871→  achievements: buildAchievementConditions(),
+   872→  screenShake: false, crystalPulse: 0, activeTab: 'upgrades',
+   873→
+   874→  click: (x, y) => {
+   875→    const s = get(); const now = Date.now();
+   876→    const recent = [...s.clickTimestamps, now].filter(t => now - t < 1000);
+   877→    let newCombo = 1; let newMax = s.maxCombo;
+   878→    if (now - s.lastClickTime < 500) newCombo = Math.min(s.combo + 1, 50);
+   879→    if (newCombo > newMax) newMax = newCombo;
+   880→
+   881→    const comboMult = 1 + (newCombo - 1) * 0.1;
+   882→    const prestMult = 1 + s.prestigePoints * 0.1;
+   883→    const puMult = s.activePowerUp?.effect === 'doubleClick' ? s.activePowerUp.value : 1;
+   884→    const evMult = s.activeEvent?.effect === 'doubleClick' ? s.activeEvent.value : 1;
+   885→    let value = s.clickPower * s.multiplier * comboMult * prestMult * puMult * evMult;
+   886→
+   887→    let isCrit = false;
+   888→    if (Math.random() < s.critChance) { isCrit = true; value *= s.critMultiplier; }
+   889→
+   890→    const rv = Math.round(value * 10) / 10;
+   891→    const tt: FloatingText['type'] = isCrit ? 'crit' : newCombo > 1 ? 'combo' : 'normal';
+   892→    const newRippleId = s.rippleId + 1;
+   893→
+   894→    set({
+   895→      crystals: Math.round((s.crystals + rv) * 100) / 100,
+   896→      totalClicks: s.totalClicks + 1, totalEarned: Math.round((s.totalEarned + rv) * 100) / 100,
+   897→      sessionClicks: s.sessionClicks + 1, sessionEarned: Math.round((s.sessionEarned + rv) * 100) / 100,
+   898→      combo: newCombo, comboTimer: 60, maxCombo: newMax, lastClickTime: now,
+   899→      totalCrits: isCrit ? s.totalCrits + 1 : s.totalCrits,
+   900→      screenShake: isCrit || newCombo >= 10,
+   901→      crystalPulse: isCrit ? 3 : newCombo >= 5 ? 2 : 1,
+   902→      floatingTextId: s.floatingTextId + 1,
+   903→      clickTimestamps: recent, clicksPerSecond: recent.length,
+   904→      ripples: [...s.ripples.slice(-6), { id: newRippleId, x, y, type: tt }], rippleId: newRippleId,
+   905→    });
+   906→    get().addFloatingText(x, y, rv, tt);
+   907→    get().checkAchievements();
+   908→    get().checkMilestones();
+   909→  },
+   910→
+   911→  clickGolden: (x, y) => {
+   912→    const s = get();
+   913→    if (!s.goldenActive) return;
+   914→    const evMult = s.activeEvent?.effect === 'tripleGolden' ? s.activeEvent.value : 1;
+   915→    const value = Math.round(s.goldenClickValue * (1 + s.prestigePoints * 0.1) * evMult * 10) / 10;
+   916→    set({
+   917→      crystals: Math.round((s.crystals + value) * 100) / 100,
+   918→      totalEarned: Math.round((s.totalEarned + value) * 100) / 100,
+   919→      sessionEarned: Math.round((s.sessionEarned + value) * 100) / 100,
+   920→      goldenClicks: s.goldenClicks + 1, goldenActive: false, goldenTimer: 0,
+   921→      screenShake: true, crystalPulse: 4,
+   922→    });
+   923→    get().addFloatingText(x, y, value, 'golden');
+   924→    get().checkAchievements(); get().checkMilestones();
+   925→  },
+   926→
+   927→  buyUpgrade: (id) => {
+   928→    const s = get(); const idx = s.upgrades.findIndex(u => u.id === id);
+   929→    if (idx === -1) return false;
+   930→    const u = { ...s.upgrades[idx] };
+   931→    if (u.maxLevel && u.level >= u.maxLevel) return false;
+   932→    const cost = getUpgradeCost(u);
+   933→    if (s.crystals < cost) return false;
+   934→    const nu = [...s.upgrades]; nu[idx] = { ...u, level: u.level + 1 };
+   935→    const stats = recalcStats(nu);
+   936→    set({ crystals: Math.round((s.crystals - cost) * 100) / 100, upgrades: nu, ...stats });
+   937→    get().checkAchievements();
+   938→    get().checkAreaUnlocks();
+   939→    return true;
+   940→  },
+   941→
+   942→  setBuyQuantity: (q) => set({ buyQuantity: q }),
+   943→
+   944→  performPrestige: () => {
+   945→    const s = get(); if (s.totalEarned < 1000) return;
+   946→    const pts = Math.floor(Math.sqrt(s.totalEarned / 1000));
+   947→    set({
+   948→      crystals: 0, totalClicks: 0, totalEarned: 0, clickPower: 1, multiplier: 1, autoRate: 0,
+   949→      prestige: s.prestige + 1, prestigePoints: s.prestigePoints + pts,
+   950→      combo: 0, comboTimer: 0, maxCombo: 0,
+   951→      goldenClicks: 0, goldenChance: 0.03, critChance: 0.05, totalCrits: 0,
+   952→      goldenActive: false, goldenTimer: 0, activePowerUp: null, powerUpTimer: 0,
+   953→      activeEvent: null, eventTimer: 0,
+   954→      upgrades: [
+   955→        ...DEFAULT_UPGRADES.map(u => ({ ...u })),
+   956→        ...Object.values(AREA_UPGRADES).flat().map(u => ({ ...u })),
+   957→      ],
+   958→      milestones: MILESTONE_DEFS.map(m => ({ ...m, celebrated: false })),
+   959→      floatingTexts: [], ripples: [], screenShake: true, crystalPulse: 5,
+   960→      sessionClicks: 0, sessionEarned: 0,
+   961→    });
+   962→    get().checkAchievements();
+   963→  },
+   964→
+   965→  updateCombo: () => {
+   966→    const s = get();
+   967→    if (s.comboTimer > 0) set({ comboTimer: s.comboTimer - 1, combo: s.comboTimer <= 1 ? 0 : s.combo });
+   968→  },
+   969→
+   970→  updateGolden: () => {
+   971→    const s = get();
+   972→    if (s.goldenActive) {
+   973→      if (s.goldenTimer > 0) set({ goldenTimer: s.goldenTimer - 1 });
+   974→      else set({ goldenActive: false, goldenTimer: 0 });
+   975→    } else {
+   976→      let chance = 0.001;
+   977→      if (s.activeEvent?.effect === 'tripleGolden') chance *= s.activeEvent.value;
+   978→      chance *= (s.goldenChance / 0.03);
+   979→      if (Math.random() < chance) {
+   980→        const bv = s.clickPower * s.multiplier * 10 * (1 + s.prestigePoints * 0.1);
+   981→        set({ goldenActive: true, goldenTimer: 400, goldenClickValue: Math.round(bv * 10) / 10 });
+   982→      }
+   983→    }
+   984→  },
+   985→
+   986→  updateEvent: () => {
+   987→    const s = get();
+   988→    if (s.activeEvent) {
+   989→      if (s.eventTimer > 0) set({ eventTimer: s.eventTimer - 1 });
+   990→      else set({ activeEvent: null, eventTimer: 0 });
+   991→    } else if (s.totalClicks > 50 && Math.random() < 0.0003) {
+   992→      const t = EVENT_DEFS[Math.floor(Math.random() * EVENT_DEFS.length)];
+   993→      set({ activeEvent: { ...t, timer: t.duration }, eventTimer: t.duration, totalEvents: s.totalEvents + 1 });
+   994→      const q = [...s.achievementQueue];
+   995→      q.push({ id: `evt_${Date.now()}`, name: t.name, description: t.description, icon: t.icon, unlocked: true, unlockedAt: Date.now(), condition: () => false });
+   996→      set({ achievementQueue: q });
+   997→      get().checkAchievements();
+   998→    }
+   999→  },
+  1000→
+  1001→  updatePowerUp: () => {
+  1002→    const s = get();
+  1003→    if (s.activePowerUp) {
+  1004→      if (s.powerUpTimer > 0) set({ powerUpTimer: s.powerUpTimer - 1 });
+  1005→      else set({ activePowerUp: null, powerUpTimer: 0 });
+  1006→    } else if (s.totalClicks > 20 && Math.random() < 0.0008) {
+  1007→      const t = POWER_UP_DEFS[Math.floor(Math.random() * POWER_UP_DEFS.length)];
+  1008→      if (t.effect === 'instantBonus') {
+  1009→        const b = Math.round((s.autoRate * 30 + s.clickPower * 5) * 10) / 10;
+  1010→        set({ crystals: Math.round((s.crystals + b) * 100) / 100, totalEarned: Math.round((s.totalEarned + b) * 100) / 100, crystalPulse: 2 });
+  1011→      } else {
+  1012→        set({ activePowerUp: { ...t, timer: t.duration }, powerUpTimer: t.duration });
+  1013→      }
+  1014→    }
+  1015→  },
+  1016→
+  1017→  updateNotification: () => {
+  1018→    const s = get();
+  1019→    if (s.currentNotification) {
+  1020→      if (s.notificationTimer > 0) set({ notificationTimer: s.notificationTimer - 1 });
+  1021→      else set({ currentNotification: null, notificationTimer: 0 });
+  1022→    } else if (s.achievementQueue.length > 0) {
+  1023→      const [next, ...rest] = s.achievementQueue;
+  1024→      set({ currentNotification: next, notificationTimer: 30, achievementQueue: rest });
+  1025→    }
+  1026→  },
+  1027→
+  1028→  updateClickSpeed: () => {
+  1029→    const s = get(); const now = Date.now();
+  1030→    const r = s.clickTimestamps.filter(t => now - t < 1000);
+  1031→    set({ clickTimestamps: r, clicksPerSecond: r.length });
+  1032→  },
+  1033→
+  1034→  // Batched tick — all 100ms updates in a single setState for performance
+  1035→  tick: () => {
+  1036→    const s = get();
+  1037→    const updates: Partial<GameState> = {};
+  1038→
+  1039→    // Auto income
+  1040→    if (s.autoRate > 0) {
+  1041→      let rate = s.autoRate;
+  1042→      const puBonus = s.activePowerUp?.effect === 'tripleAuto' ? s.activePowerUp.value : 1;
+  1043→      const evBonus = s.activeEvent?.effect === 'doubleAuto' ? s.activeEvent.value : 1;
+  1044→      rate *= puBonus * evBonus;
+  1045→      const prestMult = 1 + s.prestigePoints * 0.1;
+  1046→      const income = rate * prestMult * 0.1;
+  1047→      updates.crystals = Math.round((s.crystals + income) * 100) / 100;
+  1048→      updates.totalEarned = Math.round((s.totalEarned + income) * 100) / 100;
+  1049→      updates.sessionEarned = Math.round((s.sessionEarned + income) * 100) / 100;
+  1050→    }
+  1051→
+  1052→    // Combo decay
+  1053→    if (s.comboTimer > 0) {
+  1054→      updates.comboTimer = s.comboTimer - 1;
+  1055→      if (s.comboTimer <= 1) updates.combo = 0;
+  1056→    }
+  1057→
+  1058→    // Golden crystal
+  1059→    if (s.goldenActive) {
+  1060→      if (s.goldenTimer > 0) updates.goldenTimer = s.goldenTimer - 1;
+  1061→      else { updates.goldenActive = false; updates.goldenTimer = 0; }
+  1062→    } else {
+  1063→      let chance = 0.001;
+  1064→      if (s.activeEvent?.effect === 'tripleGolden') chance *= s.activeEvent.value;
+  1065→      chance *= (s.goldenChance / 0.03);
+  1066→      if (Math.random() < chance) {
+  1067→        const bv = s.clickPower * s.multiplier * 10 * (1 + s.prestigePoints * 0.1);
+  1068→        updates.goldenActive = true;
+  1069→        updates.goldenTimer = 400;
+  1070→        updates.goldenClickValue = Math.round(bv * 10) / 10;
+  1071→      }
+  1072→    }
+  1073→
+  1074→    // Event timer
+  1075→    if (s.activeEvent) {
+  1076→      if (s.eventTimer > 0) updates.eventTimer = s.eventTimer - 1;
+  1077→      else { updates.activeEvent = null; updates.eventTimer = 0; }
+  1078→    } else if (s.totalClicks > 50 && Math.random() < 0.0003) {
+  1079→      const t = EVENT_DEFS[Math.floor(Math.random() * EVENT_DEFS.length)];
+  1080→      updates.activeEvent = { ...t, timer: t.duration };
+  1081→      updates.eventTimer = t.duration;
+  1082→      updates.totalEvents = s.totalEvents + 1;
+  1083→      const q = [...s.achievementQueue];
+  1084→      q.push({ id: `evt_${Date.now()}`, name: t.name, description: t.description, icon: t.icon, unlocked: true, unlockedAt: Date.now(), condition: () => false });
+  1085→      updates.achievementQueue = q;
+  1086→      // Schedule achievement check after this set
+  1087→      setTimeout(() => get().checkAchievements(), 0);
+  1088→    }
+  1089→
+  1090→    // Power-up timer
+  1091→    if (s.activePowerUp) {
+  1092→      if (s.powerUpTimer > 0) updates.powerUpTimer = s.powerUpTimer - 1;
+  1093→      else { updates.activePowerUp = null; updates.powerUpTimer = 0; }
+  1094→    } else if (s.totalClicks > 20 && Math.random() < 0.0008) {
+  1095→      const t = POWER_UP_DEFS[Math.floor(Math.random() * POWER_UP_DEFS.length)];
+  1096→      if (t.effect === 'instantBonus') {
+  1097→        const b = Math.round((s.autoRate * 30 + s.clickPower * 5) * 10) / 10;
+  1098→        updates.crystals = Math.round(((updates.crystals ?? s.crystals) + b) * 100) / 100;
+  1099→        updates.totalEarned = Math.round(((updates.totalEarned ?? s.totalEarned) + b) * 100) / 100;
+  1100→        updates.crystalPulse = 2;
+  1101→      } else {
+  1102→        updates.activePowerUp = { ...t, timer: t.duration };
+  1103→        updates.powerUpTimer = t.duration;
+  1104→      }
+  1105→    }
+  1106→
+  1107→    // Notification timer
+  1108→    if (s.currentNotification) {
+  1109→      if (s.notificationTimer > 0) updates.notificationTimer = s.notificationTimer - 1;
+  1110→      else { updates.currentNotification = null; updates.notificationTimer = 0; }
+  1111→    } else if (s.achievementQueue.length > 0) {
+  1112→      const [next, ...rest] = s.achievementQueue;
+  1113→      updates.currentNotification = next;
+  1114→      updates.notificationTimer = 30;
+  1115→      updates.achievementQueue = rest;
+  1116→    }
+  1117→
+  1118→    // Click speed
+  1119→    const now = Date.now();
+  1120→    const r = s.clickTimestamps.filter(t => now - t < 1000);
+  1121→    updates.clickTimestamps = r;
+  1122→    updates.clicksPerSecond = r.length;
+  1123→
+  1124→    // Screen shake / crystal pulse clear
+  1125→    if (s.screenShake) setTimeout(() => set({ screenShake: false }), 150);
+  1126→    if (s.crystalPulse > 0) setTimeout(() => set({ crystalPulse: 0 }), 200);
+  1127→
+  1128→    if (Object.keys(updates).length > 0) set(updates);
+  1129→  },
+  1130→
+  1131→  switchArea: (areaId) => set({ currentArea: areaId }),
+  1132→
+  1133→  checkAreaUnlocks: () => {
+  1134→    const s = get();
+  1135→    const newlyUnlocked = AREAS.filter(a => a.unlockAt > 0 && s.totalEarned >= a.unlockAt && !s.unlockedAreas.includes(a.id)).map(a => a.id);
+  1136→    if (newlyUnlocked.length > 0) set({ unlockedAreas: [...s.unlockedAreas, ...newlyUnlocked] });
+  1137→  },
+  1138→
+  1139→  checkMilestones: () => {
+  1140→    const s = get();
+  1141→    get().checkAreaUnlocks();
+  1142→    const nm = s.milestones.map(m => (!m.celebrated && s.totalEarned >= m.value ? { ...m, celebrated: true } : m));
+  1143→    const just = nm.find((m, i) => m.celebrated && !s.milestones[i].celebrated);
+  1144→    if (just) {
+  1145→      set({ milestones: nm, screenShake: true, crystalPulse: 5 });
+  1146→      get().addFloatingText(window.innerWidth / 2, window.innerHeight / 2, 0, 'milestone');
+  1147→    }
+  1148→  },
+  1149→
+  1150→  addFloatingText: (x, y, value, type = 'normal') => {
+  1151→    const s = get(); const ft: FloatingText = { id: s.floatingTextId, value, x, y, type };
+  1152→    set({ floatingTexts: [...s.floatingTexts, ft] });
+  1153→    setTimeout(() => get().removeFloatingText(ft.id), 1200);
+  1154→  },
+  1155→
+  1156→  removeFloatingText: (id) => { set({ floatingTexts: get().floatingTexts.filter(t => t.id !== id) }); },
+  1157→
+  1158→  setActiveTab: (tab) => set({ activeTab: tab }),
+  1159→
+  1160→  checkAchievements: () => {
+  1161→    const s = get(); const q = [...s.achievementQueue];
+  1162→    const na = s.achievements.map(a => {
+  1163→      if (!a.unlocked && a.condition(s)) { q.push({ ...a, unlocked: true, unlockedAt: Date.now() }); return { ...a, unlocked: true, unlockedAt: Date.now() }; }
+  1164→      return a;
+  1165→    });
+  1166→    set({ achievements: na, achievementQueue: q });
+  1167→  },
+  1168→
+  1169→  resetGame: () => {
+  1170→    set({
+  1171→      crystals: 0, totalClicks: 0, totalEarned: 0, clickPower: 1, multiplier: 1, autoRate: 0,
+  1172→      prestige: 0, prestigePoints: 0, combo: 0, comboTimer: 0, maxCombo: 0, lastClickTime: 0,
+  1173→      clickTimestamps: [], clicksPerSecond: 0, critChance: 0.05, critMultiplier: 5, totalCrits: 0,
+  1174→      goldenClicks: 0, goldenChance: 0.03, goldenActive: false, goldenTimer: 0, goldenClickValue: 0,
+  1175→      activePowerUp: null, powerUpTimer: 0, activeEvent: null, eventTimer: 0, totalEvents: 0,
+  1176→      buyQuantity: 1 as BuyQuantity,
+  1177→      sessionStartTime: Date.now(), sessionClicks: 0, sessionEarned: 0,
+  1178→      milestones: MILESTONE_DEFS.map(m => ({ ...m, celebrated: false })),
+  1179→      lastOnlineTime: Date.now(), offlineEarned: 0, showOfflineBonus: false,
+  1180→      floatingTexts: [], floatingTextId: 0, achievementQueue: [], currentNotification: null, notificationTimer: 0,
+  1181→      ripples: [], rippleId: 0,
+  1182→      currentArea: 'naica', unlockedAreas: ['naica'],
+  1183→      upgrades: [
+  1184→        ...DEFAULT_UPGRADES.map(u => ({ ...u })),
+  1185→        ...Object.values(AREA_UPGRADES).flat().map(u => ({ ...u })),
+  1186→      ], achievements: buildAchievementConditions(),
+  1187→      screenShake: false, crystalPulse: 0, activeTab: 'upgrades',
+  1188→    });
+  1189→  },
+  1190→
+  1191→  claimOfflineEarnings: () => {
+  1192→    const s = get(); if (s.offlineEarned <= 0) return;
+  1193→    set({
+  1194→      crystals: Math.round((s.crystals + s.offlineEarned) * 100) / 100,
+  1195→      totalEarned: Math.round((s.totalEarned + s.offlineEarned) * 100) / 100,
+  1196→      offlineEarned: 0, showOfflineBonus: false,
+  1197→    });
+  1198→    get().checkAchievements(); get().checkMilestones();
+  1199→  },
+  1200→
+  1201→  dismissOfflineBonus: () => set({ offlineEarned: 0, showOfflineBonus: false }),
+  1202→
+  1203→  loadSave: (data) => {
+  1204→    const su = data.upgrades as { id: string; level: number }[] | undefined;
+  1205→    const allDefaults = [
+  1206→      ...DEFAULT_UPGRADES,
+  1207→      ...Object.values(AREA_UPGRADES).flat(),
+  1208→    ];
+  1209→    const upgrades = allDefaults.map(u => {
+  1210→      const saved = su?.find(s => s.id === u.id);
+  1211→      return { ...u, level: saved?.level ?? 0 };
+  1212→    });
+  1213→    const la = data.achievements as { id: string; unlocked: boolean }[] | undefined;
+  1214→    let achievements = buildAchievementConditions();
+  1215→    if (la) achievements = achievements.map(a => {
+  1216→      const l = la.find(x => x.id === a.id);
+  1217→      return { ...a, unlocked: l?.unlocked ?? false };
+  1218→    });
+  1219→    const stats = recalcStats(upgrades);
+  1220→    const lastOnline = (data.lastOnlineTime as number) || Date.now();
+  1221→    const elapsed = Date.now() - lastOnline;
+  1222→    const prestigeMult = 1 + (data.prestige as number || 0) * 0.1;
+  1223→    const offlineEarned = stats.autoRate > 0 && elapsed >= 60000
+  1224→      ? Math.round(stats.autoRate * prestigeMult * (Math.min(elapsed, 8 * 3600000) / 1000) * 0.5 * 100) / 100
+  1225→      : 0;
+  1226→    const currentArea = (data.currentArea as string) || 'naica';
+  1227→    const unlockedAreas = (data.unlockedAreas as string[]) || ['naica'];
+  1228→    set({
+  1229→      crystals: (data.crystals as number) ?? 0, totalClicks: (data.totalClicks as number) ?? 0,
+  1230→      totalEarned: (data.totalEarned as number) ?? 0, ...stats,
+  1231→      prestige: (data.prestige as number) ?? 0, prestigePoints: (data.prestigePoints as number) ?? 0,
+  1232→      goldenClicks: (data.goldenClicks as number) ?? 0, totalCrits: (data.totalCrits as number) ?? 0,
+  1233→      maxCombo: (data.maxCombo as number) ?? 0, totalEvents: (data.totalEvents as number) ?? 0,
+  1234→      upgrades, achievements, lastOnlineTime: Date.now(),
+  1235→      offlineEarned, showOfflineBonus: offlineEarned > 0,
+  1236→      currentArea, unlockedAreas,
+  1237→    });
+  1238→    get().checkAreaUnlocks();
+  1239→  },
+  1240→
+  1241→  getSaveData: () => {
+  1242→    const s = get();
+  1243→    return {
+  1244→      crystals: s.crystals, totalClicks: s.totalClicks, totalEarned: s.totalEarned,
+  1245→      clickPower: s.clickPower, multiplier: s.multiplier, autoRate: s.autoRate,
+  1246→      prestige: s.prestige, prestigePoints: s.prestigePoints,
+  1247→      upgrades: s.upgrades.map(u => ({ id: u.id, level: u.level })),
+  1248→      achievements: s.achievements.map(a => ({ id: a.id, unlocked: a.unlocked })),
+  1249→      goldenClicks: s.goldenClicks, totalCrits: s.totalCrits, maxCombo: s.maxCombo,
+  1250→      totalEvents: s.totalEvents, lastOnlineTime: Date.now(),
+  1251→      currentArea: s.currentArea, unlockedAreas: s.unlockedAreas,
+  1252→    };
+  1253→  },
+  1254→}));
+  1255→

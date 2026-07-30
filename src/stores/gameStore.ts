@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { GENERATED_AREAS, GENERATED_UPGRADES } from '@/lib/mine-generator';
 
 // ====== Interfaces ======
 export interface Upgrade {
@@ -204,8 +205,8 @@ const DEFAULT_UPGRADES: Upgrade[] = [
   { id: 'crit_eye', name: 'Critical Eye', description: '+3% crit chance per level', icon: '👁️', baseCost: 800, costMultiplier: 1.8, level: 0, effect: 'critChance', value: 0.03, maxLevel: 12 },
 ];
 
-// ====== Area Definitions ======
-export const AREAS: Area[] = [
+// ====== Area Definitions (hand-crafted first 23) ======
+const HANDCRAFTED_AREAS: Area[] = [
   {
     id: 'naica', name: 'Naica Crystal Cave', location: 'Mexico', flag: '🇲🇽',
     gem: 'Selenite', description: 'Giant gypsum crystals in an underground cavern', icon: '🪨',
@@ -424,7 +425,8 @@ export const AREAS: Area[] = [
   },
 ];
 
-// ====== Area Upgrades (areas 2-7) ======
+// Merge in generated mines (hundreds more going up to ZZ)
+export const AREAS: Area[] = [...HANDCRAFTED_AREAS, ...GENERATED_AREAS as unknown as Area[]];
 const AREA_UPGRADES: Record<string, Upgrade[]> = {
   ratnapura: [
     { id: 'ratnapura_gem_cutter', name: 'Gem Cutter', description: '+50 click power per level', icon: '💎', baseCost: 2000, costMultiplier: 1.6, level: 0, effect: 'clickPower', value: 50, maxLevel: 2000},
@@ -608,6 +610,7 @@ const AREA_UPGRADES: Record<string, Upgrade[]> = {
     { id: 'singularity_luck', name: 'Critical Fortune', description: '+0.03% crit chance per level', icon: '🍀', baseCost: 5e48, costMultiplier: 2.0, level: 0, effect: 'critChance', value: 0.0003, maxLevel: 25 },
     { id: 'singularity_ultimate', name: 'Infinity Shard', description: 'x100T multiplier per level', icon: '🕳️', baseCost: 5e49, costMultiplier: 2.5, level: 0, effect: 'multiplier', value: 1e14, maxLevel: 2000},
   ],
+  ...GENERATED_UPGRADES as unknown as Record<string, Upgrade[]>,
 };
 
 // All upgrade IDs belonging to the naica area (default upgrades)

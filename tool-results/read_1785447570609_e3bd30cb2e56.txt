@@ -1,3 +1,430 @@
+     1→import { create } from 'zustand';
+     2→
+     3→// ====== Interfaces ======
+     4→export interface Upgrade {
+     5→  id: string;
+     6→  name: string;
+     7→  description: string;
+     8→  icon: string;
+     9→  baseCost: number;
+    10→  costMultiplier: number;
+    11→  level: number;
+    12→  effect: 'clickPower' | 'autoRate' | 'multiplier' | 'goldenChance' | 'critChance';
+    13→  value: number;
+    14→  maxLevel?: number;
+    15→}
+    16→
+    17→export interface Achievement {
+    18→  id: string;
+    19→  name: string;
+    20→  description: string;
+    21→  icon: string;
+    22→  unlocked: boolean;
+    23→  unlockedAt?: number;
+    24→  condition: (state: GameState) => boolean;
+    25→}
+    26→
+    27→export interface FloatingText {
+    28→  id: number;
+    29→  value: number;
+    30→  x: number;
+    31→  y: number;
+    32→  type: 'normal' | 'golden' | 'combo' | 'crit' | 'powerup' | 'event' | 'offline' | 'milestone';
+    33→}
+    34→
+    35→export interface PowerUp {
+    36→  id: string;
+    37→  name: string;
+    38→  icon: string;
+    39→  effect: 'doubleClick' | 'tripleAuto' | 'instantBonus';
+    40→  duration: number;
+    41→  timer: number;
+    42→  value: number;
+    43→}
+    44→
+    45→export interface GameEvent {
+    46→  id: string;
+    47→  name: string;
+    48→  description: string;
+    49→  icon: string;
+    50→  effect: 'doubleAuto' | 'doubleClick' | 'tripleGolden';
+    51→  duration: number;
+    52→  timer: number;
+    53→  value: number;
+    54→}
+    55→
+    56→export interface Milestone {
+    57→  id: number;
+    58→  value: number;
+    59→  label: string;
+    60→  icon: string;
+    61→  celebrated: boolean;
+    62→}
+    63→
+    64→export interface Area {
+    65→  id: string;
+    66→  name: string;
+    67→  location: string;
+    68→  flag: string;
+    69→  gem: string;
+    70→  description: string;
+    71→  icon: string;
+    72→  unlockAt: number;
+    73→  gradient: string;
+    74→  glowColor: string;
+    75→  bgAccent: string;
+    76→}
+    77→
+    78→export type BuyQuantity = 1 | 10 | 100 | 'max';
+    79→
+    80→export interface GameState {
+    81→  // Core resources
+    82→  crystals: number;
+    83→  totalClicks: number;
+    84→  totalEarned: number;
+    85→  clickPower: number;
+    86→  multiplier: number;
+    87→  autoRate: number;
+    88→
+    89→  // Prestige
+    90→  prestige: number;
+    91→  prestigePoints: number;
+    92→
+    93→  // Combo
+    94→  combo: number;
+    95→  comboTimer: number;
+    96→  maxCombo: number;
+    97→  lastClickTime: number;
+    98→
+    99→  // Click speed tracking
+   100→  clickTimestamps: number[];
+   101→  clicksPerSecond: number;
+   102→
+   103→  // Critical hits
+   104→  critChance: number;
+   105→  critMultiplier: number;
+   106→  totalCrits: number;
+   107→
+   108→  // Golden Crystal
+   109→  goldenClicks: number;
+   110→  goldenChance: number;
+   111→  goldenActive: boolean;
+   112→  goldenTimer: number;
+   113→  goldenClickValue: number;
+   114→
+   115→  // Power-ups
+   116→  activePowerUp: PowerUp | null;
+   117→  powerUpTimer: number;
+   118→
+   119→  // Game Events
+   120→  activeEvent: GameEvent | null;
+   121→  eventTimer: number;
+   122→  totalEvents: number;
+   123→
+   124→  // Buy quantity
+   125→  buyQuantity: BuyQuantity;
+   126→
+   127→  // Session tracking
+   128→  sessionStartTime: number;
+   129→  sessionClicks: number;
+   130→  sessionEarned: number;
+   131→
+   132→  // Milestones
+   133→  milestones: Milestone[];
+   134→
+   135→  // Offline earnings
+   136→  lastOnlineTime: number;
+   137→  offlineEarned: number;
+   138→  showOfflineBonus: boolean;
+   139→
+   140→  // Floating texts
+   141→  floatingTexts: FloatingText[];
+   142→  floatingTextId: number;
+   143→
+   144→  // Achievement notifications
+   145→  achievementQueue: Achievement[];
+   146→  currentNotification: Achievement | null;
+   147→  notificationTimer: number;
+   148→
+   149→  // Click ripples
+   150→  ripples: { id: number; x: number; y: number; type: FloatingText['type'] }[];
+   151→  rippleId: number;
+   152→
+   153→  // Upgrades & Achievements
+   154→  upgrades: Upgrade[];
+   155→  achievements: Achievement[];
+   156→
+   157→  // Area system
+   158→  currentArea: string;
+   159→  unlockedAreas: string[];
+   160→
+   161→  // UI state
+   162→  screenShake: boolean;
+   163→  crystalPulse: number;
+   164→  activeTab: 'upgrades' | 'achievements' | 'stats' | 'prestige' | 'map';
+   165→
+   166→  // Actions
+   167→  click: (x: number, y: number) => void;
+   168→  clickGolden: (x: number, y: number) => void;
+   169→  buyUpgrade: (upgradeId: string) => boolean;
+   170→  setBuyQuantity: (q: BuyQuantity) => void;
+   171→  performPrestige: () => void;
+   172→  updateCombo: () => void;
+   173→  updateGolden: () => void;
+   174→  updatePowerUp: () => void;
+   175→  updateEvent: () => void;
+   176→  updateNotification: () => void;
+   177→  updateClickSpeed: () => void;
+   178→  checkMilestones: () => void;
+   179→  addFloatingText: (x: number, y: number, value: number, type?: FloatingText['type']) => void;
+   180→  removeFloatingText: (id: number) => void;
+   181→  setActiveTab: (tab: 'upgrades' | 'achievements' | 'stats' | 'prestige' | 'map') => void;
+   182→  switchArea: (areaId: string) => void;
+   183→  checkAreaUnlocks: () => void;
+   184→  checkAchievements: () => void;
+   185→  resetGame: () => void;
+   186→  loadSave: (data: Record<string, unknown>) => void;
+   187→  getSaveData: () => Record<string, unknown>;
+   188→  claimOfflineEarnings: () => void;
+   189→  dismissOfflineBonus: () => void;
+   190→}
+   191→
+   192→// ====== Data Definitions ======
+   193→const DEFAULT_UPGRADES: Upgrade[] = [
+   194→  { id: 'sharpen', name: 'Sharpen Crystal', description: '+1 click power per level', icon: '⚔️', baseCost: 15, costMultiplier: 1.4, level: 0, effect: 'clickPower', value: 1, maxLevel: 2000},
+   195→  { id: 'enchanted_touch', name: 'Enchanted Touch', description: '+3 click power per level', icon: '✨', baseCost: 100, costMultiplier: 1.5, level: 0, effect: 'clickPower', value: 3, maxLevel: 2000},
+   196→  { id: 'crystal_sword', name: 'Crystal Sword', description: '+10 click power per level', icon: '🗡️', baseCost: 500, costMultiplier: 1.6, level: 0, effect: 'clickPower', value: 10, maxLevel: 2000},
+   197→  { id: 'crystal_blade', name: 'Crystal Blade', description: '+25 click power per level', icon: '⚡', baseCost: 5000, costMultiplier: 1.7, level: 0, effect: 'clickPower', value: 25, maxLevel: 2000},
+   198→  { id: 'apprentice_miner', name: 'Apprentice Miner', description: '+0.5 crystals/sec', icon: '⛏️', baseCost: 50, costMultiplier: 1.4, level: 0, effect: 'autoRate', value: 0.5, maxLevel: 2000},
+   199→  { id: 'crystal_golem', name: 'Crystal Golem', description: '+3 crystals/sec', icon: '🤖', baseCost: 300, costMultiplier: 1.5, level: 0, effect: 'autoRate', value: 3, maxLevel: 2000},
+   200→  { id: 'crystal_dragon', name: 'Crystal Dragon', description: '+15 crystals/sec', icon: '🐉', baseCost: 2000, costMultiplier: 1.6, level: 0, effect: 'autoRate', value: 15, maxLevel: 2000},
+   201→  { id: 'crystal_mage', name: 'Crystal Mage Guild', description: '+50 crystals/sec', icon: '🧙', baseCost: 10000, costMultiplier: 1.7, level: 0, effect: 'autoRate', value: 50, maxLevel: 2000},
+   202→  { id: 'amplifier', name: 'Crystal Amplifier', description: 'x1.2 multiplier per level', icon: '🔮', baseCost: 200, costMultiplier: 1.8, level: 0, effect: 'multiplier', value: 0.2, maxLevel: 2000},
+   203→  { id: 'golden_lens', name: 'Golden Lens', description: '+2% golden chance per level', icon: '🌟', baseCost: 1000, costMultiplier: 2.0, level: 0, effect: 'goldenChance', value: 0.02, maxLevel: 25 },
+   204→  { id: 'crit_eye', name: 'Critical Eye', description: '+3% crit chance per level', icon: '👁️', baseCost: 800, costMultiplier: 1.8, level: 0, effect: 'critChance', value: 0.03, maxLevel: 12 },
+   205→];
+   206→
+   207→// ====== Area Definitions ======
+   208→export const AREAS: Area[] = [
+   209→  {
+   210→    id: 'naica', name: 'Naica Crystal Cave', location: 'Mexico', flag: '🇲🇽',
+   211→    gem: 'Selenite', description: 'Giant gypsum crystals in an underground cavern', icon: '🪨',
+   212→    unlockAt: 0,
+   213→    gradient: 'from-gray-200 via-white to-cyan-100',
+   214→    glowColor: 'rgba(200, 230, 255, 0.6)',
+   215→    bgAccent: 'bg-cyan-950/20',
+   216→  },
+   217→  {
+   218→    id: 'ratnapura', name: 'Ratnapura', location: 'Sri Lanka', flag: '🇱🇰',
+   219→    gem: 'Sapphires', description: 'The City of Gems, famed for blue sapphires', icon: '💙',
+   220→    unlockAt: 1000,
+   221→    gradient: 'from-blue-400 via-blue-600 to-indigo-800',
+   222→    glowColor: 'rgba(96, 165, 250, 0.6)',
+   223→    bgAccent: 'bg-blue-950/20',
+   224→  },
+   225→  {
+   226→    id: 'muzo', name: 'Muzo Valley', location: 'Colombia', flag: '🇨🇴',
+   227→    gem: 'Emeralds', description: 'The world\'s finest emerald mining region', icon: '💚',
+   228→    unlockAt: 50000,
+   229→    gradient: 'from-green-400 via-emerald-500 to-green-800',
+   230→    glowColor: 'rgba(52, 211, 153, 0.6)',
+   231→    bgAccent: 'bg-green-950/20',
+   232→  },
+   233→  {
+   234→    id: 'coober_pedy', name: 'Coober Pedy', location: 'Australia', flag: '🇦🇺',
+   235→    gem: 'Opals', description: 'The opal capital of the world, underground mining town', icon: '🌈',
+   236→    unlockAt: 500000,
+   237→    gradient: 'from-pink-300 via-orange-300 to-yellow-200',
+   238→    glowColor: 'rgba(251, 146, 60, 0.5)',
+   239→    bgAccent: 'bg-orange-950/20',
+   240→  },
+   241→  {
+   242→    id: 'ilakaka', name: 'Ilakaka', location: 'Madagascar', flag: '🇲🇬',
+   243→    gem: 'Rare Gems', description: 'A mining boomtown producing rare sapphires and tourmalines', icon: '🌸',
+   244→    unlockAt: 5000000,
+   245→    gradient: 'from-pink-400 via-fuchsia-500 to-purple-600',
+   246→    glowColor: 'rgba(232, 121, 249, 0.5)',
+   247→    bgAccent: 'bg-fuchsia-950/20',
+   248→  },
+   249→  {
+   250→    id: 'mogok', name: 'Mogok Valley', location: 'Myanmar', flag: '🇲🇲',
+   251→    gem: 'Rubies', description: 'The legendary Valley of Rubies, source of the finest pigeon\'s blood rubies', icon: '❤️',
+   252→    unlockAt: 50000000,
+   253→    gradient: 'from-red-400 via-red-600 to-rose-900',
+   254→    glowColor: 'rgba(248, 113, 113, 0.5)',
+   255→    bgAccent: 'bg-red-950/20',
+   256→  },
+   257→  {
+   258→    id: 'skeleton_coast', name: 'Skeleton Coast', location: 'Namibia', flag: '🇳🇦',
+   259→    gem: 'Diamonds', description: 'Diamonds washed from the interior to the desolate Atlantic coast', icon: '💠',
+   260→    unlockAt: 500000000,
+   261→    gradient: 'from-white via-cyan-100 to-blue-200',
+   262→    glowColor: 'rgba(224, 242, 254, 0.8)',
+   263→    bgAccent: 'bg-sky-950/20',
+   264→  },
+   265→  {
+   266→    id: 'ural_mountains', name: 'Ural Mountains', location: 'Russia', flag: '🇷🇺',
+   267→    gem: 'Alexandrite', description: 'The only source of color-changing alexandrite', icon: '🔄',
+   268→    unlockAt: 5e10,
+   269→    gradient: 'from-emerald-400 via-purple-500 to-emerald-600',
+   270→    glowColor: 'rgba(52, 211, 153, 0.5)',
+   271→    bgAccent: 'bg-emerald-950/20',
+   272→  },
+   273→  {
+   274→    id: 'mirny_mine', name: 'Mirny Diamond Mine', location: 'Russia', flag: '🇷🇺',
+   275→    gem: 'Star Diamonds', description: 'One of the largest excavated holes in the world', icon: '⭐',
+   276→    unlockAt: 5e12,
+   277→    gradient: 'from-slate-300 via-blue-200 to-slate-400',
+   278→    glowColor: 'rgba(203, 213, 225, 0.6)',
+   279→    bgAccent: 'bg-slate-950/20',
+   280→  },
+   281→  {
+   282→    id: 'cullinan', name: 'Cullinan Mine', location: 'South Africa', flag: '🇿🇦',
+   283→    gem: 'Cullinan Diamonds', description: 'Source of the largest gem diamond ever found', icon: '👑',
+   284→    unlockAt: 5e14,
+   285→    gradient: 'from-yellow-200 via-white to-cyan-200',
+   286→    glowColor: 'rgba(254, 249, 195, 0.8)',
+   287→    bgAccent: 'bg-yellow-950/20',
+   288→  },
+   289→  {
+   290→    id: 'argyle', name: 'Argyle Diamond Mine', location: 'Australia', flag: '🇦🇺',
+   291→    gem: 'Pink Diamonds', description: "The world's primary source of rare pink diamonds", icon: '💗',
+   292→    unlockAt: 5e16,
+   293→    gradient: 'from-pink-300 via-rose-400 to-pink-500',
+   294→    glowColor: 'rgba(249, 168, 212, 0.6)',
+   295→    bgAccent: 'bg-pink-950/20',
+   296→  },
+   297→  {
+   298→    id: 'bahia', name: 'Bahia Emerald', location: 'Brazil', flag: '🇧🇷',
+   299→    gem: 'Giant Emeralds', description: 'Home to one of the largest emerald crystals ever found', icon: '🌲',
+   300→    unlockAt: 5e18,
+   301→    gradient: 'from-green-500 via-emerald-600 to-green-800',
+   302→    glowColor: 'rgba(34, 197, 94, 0.6)',
+   303→    bgAccent: 'bg-green-950/20',
+   304→  },
+   305→  {
+   306→    id: 'merelani', name: 'Merelani Hills', location: 'Tanzania', flag: '🇹🇿',
+   307→    gem: 'Tanzanite', description: 'The exclusive source of violet-blue tanzanite', icon: '🔮',
+   308→    unlockAt: 5e20,
+   309→    gradient: 'from-violet-400 via-purple-500 to-indigo-600',
+   310→    glowColor: 'rgba(167, 139, 250, 0.5)',
+   311→    bgAccent: 'bg-violet-950/20',
+   312→  },
+   313→  {
+   314→    id: 'hpakant', name: 'Hpakant Jade Mines', location: 'Myanmar', flag: '🇲🇲',
+   315→    gem: 'Imperial Jade', description: 'Legendary jadeite mines producing the finest imperial jade', icon: '🟢',
+   316→    unlockAt: 5e22,
+   317→    gradient: 'from-lime-400 via-emerald-500 to-teal-600',
+   318→    glowColor: 'rgba(163, 230, 53, 0.5)',
+   319→    bgAccent: 'bg-lime-950/20',
+   320→  },
+   321→  {
+   322→    id: 'meteor_crater', name: 'Meteor Crater', location: 'USA', flag: '🇺🇸',
+   323→    gem: 'Meteorite Crystals', description: 'Ancient impact crater yielding extraterrestrial gems', icon: '☄️',
+   324→    unlockAt: 5e24,
+   325→    gradient: 'from-amber-400 via-orange-500 to-red-600',
+   326→    glowColor: 'rgba(251, 191, 36, 0.5)',
+   327→    bgAccent: 'bg-amber-950/20',
+   328→  },
+   329→  {
+   330→    id: 'kola_superdeep', name: 'Kola Superdeep', location: 'Russia', flag: '🇷🇺',
+   331→    gem: 'Deep Crystals', description: 'The deepest hole ever drilled revealing unknown crystals', icon: '🔦',
+   332→    unlockAt: 5e26,
+   333→    gradient: 'from-red-500 via-orange-600 to-yellow-500',
+   334→    glowColor: 'rgba(239, 68, 68, 0.5)',
+   335→    bgAccent: 'bg-red-950/20',
+   336→  },
+   337→  {
+   338→    id: 'mariana_trench', name: 'Mariana Trench', location: 'Pacific Ocean', flag: '🌊',
+   339→    gem: 'Abyssal Gems', description: 'Crystals formed under extreme deep-sea pressure', icon: '🐙',
+   340→    unlockAt: 5e28,
+   341→    gradient: 'from-blue-900 via-indigo-900 to-slate-900',
+   342→    glowColor: 'rgba(59, 130, 246, 0.4)',
+   343→    bgAccent: 'bg-blue-950/30',
+   344→  },
+   345→  {
+   346→    id: 'asteroid_belt', name: 'Asteroid Belt', location: 'Space', flag: '🚀',
+   347→    gem: 'Asteroid Crystals', description: 'Mining the asteroid belt between Mars and Jupiter', icon: '🌌',
+   348→    unlockAt: 5e30,
+   349→    gradient: 'from-gray-400 via-zinc-500 to-gray-600',
+   350→    glowColor: 'rgba(161, 161, 170, 0.5)',
+   351→    bgAccent: 'bg-zinc-950/20',
+   352→  },
+   353→  {
+   354→    id: 'lunar_mare', name: 'Lunar Mare', location: 'The Moon', flag: '🌙',
+   355→    gem: 'Moon Gems', description: 'KREEP crystals harvested from the lunar highlands', icon: '🌕',
+   356→    unlockAt: 5e32,
+   357→    gradient: 'from-gray-100 via-slate-200 to-gray-300',
+   358→    glowColor: 'rgba(241, 245, 249, 0.8)',
+   359→    bgAccent: 'bg-gray-950/20',
+   360→  },
+   361→  {
+   362→    id: 'olympus_mons', name: 'Olympus Mons', location: 'Mars', flag: '🔴',
+   363→    gem: 'Olympus Gems', description: 'Crystals forged in volcanic chambers of the tallest volcano', icon: '🌋',
+   364→    unlockAt: 5e34,
+   365→    gradient: 'from-red-400 via-orange-500 to-amber-600',
+   366→    glowColor: 'rgba(248, 113, 113, 0.5)',
+   367→    bgAccent: 'bg-orange-950/20',
+   368→  },
+   369→  {
+   370→    id: 'europa_ice', name: 'Europa Ice Fields', location: 'Jupiter Moon', flag: '🪐',
+   371→    gem: 'Europa Ice', description: "Subsurface ocean crystals from Jupiter's frozen moon", icon: '🧊',
+   372→    unlockAt: 5e36,
+   373→    gradient: 'from-cyan-200 via-blue-300 to-cyan-400',
+   374→    glowColor: 'rgba(165, 243, 252, 0.7)',
+   375→    bgAccent: 'bg-cyan-950/20',
+   376→  },
+   377→  {
+   378→    id: 'titan_mines', name: 'Titan Methane Caves', location: 'Saturn Moon', flag: '🪐',
+   379→    gem: 'Titan Crystal', description: 'Methane-ice crystals from the hydrocarbon lakes of Titan', icon: '🟠',
+   380→    unlockAt: 5e38,
+   381→    gradient: 'from-orange-400 via-amber-500 to-yellow-600',
+   382→    glowColor: 'rgba(251, 146, 60, 0.5)',
+   383→    bgAccent: 'bg-orange-950/20',
+   384→  },
+   385→  {
+   386→    id: 'saturn_rings', name: 'Saturn Ring Shards', location: 'Saturn', flag: '🪐',
+   387→    gem: 'Ring Shards', description: "Crystallized ice particles mined from Saturn's rings", icon: '💍',
+   388→    unlockAt: 5e40,
+   389→    gradient: 'from-yellow-300 via-amber-400 to-orange-400',
+   390→    glowColor: 'rgba(252, 211, 77, 0.6)',
+   391→    bgAccent: 'bg-yellow-950/20',
+   392→  },
+   393→  {
+   394→    id: 'deep_space', name: 'Deep Space Rift', location: 'Interstellar', flag: '✨',
+   395→    gem: 'Void Crystals', description: 'Crystals condensed from dark matter in interstellar voids', icon: '🖤',
+   396→    unlockAt: 5e42,
+   397→    gradient: 'from-purple-900 via-violet-950 to-slate-950',
+   398→    glowColor: 'rgba(139, 92, 246, 0.4)',
+   399→    bgAccent: 'bg-purple-950/30',
+   400→  },
+   401→  {
+   402→    id: 'nebula_core', name: 'Orion Nebula Core', location: 'Orion Nebula', flag: '🌌',
+   403→    gem: 'Nebula Gems', description: 'Stellar nursery crystals formed in newborn star systems', icon: '🌈',
+   404→    unlockAt: 5e44,
+   405→    gradient: 'from-pink-500 via-purple-500 to-cyan-500',
+   406→    glowColor: 'rgba(236, 72, 153, 0.5)',
+   407→    bgAccent: 'bg-fuchsia-950/20',
+   408→  },
+   409→  {
+   410→    id: 'neutron_star', name: 'Neutron Star Forge', location: 'Neutron Star', flag: '⚡',
+   411→    gem: 'Neutronium', description: "Ultra-dense crystalline matter from a neutron star's crust", icon: '💫',
+   412→    unlockAt: 5e46,
+   413→    gradient: 'from-cyan-300 via-white to-yellow-200',
+   414→    glowColor: 'rgba(255, 255, 255, 0.8)',
+   415→    bgAccent: 'bg-cyan-950/20',
+   416→  },
+   417→  {
+   418→    id: 'singularity', name: 'Event Horizon', location: 'Black Hole', flag: '🌀',
+   419→    gem: 'Singularity Shards', description: 'Crystals extracted from the edge of spacetime itself', icon: '🕳️',
+   420→    unlockAt: 5e48,
+   421→    gradient: 'from-gray-900 via-purple-900 to-black',
+   422→    glowColor: 'rgba(168, 85, 247, 0.5)',
+   423→    bgAccent: 'bg-black/40',
+   424→  },
+   425→];
+   426→
+   427→// ====== Area Upgrades (areas 2-7) ======
    428→const AREA_UPGRADES: Record<string, Upgrade[]> = {
    429→  ratnapura: [
    430→    { id: 'ratnapura_gem_cutter', name: 'Gem Cutter', description: '+50 click power per level', icon: '💎', baseCost: 2000, costMultiplier: 1.6, level: 0, effect: 'clickPower', value: 50, maxLevel: 2000},
