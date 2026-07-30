@@ -1,57 +1,114 @@
-// Server-side Firestore via REST API
-// Firebase client SDK's Firestore doesn't work in Node.js, so we use REST
+// Server-side Firestore via REST API with service account OAuth
+// Uses google-auth-library to get a proper access token
 
-// Firebase config - env vars may not reach server modules in Turbopack, so hardcoded as fallback
+import { JWT } from 'google-auth-library';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+
 const PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'crystal-clicker-7d4a2';
-const API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'AIzaSyAFH8ANO2iIxhNHqTcmmPsHOjlq1MVwGno';
 const BASE_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
 
-const isConfigured = !!PROJECT_ID && !!API_KEY;
+let jwtClient: JWT | null = null;
+let tokenCache: { token: string; expires: number } | null = null;
 
-interface FirestoreDocument {
-  fields: Record<string, { integerValue?: number; stringValue?: string; doubleValue?: number; booleanValue?: boolean; arrayValue?: { values: unknown[] }; mapValue?: { fields: Record<string, unknown> }; nullValue?: null }>;
+function getServiceAccount(): Record<string, string> | null {
+  const paths = [
+    process.env.FIREBASE_SERVICE_ACCOUNT_PATH,
+    join(process.cwd(), 'firebase-service-account.json'),
+    join(process.cwd(), '..', 'firebase-service-account.json'),
+  ].filter(Boolean) as string[];
+
+  for (const p of paths) {
+    try {
+      const raw = readFileSync(p, 'utf-8');
+      return JSON.parse(raw);
+    } catch {
+      continue;
+    }
+  }
+  return null;
 }
 
-function toFirestoreValue(val: unknown): FirestoreDocument['fields'][string] {
+async function getAccessToken(): Promise<string | null> {
+  if (tokenCache && Date.now() < tokenCache.expires) {
+    return tokenCache.token;
+  }
+
+  if (!jwtClient) {
+    const sa = getServiceAccount();
+    if (!sa) return null;
+    jwtClient = new JWT({
+      email: sa.client_email,
+      key: sa.private_key,
+      scopes: ['https://www.googleapis.com/auth/datastore', 'https://www.googleapis.com/auth/cloud-platform'],
+    });
+  }
+
+  try {
+    const credentials = await jwtClient.authorize();
+    tokenCache = {
+      token: credentials.access_token!,
+      expires: Date.now() + (credentials.expiry_date! - Date.now()) - 60000, // refresh 1 min early
+    };
+    return tokenCache.token;
+  } catch (e) {
+    console.error('Failed to get access token:', e);
+    return null;
+  }
+}
+
+interface FirestoreValue {
+  integerValue?: string;
+  stringValue?: string;
+  doubleValue?: number;
+  booleanValue?: boolean;
+  arrayValue?: { values: FirestoreValue[] };
+  mapValue?: { fields: Record<string, FirestoreValue> };
+  nullValue?: null;
+}
+
+function toFS(val: unknown): FirestoreValue {
   if (val === null || val === undefined) return { nullValue: null };
   if (typeof val === 'number') return { doubleValue: val };
   if (typeof val === 'string') return { stringValue: val };
   if (typeof val === 'boolean') return { booleanValue: val };
-  if (Array.isArray(val)) return { arrayValue: { values: val.map(toFirestoreValue) } };
-  if (typeof val === 'object') return { mapValue: { fields: Object.fromEntries(Object.entries(val as Record<string, unknown>).map(([k, v]) => [k, toFirestoreValue(v)])) } };
+  if (Array.isArray(val)) return { arrayValue: { values: val.map(toFS) } };
+  if (typeof val === 'object') return { mapValue: { fields: Object.fromEntries(Object.entries(val as Record<string, unknown>).map(([k, v]) => [k, toFS(v)])) } };
   return { stringValue: String(val) };
 }
 
-function fromFirestoreValue(val: FirestoreDocument['fields'][string]): unknown {
-  if (val.integerValue !== undefined) return Number(val.integerValue);
-  if (val.doubleValue !== undefined) return val.doubleValue;
-  if (val.stringValue !== undefined) return val.stringValue;
-  if (val.booleanValue !== undefined) return val.booleanValue;
-  if (val.arrayValue) return val.arrayValue.values?.map(fromFirestoreValue) ?? [];
-  if (val.mapValue) {
+function fromFS(v: FirestoreValue): unknown {
+  if (v.nullValue !== undefined) return null;
+  if (v.integerValue !== undefined) return Number(v.integerValue);
+  if (v.doubleValue !== undefined) return v.doubleValue;
+  if (v.stringValue !== undefined) return v.stringValue;
+  if (v.booleanValue !== undefined) return v.booleanValue;
+  if (v.arrayValue) return v.arrayValue.values?.map(fromFS) ?? [];
+  if (v.mapValue) {
     const obj: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(val.mapValue.fields ?? {})) {
-      obj[k] = fromFirestoreValue(v as FirestoreDocument['fields'][string]);
+    for (const [k, fv] of Object.entries(v.mapValue.fields ?? {})) {
+      obj[k] = fromFS(fv);
     }
     return obj;
   }
-  if (val.nullValue !== undefined) return null;
   return null;
 }
 
 export async function firestoreSave(userId: string, data: Record<string, unknown>): Promise<boolean> {
-  if (!isConfigured) return false;
+  const token = await getAccessToken();
+  if (!token) return false;
   try {
-    const fields: FirestoreDocument['fields'] = {};
+    const fields: Record<string, FirestoreValue> = {};
     for (const [k, v] of Object.entries(data)) {
-      fields[k] = toFirestoreValue(v);
+      fields[k] = toFS(v);
     }
-    // Use PATCH with mask for partial update (merge behavior)
-    const fieldMask = Object.keys(data).map(k => `updateMask.fieldPaths=${k}`).join('&');
-    const url = `${BASE_URL}/saves/${userId}?${fieldMask}`;
-    const res = await fetch(url, {
+    const mask = Object.keys(data).map(k => `updateMask.fieldPaths=${k}`).join('&');
+    const res = await fetch(`${BASE_URL}/saves/${userId}?${mask}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': API_KEY },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
       body: JSON.stringify({ fields }),
     });
     if (!res.ok) {
@@ -67,20 +124,22 @@ export async function firestoreSave(userId: string, data: Record<string, unknown
 }
 
 export async function firestoreLoad(userId: string): Promise<Record<string, unknown> | null> {
-  if (!isConfigured) return null;
+  const token = await getAccessToken();
+  if (!token) return null;
   try {
-    const url = `${BASE_URL}/saves/${userId}?key=${API_KEY}`;
-    const res = await fetch(url);
+    const res = await fetch(`${BASE_URL}/saves/${userId}`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
     if (res.status === 404) return null;
     if (!res.ok) {
       const text = await res.text();
       console.error('Firestore load failed:', res.status, text);
       return null;
     }
-    const doc = await res.json() as FirestoreDocument;
+    const doc = await res.json() as { fields: Record<string, FirestoreValue> };
     const result: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(doc.fields)) {
-      result[k] = fromFirestoreValue(v);
+      result[k] = fromFS(v);
     }
     return result;
   } catch (e) {
@@ -89,4 +148,4 @@ export async function firestoreLoad(userId: string): Promise<Record<string, unkn
   }
 }
 
-export { isConfigured as isFirestoreConfigured };
+export const isFirestoreConfigured = true;
