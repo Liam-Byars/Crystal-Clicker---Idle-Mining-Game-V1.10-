@@ -336,3 +336,31 @@ Stage Summary:
 - Save data now writes to both SQLite (local) and Firestore (cloud)
 - Buy quantity toggle has 4 options: x1, x10, x100, Max
 - Buy quantity moved to sit under the area name in Upgrades tab
+
+---
+Task ID: upgrade-limits-new-mines
+Agent: main
+Task: Add max level caps (2k) to all upgrades, add 20 new mines scaling to deep space
+
+Work Log:
+- Added `maxLevel: 2000` to 34 upgrades that had no cap (clickPower, autoRate, multiplier types)
+- Preserved existing golden/crit chance caps (25, 20, 30) — not modified
+- Added 20 new mining areas to AREAS array (27 total):
+  - Real-world: Ural Mountains (Alexandrite), Mirny Diamond Mine (Star Diamonds), Cullinan Mine (Cullinan Diamonds), Argyle (Pink Diamonds), Bahia (Giant Emeralds), Merelani Hills (Tanzanite), Hpakant Jade Mines (Imperial Jade), Meteor Crater (Meteorite Crystals), Kola Superdeep (Deep Crystals), Mariana Trench (Abyssal Gems)
+  - Space: Asteroid Belt, Lunar Mare, Olympus Mons, Europa Ice Fields, Titan Methane Caves, Saturn Ring Shards, Deep Space Rift, Orion Nebula Core, Neutron Star Forge, Event Horizon (Singularity Shards)
+- Unlock thresholds: 50B → 5e48 (each ~100x the previous)
+- Added 100 new area upgrades (5 per area): hammer (clickPower), excavator (autoRate), resonance (multiplier), fortune (golden/crit chance), ultimate (high multiplier)
+- Upgrade values scale ~10x per area tier; costs scale ~10x per tier
+- Fixed x100 buy quantity bug (was falling through to 'max' behavior in handleBuy and getBuyInfo)
+- Updated upgrade level badge to show `Lv.X/2000` format for capped upgrades
+- gameStore.ts grew from 868 to 1167 lines
+- Lint: passes clean (0 errors)
+- Browser QA: 27 areas visible in Map tab, upgrades tab shows all upgrades with progress bars, x100 button works, zero console errors
+
+Stage Summary:
+- ALL upgrades now have a max level (2000 for main stats, 20-30 for golden/crit chance)
+- 27 mining areas total spanning Earth → underground → underwater → space → cosmic
+- Progression scales from 0 to 5e48 total earned to unlock all areas
+- Each area has 5 themed upgrades with 100 total new upgrades (141 total across all areas)
+- x100 buy quantity now works correctly (was silently broken before)
+- Level badges show `Lv.X/2000` format for capped upgrades

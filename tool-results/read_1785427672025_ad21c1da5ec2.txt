@@ -1,0 +1,989 @@
+   370→  // ====== Buy Handler ======
+   371→  const handleBuy = useCallback((upgradeId: string) => {
+   372→    const st = useGameStore.getState();
+   373→    const u = st.upgrades.find(up => up.id === upgradeId);
+   374→    if (!u) return;
+   375→
+   376→    let count = 1;
+   377→    if (st.buyQuantity === 10) {
+   378→      count = Math.min(10, u.maxLevel ? u.maxLevel - u.level : 10);
+   379→    } else if (st.buyQuantity === 'max') {
+   380→      count = getMaxBuyCount(u, st.crystals);
+   381→    }
+   382→
+   383→    let bought = false;
+   384→    for (let i = 0; i < count; i++) {
+   385→      if (buyUpgrade(upgradeId)) bought = true;
+   386→      else break;
+   387→    }
+   388→    if (bought) sfxBuy();
+   389→  }, [buyUpgrade]);
+   390→
+   391→  // ====== Upgrade cost display ======
+   392→  const getBuyInfo = useCallback((u: Upgrade) => {
+   393→    const st = useGameStore.getState();
+   394→    const bq = st.buyQuantity;
+   395→    if (bq === 1) {
+   396→      const cost = getUpgradeCost(u);
+   397→      const canBuy = st.crystals >= cost && (!u.maxLevel || u.level < u.maxLevel);
+   398→      return { count: 1, cost, canBuy, label: fmt(cost) };
+   399→    }
+   400→    if (bq === 10) {
+   401→      const n = Math.min(10, u.maxLevel ? u.maxLevel - u.level : 10);
+   402→      const cost = getTotalCostN(u, n);
+   403→      const canBuy = n > 0 && st.crystals >= cost;
+   404→      return { count: n, cost, canBuy, label: `${n}x ${fmt(cost)}` };
+   405→    }
+   406→    // max
+   407→    const n = getMaxBuyCount(u, st.crystals);
+   408→    const cost = n > 0 ? getTotalCostN(u, n) : getUpgradeCost(u);
+   409→    const canBuy = n > 0;
+   410→    return { count: n, cost, canBuy, label: `${n}x ${fmt(cost)}` };
+   411→  }, []);
+   412→
+   413→  // ====== Render ======
+   414→  if (authLoading) {
+   415→    return (
+   416→      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#0a0a1a' }}>
+   417→        <div className="flex flex-col items-center gap-4">
+   418→          <div className="w-12 h-12 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
+   419→          <span className="text-purple-400/60 text-sm">Loading...</span>
+   420→        </div>
+   421→      </div>
+   422→    );
+   423→  }
+   424→  if (!userId) {
+   425→    return <SignInScreen />;
+   426→  }
+   427→
+   428→  return (
+   429→    <TooltipProvider delayDuration={200}>
+   430→      <div
+   431→        className={`min-h-screen flex flex-col relative overflow-hidden select-none ${screenShake ? 'animate-shake' : ''}`}
+   432→        style={{ backgroundColor: '#0a0a1a' }}
+   433→      >
+   434→        {/* Grid pattern background */}
+   435→        <div className="fixed inset-0 bg-grid-pattern pointer-events-none" />
+   436→
+   437→        {/* ====== USER BAR ====== */}
+   438→        <div className="relative z-40 flex items-center justify-between px-3 py-1.5 bg-gray-950/60 backdrop-blur-sm border-b border-gray-800/50">
+   439→          <div className="flex items-center gap-2">
+   440→            <Avatar className="w-7 h-7">
+   441→              {photoURL && <AvatarImage src={photoURL} alt={displayName || ''} />}
+   442→              <AvatarFallback className="bg-purple-600/30 text-purple-300 text-xs font-semibold">
+   443→                {(displayName || 'G')[0].toUpperCase()}
+   444→              </AvatarFallback>
+   445→            </Avatar>
+   446→            <span className="text-sm text-gray-300 font-medium max-w-[140px] truncate">
+   447→              {displayName || 'Guest'}
+   448→            </span>
+   449→            {isGuest && (
+   450→              <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-gray-700 text-gray-500">
+   451→                Guest
+   452→              </Badge>
+   453→            )}
+   454→          </div>
+   455→          <div className="flex items-center gap-2">
+   456→            {/* Save status */}
+   457→            <span className="text-[10px] text-gray-600">
+   458→              {saveStatus === 'saving' && 'Saving...'}
+   459→              {saveStatus === 'saved' && 'Saved ✓'}
+   460→              {saveStatus === 'error' && 'Save failed'}
+   461→            </span>
+   462→            {/* Sound toggle */}
+   463→            <Button
+   464→              variant="ghost"
+   465→              size="sm"
+   466→              className="h-7 w-7 p-0 text-gray-500 hover:text-gray-300 hover:bg-gray-800/50"
+   467→              onClick={() => { soundOn = !soundOn; }}
+   468→            >
+   469→              {soundOn ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+   470→            </Button>
+   471→            {/* User menu */}
+   472→            <DropdownMenu>
+   473→              <DropdownMenuTrigger asChild>
+   474→                <Button
+   475→                  variant="ghost"
+   476→                  size="sm"
+   477→                  className="h-7 w-7 p-0 text-gray-500 hover:text-gray-300 hover:bg-gray-800/50"
+   478→                >
+   479→                  <UserCircle className="w-4 h-4" />
+   480→                </Button>
+   481→              </DropdownMenuTrigger>
+   482→              <DropdownMenuContent align="end" className="bg-gray-900 border-gray-700">
+   483→                {isGuest && (
+   484→                  <DropdownMenuItem
+   485→                    className="text-blue-400 focus:text-blue-300 focus:bg-blue-500/10 cursor-pointer"
+   486→                    onClick={async () => {
+   487→                      // Save current guest progress for migration
+   488→                      const data = getSaveData();
+   489→                      try { localStorage.setItem('crystal_clicker_migration', JSON.stringify(data)); } catch { /* ignore */ }
+   490→
+   491→                      const result = await signInWithGoogle();
+   492→                      if (!result.success) {
+   493→                        try { localStorage.removeItem('crystal_clicker_migration'); } catch { /* ignore */ }
+   494→                        setSaveStatus('error');
+   495→                        setTimeout(() => setSaveStatus('idle'), 3000);
+   496→                      }
+   497→                    }}
+   498→                  >
+   499→                    <LogIn className="w-4 h-4 mr-2" />
+   500→                    Sign in with Google
+   501→                  </DropdownMenuItem>
+   502→                )}
+   503→                <DropdownMenuItem
+   504→                  className="text-white/60 focus:text-white/80 focus:bg-white/5 cursor-pointer"
+   505→                  onClick={() => setLegalTosOpen(true)}
+   506→                >
+   507→                  <FileText className="w-4 h-4 mr-2" />
+   508→                  Terms of Service
+   509→                </DropdownMenuItem>
+   510→                <DropdownMenuItem
+   511→                  className="text-white/60 focus:text-white/80 focus:bg-white/5 cursor-pointer"
+   512→                  onClick={() => setLegalPpOpen(true)}
+   513→                >
+   514→                  <ShieldCheck className="w-4 h-4 mr-2" />
+   515→                  Privacy Policy
+   516→                </DropdownMenuItem>
+   517→                <DropdownMenuItem
+   518→                  className="text-red-400 focus:text-red-300 focus:bg-red-500/10 cursor-pointer"
+   519→                  onClick={logout}
+   520→                >
+   521→                  <LogOut className="w-4 h-4 mr-2" />
+   522→                  Log out
+   523→                </DropdownMenuItem>
+   524→              </DropdownMenuContent>
+   525→            </DropdownMenu>
+   526→          </div>
+   527→        </div>
+   528→
+   529→        {/* ====== EVENT BANNER ====== */}
+   530→        <AnimatePresence>
+   531→          {activeEvent && (
+   532→            <motion.div
+   533→              initial={{ y: -60, opacity: 0 }}
+   534→              animate={{ y: 0, opacity: 1 }}
+   535→              exit={{ y: -60, opacity: 0 }}
+   536→              className="relative z-50 bg-gradient-to-r from-purple-600/90 via-fuchsia-600/90 to-pink-600/90 backdrop-blur-sm px-4 py-2 flex items-center justify-center gap-3"
+   537→            >
+   538→              <span className="text-lg">{activeEvent.icon}</span>
+   539→              <span className="text-white font-semibold text-sm">{activeEvent.name}</span>
+   540→              <span className="text-white/80 text-xs hidden sm:inline">— {activeEvent.description}</span>
+   541→              <Badge variant="secondary" className="bg-white/20 text-white text-xs ml-2">
+   542→                {fmtTimer(eventTimer)}
+   543→              </Badge>
+   544→            </motion.div>
+   545→          )}
+   546→        </AnimatePresence>
+   547→
+   548→        {/* ====== POWER-UP INDICATOR ====== */}
+   549→        <AnimatePresence>
+   550→          {activePowerUp && (
+   551→            <motion.div
+   552→              initial={{ x: 100, opacity: 0 }}
+   553→              animate={{ x: 0, opacity: 1 }}
+   554→              exit={{ x: 100, opacity: 0 }}
+   555→              className="fixed top-4 right-4 z-50 bg-cyan-900/80 backdrop-blur-sm border border-cyan-500/40 rounded-lg px-3 py-2 flex items-center gap-2"
+   556→            >
+   557→              <span className="text-lg">{activePowerUp.icon}</span>
+   558→              <span className="text-cyan-200 text-sm font-medium">{activePowerUp.name}</span>
+   559→              <Badge variant="outline" className="border-cyan-400/50 text-cyan-300 text-xs">
+   560→                {fmtTimer(powerUpTimer)}
+   561→              </Badge>
+   562→            </motion.div>
+   563→          )}
+   564→        </AnimatePresence>
+   565→
+   566→        {/* ====== ACHIEVEMENT NOTIFICATION ====== */}
+   567→        <AnimatePresence>
+   568→          {currentNotification && (
+   569→            <motion.div
+   570→              initial={{ y: -80, opacity: 0, scale: 0.8 }}
+   571→              animate={{ y: 0, opacity: 1, scale: 1 }}
+   572→              exit={{ y: -80, opacity: 0, scale: 0.8 }}
+   573→              transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+   574→              className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-gradient-to-r from-amber-900/90 to-yellow-900/90 backdrop-blur-sm border border-yellow-500/40 rounded-xl px-5 py-3 flex items-center gap-3 shadow-lg shadow-yellow-500/10"
+   575→            >
+   576→              <span className="text-2xl">{currentNotification.icon}</span>
+   577→              <div className="flex flex-col">
+   578→                <span className="text-yellow-300 font-bold text-sm">Achievement Unlocked!</span>
+   579→                <span className="text-yellow-100/80 text-xs">{currentNotification.name}</span>
+   580→              </div>
+   581→              <div className="w-16 h-1.5 bg-yellow-900/50 rounded-full ml-3 overflow-hidden">
+   582→                <div
+   583→                  className="h-full bg-yellow-400 rounded-full transition-all duration-100"
+   584→                  style={{ width: `${((30 - notificationTimer) / 30) * 100}%` }}
+   585→                />
+   586→              </div>
+   587→            </motion.div>
+   588→          )}
+   589→        </AnimatePresence>
+   590→
+   591→        {/* ====== ZZ CELEBRATION OVERLAY ====== */}
+   592→        <AnimatePresence>
+   593→          {zzCelebration && (
+   594→            <motion.div
+   595→              initial={{ opacity: 0 }}
+   596→              animate={{ opacity: 1 }}
+   597→              exit={{ opacity: 0 }}
+   598→              transition={{ duration: 0.5 }}
+   599→              className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none"
+   600→            >
+   601→              {/* Background pulse */}
+   602→              <div className="absolute inset-0" style={{ animation: 'zz-bg-pulse 2s ease-in-out infinite' }} />
+   603→
+   604→              {/* Expanding rings */}
+   605→              {[0, 300, 600, 900].map(delay => (
+   606→                <div
+   607→                  key={delay}
+   608→                  className="absolute w-32 h-32 rounded-full border-2 border-purple-400/60"
+   609→                  style={{ animation: `zz-ring-expand 1.5s ease-out ${delay}ms forwards` }}
+   610→                />
+   611→              ))}
+   612→
+   613→              {/* Vortex spinner */}
+   614→              <div
+   615→                className="absolute w-40 h-40 rounded-full border-t-4 border-r-4 border-b-4 border-purple-400/80 border-l-4 border-cyan-400/80"
+   616→                style={{ animation: 'zz-vortex-spin 2s ease-in-out forwards' }}
+   617→              />
+   618→              <div
+   619→                className="absolute w-28 h-28 rounded-full border-t-2 border-l-2 border-yellow-400/70 border-r-2 border-pink-400/70"
+   620→                style={{ animation: 'zz-vortex-spin 1.5s ease-in-out 0.2s reverse forwards' }}
+   621→              />
+   622→
+   623→              {/* Particles */}
+   624→              {Array.from({ length: 24 }).map((_, i) => {
+   625→                const angle = (i / 24) * Math.PI * 2;
+   626→                const dist = 120 + Math.random() * 80;
+   627→                return (
+   628→                  <div
+   629→                    key={i}
+   630→                    className="absolute w-2 h-2 rounded-full"
+   631→                    style={{
+   632→                      background: ['#ff6b6b','#feca57','#48dbfb','#ff9ff3','#54a0ff','#5f27cd','#00d2d3','#ff9f43'][i % 8],
+   633→                      left: '50%', top: '50%',
+   634→                      marginLeft: '-4px', marginTop: '-4px',
+   635→                      '--px': `${Math.cos(angle) * dist}px`,
+   636→                      '--py': `${Math.sin(angle) * dist}px`,
+   637→                      animation: `zz-particle 1.2s ease-out ${i * 40}ms forwards`,
+   638→                      boxShadow: `0 0 6px ${['#ff6b6b','#feca57','#48dbfb','#ff9ff3','#54a0ff','#5f27cd','#00d2d3','#ff9f43'][i % 8]}`,
+   639→                    } as React.CSSProperties}
+   640→                  />
+   641→                );
+   642→              })}
+   643→
+   644→              {/* Center text */}
+   645→              <motion.div
+   646→                initial={{ scale: 0, rotate: -10 }}
+   647→                animate={{ scale: 1, rotate: 0 }}
+   648→                transition={{ type: 'spring', damping: 12, stiffness: 200, delay: 0.3 }}
+   649→                className="relative z-10 text-center"
+   650→              >
+   651→                <div className="text-6xl sm:text-8xl font-black" style={{ animation: 'zz-rainbow 1.5s linear infinite' }}>
+   652→                  ZZ
+   653→                </div>
+   654→                <div className="text-lg sm:text-2xl font-bold text-white/90 mt-2 tracking-widest">
+   655→                  BEYOND INFINITY
+   656→                </div>
+   657→                <div className="text-sm text-white/50 mt-1">
+   658→                  🌀 Achievement Unlocked
+   659→                </div>
+   660→              </motion.div>
+   661→            </motion.div>
+   662→          )}
+   663→        </AnimatePresence>
+   664→
+   665→        {/* ====== MAIN LAYOUT ====== */}
+   666→        <div className="flex-1 flex flex-col lg:flex-row gap-0 relative z-10">
+   667→          {/* ====== LEFT: Crystal Area ====== */}
+   668→          <div className="flex-shrink-0 flex flex-col items-center justify-center p-4 lg:p-8 lg:w-[420px]">
+   669→            {/* Crystal Count */}
+   670→            <div className="text-center mb-2">
+   671→              <motion.div
+   672→                key={crystals}
+   673→                initial={crystalPulse > 0 ? { scale: 1 + crystalPulse * 0.03 } : false}
+   674→                animate={{ scale: 1 }}
+   675→                transition={{ duration: 0.2 }}
+   676→              >
+   677→                <div className="text-4xl sm:text-5xl font-bold text-gradient-purple tracking-tight">
+   678→                  {fmt(crystals)}
+   679→                </div>
+   680→                <div className="text-sm text-purple-300/60 mt-1">crystals</div>
+   681→              <div className="text-xs text-gray-500 mt-0.5 flex items-center justify-center gap-1">
+   682→                {(() => { const a = AREAS.find(ar => ar.id === currentArea); return a ? `${a.icon} ${a.name} — ${a.gem}` : ''; })()}
+   683→              </div>
+   684→              </motion.div>
+   685→            </div>
+   686→
+   687→            {/* Combo Indicator */}
+   688→            <AnimatePresence>
+   689→              {combo > 1 && (
+   690→                <motion.div
+   691→                  initial={{ scale: 0.5, opacity: 0 }}
+   692→                  animate={{ scale: 1, opacity: 1 }}
+   693→                  exit={{ scale: 0.5, opacity: 0 }}
+   694→                  className="mb-2"
+   695→                >
+   696→                  <Badge
+   697→                    className="bg-orange-500/20 text-orange-300 border-orange-500/30 text-sm px-3 py-1"
+   698→                    style={{ borderColor: 'rgba(249,115,22,0.3)' }}
+   699→                  >
+   700→                    {combo}x COMBO
+   701→                  </Badge>
+   702→                </motion.div>
+   703→              )}
+   704→            </AnimatePresence>
+   705→
+   706→            {/* Combo Timer Bar */}
+   707→            {combo > 0 && comboTimer > 0 && (
+   708→              <div className="w-32 h-1 bg-gray-800 rounded-full mb-4 overflow-hidden">
+   709→                <div
+   710→                  className="h-full bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full transition-all duration-100"
+   711→                  style={{ width: `${(comboTimer / 60) * 100}%` }}
+   712→                />
+   713→              </div>
+   714→            )}
+   715→
+   716→            {/* Crystal Button */}
+   717→            <div
+   718→              ref={crystalRef}
+   719→              onClick={handleCrystalClick}
+   720→              className={`relative w-48 h-48 sm:w-56 sm:h-56 cursor-pointer ${goldenActive ? 'cursor-pointer' : ''}`}
+   721→            >
+   722→              {/* Ripples */}
+   723→              {ripples.map(r => (
+   724→                <motion.div
+   725→                  key={r.id}
+   726→                  initial={{ scale: 0, opacity: 0.6 }}
+   727→                  animate={{ scale: 2.5, opacity: 0 }}
+   728→                  transition={{ duration: 0.6, ease: 'easeOut' }}
+   729→                  className="absolute inset-0 rounded-full pointer-events-none"
+   730→                  style={{
+   731→                    left: r.x - 96,
+   732→                    top: r.y - 96,
+   733→                    width: 192,
+   734→                    height: 192,
+   735→                    border: `2px solid ${floatColors[r.type] || '#c084fc'}`,
+   736→                  }}
+   737→                />
+   738→              ))}
+   739→
+   740→              {/* Main Crystal */}
+   741→              <motion.div
+   742→                animate={crystalPulse > 0 ? { scale: [1, 1 + crystalPulse * 0.05, 1] } : {}}
+   743→                transition={{ duration: 0.2 }}
+   744→                className={`w-full h-full flex items-center justify-center rounded-full transition-all duration-500 ${
+   745→                  goldenActive
+   746→                    ? 'golden-pulse bg-gradient-to-br from-yellow-400 via-amber-400 to-orange-500 shadow-lg shadow-amber-500/30'
+   747→                    : `bg-gradient-to-br ${(() => { const a = AREAS.find(ar => ar.id === currentArea); return a ? a.gradient : 'from-gray-200 via-white to-cyan-100'; })()} shadow-lg`
+   748→                } hover:brightness-110 active:scale-95`}
+   749→                style={goldenActive ? undefined : {
+   750→                  boxShadow: `0 10px 30px ${(() => { const a = AREAS.find(ar => ar.id === currentArea); return a ? a.glowColor : 'rgba(200, 230, 255, 0.6)'; })()}`,
+   751→                }}
+   752→              >
+   753→                <span className="text-7xl sm:text-8xl drop-shadow-lg" role="img" aria-label="crystal">
+   754→                  {goldenActive ? '✨' : (() => { const a = AREAS.find(ar => ar.id === currentArea); return a ? a.icon : '💎'; })()}
+   755→                </span>
+   756→              </motion.div>
+   757→
+   758→              {/* Golden Timer Ring */}
+   759→              {goldenActive && (
+   760→                <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" viewBox="0 0 224 224">
+   761→                  <circle
+   762→                    cx="112" cy="112" r="108"
+   763→                    fill="none" stroke="rgba(251,191,36,0.3)" strokeWidth="3"
+   764→                  />
+   765→                  <circle
+   766→                    cx="112" cy="112" r="108"
+   767→                    fill="none" stroke="#fbbf24" strokeWidth="3"
+   768→                    strokeDasharray={`${2 * Math.PI * 108}`}
+   769→                    strokeDashoffset={`${2 * Math.PI * 108 * (1 - goldenTimer / 400)}`}
+   770→                    strokeLinecap="round"
+   771→                  />
+   772→                </svg>
+   773→              )}
+   774→
+   775→              {/* Sparkle Particles */}
+   776→              {sparkles.map(s => (
+   777→                <div
+   778→                  key={s.id}
+   779→                  className="crystal-sparkle"
+   780→                  style={{
+   781→                    left: s.x,
+   782→                    top: s.y,
+   783→                    animationDelay: `${s.delay}s`,
+   784→                    background: goldenActive ? '#fbbf24' : undefined,
+   785→                    boxShadow: goldenActive
+   786→                      ? '0 0 6px #fbbf24, 0 0 12px rgba(251, 191, 36, 0.3)'
+   787→                      : undefined,
+   788→                  }}
+   789→                />
+   790→              ))}
+   791→            </div>
+   792→
+   793→            {/* Golden crystal value hint */}
+   794→            {goldenActive && (
+   795→              <motion.div
+   796→                initial={{ opacity: 0, y: 10 }}
+   797→                animate={{ opacity: 1, y: 0 }}
+   798→                className="mt-2 text-yellow-300 text-sm font-medium"
+   799→              >
+   800→                Click for {fmt(goldenClickValue)} crystals!
+   801→              </motion.div>
+   802→            )}
+   803→
+   804→            {/* Floating Texts */}
+   805→            <div className="absolute inset-0 pointer-events-none overflow-hidden">
+   806→              {floatingTexts.map(ft => (
+   807→                <motion.div
+   808→                  key={ft.id}
+   809→                  initial={{ opacity: 1, y: ft.y, x: ft.x, scale: 1 }}
+   810→                  animate={{ opacity: 0, y: ft.y - 100, scale: 0.7 }}
+   811→                  transition={{ duration: 1, ease: 'easeOut' }}
+   812→                  className="absolute font-bold text-lg pointer-events-none"
+   813→                  style={{ color: floatColors[ft.type], left: 0, textShadow: '0 0 8px currentColor' }}
+   814→                >
+   815→                  {ft.type === 'milestone' ? '🎉 MILESTONE!' : `+${fmt(ft.value)}`}
+   816→                </motion.div>
+   817→              ))}
+   818→            </div>
+   819→
+   820→            {/* Quick Stats Below Crystal */}
+   821→            <div className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-gray-400">
+   822→              <span>⚔️ Click: <span className="text-purple-300">{fmt(clickPower)}</span></span>
+   823→              <span>⚙️ Auto: <span className="text-cyan-300">{fmt(autoRate)}/s</span></span>
+   824→              <span>✖️ Mult: <span className="text-amber-300">x{multiplier.toFixed(1)}</span></span>
+   825→            </div>
+   826→            {prestigePoints > 0 && (
+   827→              <div className="mt-1 text-xs text-pink-400">
+   828→                🌟 Prestige Bonus: +{(prestigePoints * 10)}% all income
+   829→              </div>
+   830→            )}
+   831→          </div>
+   832→
+   833→          {/* ====== RIGHT: Tabs Panel ====== */}
+   834→          <div className="flex-1 flex flex-col min-h-0 p-4 lg:p-6">
+   835→            {/* Top Bar: Session Info */}
+   836→            <div className="flex items-center justify-end mb-4 flex-wrap gap-2">
+   837→
+   838→              {/* Session Info */}
+   839→              <div className="flex items-center gap-3 text-xs text-gray-500">
+   840→                <span>🕐 {fmtTime(sessionTime)}</span>
+   841→                <span>👆 {sessionClicks}</span>
+   842→                <span className="relative">
+   843→                  💾
+   844→                  {saveStatus === 'saving' && <span className="absolute -top-1 -right-1 w-1.5 h-1.5 bg-yellow-400 rounded-full animate-pulse" />}
+   845→                  {saveStatus === 'saved' && <span className="absolute -top-1 -right-1 w-1.5 h-1.5 bg-green-400 rounded-full" />}
+   846→                  {saveStatus === 'error' && <span className="absolute -top-1 -right-1 w-1.5 h-1.5 bg-red-400 rounded-full" />}
+   847→                </span>
+   848→                <Button
+   849→                  size="sm"
+   850→                  variant="ghost"
+   851→                  className="text-xs h-7 text-gray-500 hover:text-red-400"
+   852→                  onClick={() => {
+   853→                    soundOn = !soundOn;
+   854→                  }}
+   855→                >
+   856→                  {soundOn ? '🔊' : '🔇'}
+   857→                </Button>
+   858→                <Button
+   859→                  size="sm"
+   860→                  variant="ghost"
+   861→                  className="text-xs h-7 text-gray-500 hover:text-green-400"
+   862→                  onClick={async () => {
+   863→                    try {
+   864→                      setSaveStatus('saving');
+   865→                      const data = getSaveData();
+   866→                      const payload = { ...data, userId };
+   867→                      try { localStorage.setItem(`crystal_clicker_save_${userId}`, JSON.stringify(data)); } catch {}
+   868→                      await fetch('/api/clicker/save', {
+   869→                        method: 'POST',
+   870→                        headers: { 'Content-Type': 'application/json' },
+   871→                        body: JSON.stringify(payload),
+   872→                      });
+   873→                      setSaveStatus('saved');
+   874→                      setTimeout(() => setSaveStatus('idle'), 2000);
+   875→                    } catch {
+   876→                      setSaveStatus('error');
+   877→                      setTimeout(() => setSaveStatus('idle'), 3000);
+   878→                    }
+   879→                  }}
+   880→                >
+   881→                  💾 Save
+   882→                </Button>
+   883→              </div>
+   884→            </div>
+   885→
+   886→            {/* Milestone Progress Bar */}
+   887→            {nextMilestone && (
+   888→              <div className="mb-4 bg-gray-900/40 rounded-lg px-3 py-2">
+   889→                <div className="flex items-center justify-between text-xs mb-1">
+   890→                  <span className="text-gray-400">
+   891→                    {nextMilestone.icon} Next: {nextMilestone.label}
+   892→                  </span>
+   893→                  <span className="text-gray-500">{fmt(totalEarned)} / {fmt(nextMilestone.value)}</span>
+   894→                </div>
+   895→                <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
+   896→                  <motion.div
+   897→                    className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"
+   898→                    initial={{ width: 0 }}
+   899→                    animate={{ width: `${milestoneProgress}%` }}
+   900→                    transition={{ duration: 0.3 }}
+   901→                  />
+   902→                </div>
+   903→              </div>
+   904→            )}
+   905→
+   906→            {/* Tabs */}
+   907→            <Tabs
+   908→              value={activeTab}
+   909→              onValueChange={(v) => setActiveTab(v as typeof activeTab)}
+   910→              className="flex-1 flex flex-col min-h-0"
+   911→            >
+   912→              <TabsList className="bg-gray-900/60 border border-gray-800/50 w-full grid grid-cols-5 mb-3">
+   913→                {[
+   914→                  { val: 'upgrades' as const, label: 'Upgrades', icon: '⬆️', cls: 'tab-glow-upgrades' },
+   915→                  { val: 'map' as const, label: 'Map', icon: '🗺️', cls: 'tab-glow-map' },
+   916→                  { val: 'achievements' as const, label: 'Achieve', icon: '🏆', cls: 'tab-glow-achievements' },
+   917→                  { val: 'stats' as const, label: 'Stats', icon: '📊', cls: 'tab-glow-stats' },
+   918→                  { val: 'prestige' as const, label: 'Prestige', icon: '🔄', cls: 'tab-glow-prestige' },
+   919→                ].map(t => (
+   920→                  <TabsTrigger
+   921→                    key={t.val}
+   922→                    value={t.val}
+   923→                    className={`text-xs sm:text-sm data-[state=active]:${t.cls} data-[state=active]:bg-gray-800/80 text-gray-400 data-[state=active]:text-white`}
+   924→                  >
+   925→                    <span className="mr-1">{t.icon}</span>
+   926→                    <span className="hidden sm:inline">{t.label}</span>
+   927→                    {t.val === 'achievements' && (
+   928→                      <Badge variant="secondary" className="ml-0.5 sm:ml-1.5 text-[10px] px-1 sm:px-1.5 py-0 bg-yellow-900/50 text-yellow-300">
+   929→                        {unlockedCount}/{achievements.length}
+   930→                      </Badge>
+   931→                    )}
+   932→                  </TabsTrigger>
+   933→                ))}
+   934→              </TabsList>
+   935→
+   936→              {/* ====== UPGRADES TAB ====== */}
+   937→              <TabsContent value="upgrades" className="flex-1 min-h-0 mt-0">
+   938→                <ScrollArea className="h-[calc(100vh-340px)] lg:h-[calc(100vh-320px)]">
+   939→                  <div className="space-y-2 pr-3 pb-4">
+   940→                    <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+   941→                      <div className="text-xs text-gray-500 flex items-center gap-1">
+   942→                        {(() => { const a = AREAS.find(ar => ar.id === currentArea); return a ? `${a.icon} ${a.name} — ${a.gem}` : ''; })()} upgrades
+   943→                      </div>
+   944→                      {/* Buy Quantity Toggle */}
+   945→                      <div className="flex items-center gap-1 bg-gray-900/60 rounded-lg p-1">
+   946→                        {([1, 10, 100, 'max'] as BuyQuantity[]).map(q => (
+   947→                          <Button
+   948→                            key={String(q)}
+   949→                            size="sm"
+   950→                            variant={buyQuantity === q ? 'default' : 'ghost'}
+   951→                            onClick={() => setBuyQuantity(q)}
+   952→                            className={`text-xs px-3 h-7 ${buyQuantity === q ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'text-gray-400 hover:text-white'}`}
+   953→                          >
+   954→                            {q === 'max' ? 'Max' : `x${q}`}
+   955→                          </Button>
+   956→                        ))}
+   957→                      </div>
+   958→                    </div>
+   959→                    {['clickPower', 'autoRate', 'multiplier', 'goldenChance', 'critChance'].map(effect => {
+   960→                      const categoryUpgrades = areaUpgrades.filter(u => u.effect === effect);
+   961→                      if (categoryUpgrades.length === 0) return null;
+   962→                      return (
+   963→                        <div key={effect} className="mb-4">
+   964→                          <div className={`text-xs font-semibold uppercase tracking-wider mb-2 ${effectColors[effect]}`}>
+   965→                            {effectLabels[effect]}
+   966→                          </div>
+   967→                          {categoryUpgrades.map(u => {
+   968→                            const info = getBuyInfo(u);
+   969→                            return (
+   970→                              <Card
+   971→                                key={u.id}
+   972→                                className="bg-gray-900/40 border-gray-800/50 hover:border-gray-700/50 transition-all upgrade-card-hover mb-2"
+   973→                              >
+   974→                                <CardContent className="p-3 flex items-center gap-3">
+   975→                                  {/* Icon */}
+   976→                                  <div className="text-2xl w-10 h-10 flex items-center justify-center bg-gray-800/60 rounded-lg flex-shrink-0">
+   977→                                    {u.icon}
+   978→                                  </div>
+   979→                                  {/* Info */}
+   980→                                  <div className="flex-1 min-w-0">
+   981→                                    <div className="flex items-center gap-2">
+   982→                                      <span className="text-sm font-medium text-gray-200 truncate">{u.name}</span>
+   983→                                      {u.level > 0 && (
+   984→                                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-purple-900/40 text-purple-300">
+   985→                                          Lv.{u.level}
+   986→                                        </Badge>
+   987→                                      )}
+   988→                                    </div>
+   989→                                    <p className="text-xs text-gray-500 truncate">{u.description}</p>
+   990→                                    {u.maxLevel && (
+   991→                                      <Progress
+   992→                                        value={(u.level / u.maxLevel) * 100}
+   993→                                        className="h-1 mt-1 bg-gray-800"
+   994→                                      />
+   995→                                    )}
+   996→                                  </div>
+   997→                                  {/* Buy Button */}
+   998→                                  <Tooltip>
+   999→                                    <TooltipTrigger asChild>
+  1000→                                      <Button
+  1001→                                        size="sm"
+  1002→                                        disabled={!info.canBuy}
+  1003→                                        onClick={() => handleBuy(u.id)}
+  1004→                                        className={`flex-shrink-0 text-xs h-8 min-w-[80px] ${
+  1005→                                          info.canBuy
+  1006→                                            ? 'bg-purple-600 hover:bg-purple-700 text-white'
+  1007→                                            : 'bg-gray-800 text-gray-600 cursor-not-allowed'
+  1008→                                        }`}
+  1009→                                      >
+  1010→                                        <span className="text-yellow-400 mr-1">💎</span>
+  1011→                                        {info.label}
+  1012→                                      </Button>
+  1013→                                    </TooltipTrigger>
+  1014→                                    <TooltipContent side="left" className="bg-gray-900 border-gray-700 text-xs">
+  1015→                                      {u.maxLevel
+  1016→                                        ? `Max Level: ${u.maxLevel}`
+  1017→                                        : `Next cost: ${fmt(getUpgradeCost(u))}`}
+  1018→                                    </TooltipContent>
+  1019→                                  </Tooltip>
+  1020→                                </CardContent>
+  1021→                              </Card>
+  1022→                            );
+  1023→                          })}
+  1024→                        </div>
+  1025→                      );
+  1026→                    })}
+  1027→                  </div>
+  1028→                </ScrollArea>
+  1029→              </TabsContent>
+  1030→
+  1031→              {/* ====== MAP TAB ====== */}
+  1032→              <TabsContent value="map" className="flex-1 min-h-0 mt-0">
+  1033→                <WorldMap />
+  1034→              </TabsContent>
+  1035→
+  1036→              {/* ====== ACHIEVEMENTS TAB ====== */}
+  1037→              <TabsContent value="achievements" className="flex-1 min-h-0 mt-0">
+  1038→                <ScrollArea className="h-[calc(100vh-340px)] lg:h-[calc(100vh-320px)]">
+  1039→                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pr-3 pb-4">
+  1040→                    {achievements.map(a => (
+  1041→                      <Card
+  1042→                        key={a.id}
+  1043→                        className={`transition-all ${
+  1044→                          a.unlocked
+  1045→                            ? 'bg-amber-900/20 border-amber-700/30'
+  1046→                            : 'bg-gray-900/30 border-gray-800/30 opacity-60'
+  1047→                        }`}
+  1048→                      >
+  1049→                        <CardContent className="p-3 flex items-center gap-3">
+  1050→                          <div className={`text-2xl w-10 h-10 flex items-center justify-center rounded-lg flex-shrink-0 ${
+  1051→                            a.unlocked ? 'bg-amber-900/40' : 'bg-gray-800/40 grayscale'
+  1052→                          }`}>
+  1053→                            {a.icon}
+  1054→                          </div>
+  1055→                          <div className="flex-1 min-w-0">
+  1056→                            <div className="text-sm font-medium text-gray-200 truncate">{a.name}</div>
+  1057→                            <div className="text-xs text-gray-500 truncate">{a.description}</div>
+  1058→                          </div>
+  1059→                          {a.unlocked && (
+  1060→                            <Badge className="bg-amber-600/20 text-amber-400 border-amber-600/30 text-[10px]">
+  1061→                              ✓
+  1062→                            </Badge>
+  1063→                          )}
+  1064→                        </CardContent>
+  1065→                      </Card>
+  1066→                    ))}
+  1067→                  </div>
+  1068→                </ScrollArea>
+  1069→              </TabsContent>
+  1070→
+  1071→              {/* ====== STATS TAB ====== */}
+  1072→              <TabsContent value="stats" className="flex-1 min-h-0 mt-0">
+  1073→                <ScrollArea className="h-[calc(100vh-340px)] lg:h-[calc(100vh-320px)]">
+  1074→                  <div className="space-y-3 pr-3 pb-4">
+  1075→                    {/* Resources */}
+  1076→                    <Card className="bg-gray-900/40 border-gray-800/50">
+  1077→                      <CardHeader className="pb-2 pt-3 px-4">
+  1078→                        <CardTitle className="text-sm text-gray-300">Resources</CardTitle>
+  1079→                      </CardHeader>
+  1080→                      <CardContent className="px-4 pb-3 space-y-2">
+  1081→                        <StatRow label="Crystals" value={fmt(crystals)} icon="💎" />
+  1082→                        <StatRow label="Total Earned" value={fmt(totalEarned)} icon="💰" />
+  1083→                        <StatRow label="Click Power" value={fmt(clickPower)} icon="⚔️" />
+  1084→                        <StatRow label="Auto Rate" value={`${fmt(autoRate)}/s`} icon="⚙️" />
+  1085→                        <StatRow label="Multiplier" value={`x${multiplier.toFixed(1)}`} icon="✖️" />
+  1086→                        <StatRow label="Prestige Points" value={String(prestigePoints)} icon="🌟" />
+  1087→                      </CardContent>
+  1088→                    </Card>
+  1089→
+  1090→                    {/* Clicking */}
+  1091→                    <Card className="bg-gray-900/40 border-gray-800/50">
+  1092→                      <CardHeader className="pb-2 pt-3 px-4">
+  1093→                        <CardTitle className="text-sm text-gray-300">Clicking</CardTitle>
+  1094→                      </CardHeader>
+  1095→                      <CardContent className="px-4 pb-3 space-y-2">
+  1096→                        <StatRow label="Total Clicks" value={fmt(totalClicks)} icon="👆" />
+  1097→                        <StatRow label="Session Clicks" value={fmt(sessionClicks)} icon="🖱️" />
+  1098→                        <StatRow label="Click Speed" value={`${clicksPerSecond}/s`} icon="⚡" />
+  1099→                        <StatRow label="Max Combo" value={`${maxCombo}x`} icon="🔥" />
+  1100→                        <StatRow label="Crit Chance" value={`${(critChance * 100).toFixed(1)}%`} icon="🎯" />
+  1101→                        <StatRow label="Total Crits" value={fmt(totalCrits)} icon="💥" />
+  1102→                      </CardContent>
+  1103→                    </Card>
+  1104→
+  1105→                    {/* Special */}
+  1106→                    <Card className="bg-gray-900/40 border-gray-800/50">
+  1107→                      <CardHeader className="pb-2 pt-3 px-4">
+  1108→                        <CardTitle className="text-sm text-gray-300">Special</CardTitle>
+  1109→                      </CardHeader>
+  1110→                      <CardContent className="px-4 pb-3 space-y-2">
+  1111→                        <StatRow label="Golden Clicks" value={fmt(goldenClicks)} icon="🥇" />
+  1112→                        <StatRow label="Golden Chance" value={`${(goldenChance * 100).toFixed(1)}%`} icon="🌟" />
+  1113→                        <StatRow label="Events Experienced" value={String(totalEvents)} icon="🎉" />
+  1114→                        <StatRow label="Total Upgrades" value={String(totalUpgrades)} icon="⬆️" />
+  1115→                        <StatRow label="Prestige Count" value={String(prestige)} icon="🔄" />
+  1116→                        <StatRow label="Session Earned" value={fmt(sessionEarned)} icon="📈" />
+  1117→                      </CardContent>
+  1118→                    </Card>
+  1119→
+  1120→                    {/* Milestones */}
+  1121→                    <Card className="bg-gray-900/40 border-gray-800/50">
+  1122→                      <CardHeader className="pb-2 pt-3 px-4">
+  1123→                        <CardTitle className="text-sm text-gray-300">Milestones</CardTitle>
+  1124→                      </CardHeader>
+  1125→                      <CardContent className="px-4 pb-3">
+  1126→                        <div className="space-y-1.5">
+  1127→                          {milestones.map(m => (
+  1128→                            <div key={m.id} className="flex items-center justify-between text-xs">
+  1129→                              <span className={m.celebrated ? 'text-yellow-300' : 'text-gray-600'}>
+  1130→                                {m.icon} {m.label}
+  1131→                              </span>
+  1132→                              {m.celebrated && <span className="text-yellow-500">✓</span>}
+  1133→                            </div>
+  1134→                          ))}
+  1135→                        </div>
+  1136→                      </CardContent>
+  1137→                    </Card>
+  1138→
+  1139→                    {/* Reset */}
+  1140→                    <Separator className="bg-gray-800/50" />
+  1141→                    <div className="flex items-center justify-between">
+  1142→                      <span className="text-xs text-gray-500">Danger Zone</span>
+  1143→                      <Button
+  1144→                        size="sm"
+  1145→                        variant="ghost"
+  1146→                        className="text-xs text-red-500 hover:text-red-400 hover:bg-red-900/20"
+  1147→                        onClick={() => {
+  1148→                          if (confirm('Are you sure you want to reset ALL progress? This cannot be undone!')) {
+  1149→                            resetGame();
+  1150→                            fetch('/api/clicker/reset', { method: 'POST' });
+  1151→                          }
+  1152→                        }}
+  1153→                      >
+  1154→                        🗑️ Reset Game
+  1155→                      </Button>
+  1156→                    </div>
+  1157→                  </div>
+  1158→                </ScrollArea>
+  1159→              </TabsContent>
+  1160→
+  1161→              {/* ====== PRESTIGE TAB ====== */}
+  1162→              <TabsContent value="prestige" className="flex-1 min-h-0 mt-0">
+  1163→                <ScrollArea className="h-[calc(100vh-340px)] lg:h-[calc(100vh-320px)]">
+  1164→                  <div className="space-y-4 pr-3 pb-4">
+  1165→                    <Card className="bg-gradient-to-br from-pink-900/20 to-purple-900/20 border-pink-800/30">
+  1166→                      <CardHeader className="pb-2 pt-4 px-4">
+  1167→                        <CardTitle className="text-lg text-pink-300 flex items-center gap-2">
+  1168→                          🔄 Prestige System
+  1169→                        </CardTitle>
+  1170→                      </CardHeader>
+  1171→                      <CardContent className="px-4 pb-4 space-y-3">
+  1172→                        <p className="text-sm text-gray-400">
+  1173→                          Reset your crystals and upgrades to earn <span className="text-pink-300 font-medium">Prestige Points</span>,
+  1174→                          which permanently boost all income by <span className="text-pink-300 font-medium">+10% per point</span>.
+  1175→                        </p>
+  1176→                        <Separator className="bg-gray-700/30" />
+  1177→                        <div className="space-y-2">
+  1178→                          <div className="flex justify-between text-sm">
+  1179→                            <span className="text-gray-400">Current Prestige</span>
+  1180→                            <span className="text-pink-300 font-medium">{prestige} times</span>
+  1181→                          </div>
+  1182→                          <div className="flex justify-between text-sm">
+  1183→                            <span className="text-gray-400">Prestige Points</span>
+  1184→                            <span className="text-pink-300 font-medium">{prestigePoints}</span>
+  1185→                          </div>
+  1186→                          <div className="flex justify-between text-sm">
+  1187→                            <span className="text-gray-400">Current Bonus</span>
+  1188→                            <span className="text-pink-300 font-medium">+{prestigePoints * 10}%</span>
+  1189→                          </div>
+  1190→                          <div className="flex justify-between text-sm">
+  1191→                            <span className="text-gray-400">Total Earned</span>
+  1192→                            <span className="text-gray-300">{fmt(totalEarned)}</span>
+  1193→                          </div>
+  1194→                          <Separator className="bg-gray-700/30" />
+  1195→                          <div className="flex justify-between text-sm">
+  1196→                            <span className="text-gray-400">Points on Prestige</span>
+  1197→                            <span className="text-yellow-300 font-bold">
+  1198→                              {totalEarned >= 1000
+  1199→                                ? `+${Math.floor(Math.sqrt(totalEarned / 1000))}`
+  1200→                                : 'Need 1,000 total'}
+  1201→                            </span>
+  1202→                          </div>
+  1203→                        </div>
+  1204→                        <Button
+  1205→                          className="w-full bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700 text-white font-medium"
+  1206→                          disabled={totalEarned < 1000}
+  1207→                          onClick={() => {
+  1208→                            if (confirm('Prestige will reset your crystals and upgrades. You keep achievements, prestige points, and golden/crit stats. Continue?')) {
+  1209→                              performPrestige();
+  1210→                              sfxMilestone();
+  1211→                            }
+  1212→                          }}
+  1213→                        >
+  1214→                          {totalEarned >= 1000 ? '🔄 Perform Prestige' : '🔒 Earn 1,000 total crystals first'}
+  1215→                        </Button>
+  1216→                      </CardContent>
+  1217→                    </Card>
+  1218→
+  1219→                    {/* Prestige Multiplier Info */}
+  1220→                    <Card className="bg-gray-900/40 border-gray-800/50">
+  1221→                      <CardHeader className="pb-2 pt-3 px-4">
+  1222→                        <CardTitle className="text-sm text-gray-300">Prestige Tiers</CardTitle>
+  1223→                      </CardHeader>
+  1224→                      <CardContent className="px-4 pb-3">
+  1225→                        <div className="space-y-1.5 text-xs">
+  1226→                          {[
+  1227→                            { pts: 1, bonus: '10%', earned: '1K' },
+  1228→                            { pts: 3, bonus: '30%', earned: '9K' },
+  1229→                            { pts: 5, bonus: '50%', earned: '25K' },
+  1230→                            { pts: 10, bonus: '100%', earned: '100K' },
+  1231→                            { pts: 20, bonus: '200%', earned: '400K' },
+  1232→                            { pts: 50, bonus: '500%', earned: '2.5M' },
+  1233→                          ].map(t => (
+  1234→                            <div key={t.pts} className="flex items-center justify-between text-gray-500">
+  1235→                              <span>{t.pts} pts → +{t.bonus} bonus</span>
+  1236→                              <span className="text-gray-600">({t.earned} total)</span>
+  1237→                            </div>
+  1238→                          ))}
+  1239→                        </div>
+  1240→                      </CardContent>
+  1241→                    </Card>
+  1242→                  </div>
+  1243→                </ScrollArea>
+  1244→              </TabsContent>
+  1245→            </Tabs>
+  1246→          </div>
+  1247→        </div>
+  1248→
+  1249→        {/* ====== FOOTER ====== */}
+  1250→        <footer className="relative z-10 border-t border-gray-800/50 bg-gray-950/50 backdrop-blur-sm px-4 py-2 mt-auto">
+  1251→          <div className="flex items-center justify-between text-xs text-gray-600 max-w-5xl mx-auto">
+  1252→            <span>Crystal Clicker v1.0</span>
+  1253→            <div className="flex items-center gap-3">
+  1254→              <span className={autoRate > 0 ? 'cps-glow text-cyan-400' : ''}>
+  1255→                ⚡ {clicksPerSecond} cps
+  1256→              </span>
+  1257→              <span>🏆 {unlockedCount}/{achievements.length}</span>
+  1258→              {prestige > 0 && <span className="text-pink-500">✨ P{prestige}</span>}
+  1259→            </div>
+  1260→          </div>
+  1261→        </footer>
+  1262→
+  1263→        {/* ====== OFFLINE EARNINGS DIALOG ====== */}
+  1264→        <Dialog open={showOfflineBonus} onOpenChange={() => {}}>
+  1265→          <DialogContent className="bg-gray-900 border-gray-700 sm:max-w-md">
+  1266→            <DialogHeader>
+  1267→              <DialogTitle className="text-xl text-center text-green-300">
+  1268→                Welcome Back! 🌙
+  1269→              </DialogTitle>
+  1270→              <DialogDescription className="text-center text-gray-400">
+  1271→                You earned crystals while you were away
+  1272→              </DialogDescription>
+  1273→            </DialogHeader>
+  1274→            <div className="text-center py-4">
+  1275→              <div className="text-4xl font-bold text-gradient-green mb-2">
+  1276→                +{fmt(offlineEarned)}
+  1277→              </div>
+  1278→              <p className="text-sm text-gray-500">
+  1279→                Offline earnings (50% efficiency, 8hr max)
+  1280→              </p>
+  1281→            </div>
+  1282→            <DialogFooter className="flex-col gap-2 sm:flex-col">
+  1283→              <Button
+  1284→                className="w-full bg-green-600 hover:bg-green-700 text-white"
+  1285→                onClick={claimOfflineEarnings}
+  1286→              >
+  1287→                Claim Crystals 💎
+  1288→              </Button>
+  1289→              <Button
+  1290→                variant="ghost"
+  1291→                className="w-full text-gray-500 hover:text-gray-300"
+  1292→                onClick={dismissOfflineBonus}
+  1293→              >
+  1294→                Dismiss
+  1295→              </Button>
+  1296→            </DialogFooter>
+  1297→          </DialogContent>
+  1298→        </Dialog>
+  1299→
+  1300→        {/* In-Game Legal Document Dialogs */}
+  1301→        <Dialog open={legalTosOpen} onOpenChange={setLegalTosOpen}>
+  1302→          <DialogContent className="sm:max-w-2xl max-h-[90vh] p-0 gap-0 overflow-hidden bg-[#12122a] border-white/10 text-white/90">
+  1303→            <DialogHeader className="px-6 pt-6 pb-4 shrink-0">
+  1304→              <div className="flex items-center gap-3 mb-1">
+  1305→                <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-purple-500/15 text-purple-400">
+  1306→                  <FileText className="w-5 h-5" />
+  1307→                </div>
+  1308→                <DialogTitle className="text-xl font-bold text-white">Terms of Service</DialogTitle>
+  1309→              </div>
+  1310→            </DialogHeader>
+  1311→            <Separator className="bg-white/10 shrink-0" />
+  1312→            <ScrollArea className="flex-1 max-h-[72vh]">
+  1313→              <div className="px-6 py-5 pr-4">
+  1314→                <pre className="text-[13px] text-white/55 leading-relaxed whitespace-pre-wrap font-sans m-0">
+  1315→                  {TERMS_OF_SERVICE}
+  1316→                </pre>
+  1317→              </div>
+  1318→            </ScrollArea>
+  1319→          </DialogContent>
+  1320→        </Dialog>
+  1321→
+  1322→        <Dialog open={legalPpOpen} onOpenChange={setLegalPpOpen}>
+  1323→          <DialogContent className="sm:max-w-2xl max-h-[90vh] p-0 gap-0 overflow-hidden bg-[#12122a] border-white/10 text-white/90">
+  1324→            <DialogHeader className="px-6 pt-6 pb-4 shrink-0">
+  1325→              <div className="flex items-center gap-3 mb-1">
+  1326→                <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-cyan-500/15 text-cyan-400">
+  1327→                  <ShieldCheck className="w-5 h-5" />
+  1328→                </div>
+  1329→                <DialogTitle className="text-xl font-bold text-white">Privacy Policy</DialogTitle>
+  1330→              </div>
+  1331→            </DialogHeader>
+  1332→            <Separator className="bg-white/10 shrink-0" />
+  1333→            <ScrollArea className="flex-1 max-h-[72vh]">
+  1334→              <div className="px-6 py-5 pr-4">
+  1335→                <pre className="text-[13px] text-white/55 leading-relaxed whitespace-pre-wrap font-sans m-0">
+  1336→                  {PRIVACY_POLICY}
+  1337→                </pre>
+  1338→              </div>
+  1339→            </ScrollArea>
+  1340→          </DialogContent>
+  1341→        </Dialog>
+  1342→      </div>
+  1343→    </TooltipProvider>
+  1344→  );
+  1345→}
+  1346→
+  1347→// ====== Stat Row Component ======
+  1348→function StatRow({ label, value, icon }: { label: string; value: string; icon: string }) {
+  1349→  return (
+  1350→    <div className="flex items-center justify-between">
+  1351→      <span className="text-xs text-gray-500 flex items-center gap-1.5">
+  1352→        <span>{icon}</span>
+  1353→        {label}
+  1354→      </span>
+  1355→      <span className="text-sm text-gray-300 font-medium">{value}</span>
+  1356→    </div>
+  1357→  );
+  1358→}

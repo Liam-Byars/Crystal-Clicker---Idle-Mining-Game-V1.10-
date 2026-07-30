@@ -376,6 +376,8 @@ export default function GamePage() {
     let count = 1;
     if (st.buyQuantity === 10) {
       count = Math.min(10, u.maxLevel ? u.maxLevel - u.level : 10);
+    } else if (st.buyQuantity === 100) {
+      count = Math.min(100, u.maxLevel ? u.maxLevel - u.level : 100);
     } else if (st.buyQuantity === 'max') {
       count = getMaxBuyCount(u, st.crystals);
     }
@@ -399,6 +401,12 @@ export default function GamePage() {
     }
     if (bq === 10) {
       const n = Math.min(10, u.maxLevel ? u.maxLevel - u.level : 10);
+      const cost = getTotalCostN(u, n);
+      const canBuy = n > 0 && st.crystals >= cost;
+      return { count: n, cost, canBuy, label: `${n}x ${fmt(cost)}` };
+    }
+    if (bq === 100) {
+      const n = Math.min(100, u.maxLevel ? u.maxLevel - u.level : 100);
       const cost = getTotalCostN(u, n);
       const canBuy = n > 0 && st.crystals >= cost;
       return { count: n, cost, canBuy, label: `${n}x ${fmt(cost)}` };
@@ -982,7 +990,9 @@ export default function GamePage() {
                                       <span className="text-sm font-medium text-gray-200 truncate">{u.name}</span>
                                       {u.level > 0 && (
                                         <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-purple-900/40 text-purple-300">
-                                          Lv.{u.level}
+                                        {u.maxLevel
+                                        ? `Lv.${u.level}/${u.maxLevel}`
+                                        : `Lv.${u.level}`}
                                         </Badge>
                                       )}
                                     </div>
