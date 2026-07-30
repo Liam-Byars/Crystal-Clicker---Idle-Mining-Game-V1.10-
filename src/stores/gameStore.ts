@@ -201,7 +201,7 @@ const DEFAULT_UPGRADES: Upgrade[] = [
   { id: 'crystal_mage', name: 'Crystal Mage Guild', description: '+50 crystals/sec', icon: '🧙', baseCost: 10000, costMultiplier: 1.7, level: 0, effect: 'autoRate', value: 50, maxLevel: 2000},
   { id: 'amplifier', name: 'Crystal Amplifier', description: 'x1.2 multiplier per level', icon: '🔮', baseCost: 200, costMultiplier: 1.8, level: 0, effect: 'multiplier', value: 0.2, maxLevel: 2000},
   { id: 'golden_lens', name: 'Golden Lens', description: '+2% golden chance per level', icon: '🌟', baseCost: 1000, costMultiplier: 2.0, level: 0, effect: 'goldenChance', value: 0.02, maxLevel: 25 },
-  { id: 'crit_eye', name: 'Critical Eye', description: '+3% crit chance per level', icon: '👁️', baseCost: 800, costMultiplier: 1.8, level: 0, effect: 'critChance', value: 0.03, maxLevel: 20 },
+  { id: 'crit_eye', name: 'Critical Eye', description: '+3% crit chance per level', icon: '👁️', baseCost: 800, costMultiplier: 1.8, level: 0, effect: 'critChance', value: 0.03, maxLevel: 12 },
 ];
 
 // ====== Area Definitions ======
@@ -437,7 +437,7 @@ const AREA_UPGRADES: Record<string, Upgrade[]> = {
     { id: 'muzo_emerald_golem', name: 'Emerald Golem', description: '+200 click power per level', icon: '🤖', baseCost: 100000, costMultiplier: 1.6, level: 0, effect: 'clickPower', value: 200, maxLevel: 2000},
     { id: 'muzo_jungle_expedition', name: 'Jungle Expedition', description: '+100 crystals/sec', icon: '🌴', baseCost: 200000, costMultiplier: 1.6, level: 0, effect: 'autoRate', value: 100, maxLevel: 2000},
     { id: 'muzo_emerald_amplifier', name: 'Emerald Amplifier', description: 'x1.5 multiplier per level', icon: '💚', baseCost: 150000, costMultiplier: 1.8, level: 0, effect: 'multiplier', value: 0.5, maxLevel: 2000},
-    { id: 'muzo_lucky_mine', name: 'Lucky Mine', description: '+2% crit chance per level', icon: '🍀', baseCost: 250000, costMultiplier: 2.0, level: 0, effect: 'critChance', value: 0.02, maxLevel: 25 },
+    { id: 'muzo_lucky_mine', name: 'Lucky Mine', description: '+2% crit chance per level', icon: '🍀', baseCost: 250000, costMultiplier: 2.0, level: 0, effect: 'critChance', value: 0.02, maxLevel: 10 },
     { id: 'muzo_chivor_vein', name: 'Chivor Vein', description: 'Massive x2 multiplier per level', icon: '🏔️', baseCost: 1000000, costMultiplier: 2.5, level: 0, effect: 'multiplier', value: 1.0, maxLevel: 2000},
   ],
   coober_pedy: [
