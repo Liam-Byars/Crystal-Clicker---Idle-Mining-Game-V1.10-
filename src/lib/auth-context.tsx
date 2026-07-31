@@ -119,6 +119,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { success: false, error: 'Firebase is not configured. Please add your Firebase config to .env.local' };
     }
     try {
+      // Auto-migrate: if currently a guest, save guest data for migration before signing in
+      const persisted = loadPersistedAuth();
+      if (persisted?.mode === 'guest' && persisted.userId) {
+        try {
+          const guestSave = localStorage.getItem(`crystal_clicker_save_${persisted.userId}`);
+          if (guestSave) {
+            localStorage.setItem('crystal_clicker_migration', guestSave);
+          }
+        } catch { /* ignore */ }
+      }
+
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
       persistAuth({
@@ -140,6 +151,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (err.code === 'auth/popup-closed-by-user') {
         return { success: false, error: 'Sign-in popup was closed.' };
       }
+      // Clean up migration data on failure
+      try { localStorage.removeItem('crystal_clicker_migration'); } catch { /* ignore */ }
       return { success: false, error: err.message || 'Failed to sign in with Google' };
     }
   }, []);
