@@ -32,6 +32,7 @@ export interface FloatingText {
   x: number;
   y: number;
   type: 'normal' | 'golden' | 'combo' | 'crit' | 'powerup' | 'event' | 'offline' | 'milestone';
+  count: number;
 }
 
 export interface PowerUp {
@@ -194,6 +195,9 @@ export interface GameState {
   dismissOfflineBonus: () => void;
   claimReward: (amount: number, prestige?: number) => void;
 }
+
+// ====== Floating text timeout management ======
+const _ftTimeouts = new Map<number, ReturnType<typeof setTimeout>>();
 
 // ====== Data Definitions ======
 const DEFAULT_UPGRADES: Upgrade[] = [
@@ -1222,12 +1226,45 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   addFloatingText: (x, y, value, type = 'normal') => {
-    const s = get(); const ft: FloatingText = { id: s.floatingTextId, value, x, y, type };
-    set({ floatingTexts: [...s.floatingTexts, ft] });
-    setTimeout(() => get().removeFloatingText(ft.id), 1200);
+    const s = get();
+    // Stackable click types: normal, crit, combo (treated as normal), golden
+    const isStackable = type === 'normal' || type === 'crit' || type === 'combo' || type === 'golden';
+    const stackKey = type === 'combo' ? 'normal' : type;
+
+    if (isStackable) {
+      // Find the most recent existing text of the same stack type
+      const existing = [...s.floatingTexts].reverse().find(ft => {
+        const ftKey = ft.type === 'combo' ? 'normal' : ft.type;
+        return ftKey === stackKey;
+      });
+      if (existing) {
+        // Stack: increment count, update position and value, reset removal timeout
+        const updated = s.floatingTexts.map(ft =>
+          ft.id === existing.id
+            ? { ...ft, count: ft.count + 1, x, y, value }
+            : ft
+        );
+        // Clear old timeout and set a new one
+        const oldT = _ftTimeouts.get(existing.id);
+        if (oldT) clearTimeout(oldT);
+        _ftTimeouts.set(existing.id, setTimeout(() => get().removeFloatingText(existing.id), 1400));
+        set({ floatingTextId: s.floatingTextId + 1, floatingTexts: updated });
+        return;
+      }
+    }
+
+    // Non-stackable or no existing stack: create a new floating text
+    const ft: FloatingText = { id: s.floatingTextId, value, x, y, type, count: 1 };
+    const texts = [...s.floatingTexts, ft].slice(-20);
+    _ftTimeouts.set(ft.id, setTimeout(() => get().removeFloatingText(ft.id), 1400));
+    set({ floatingTextId: s.floatingTextId + 1, floatingTexts: texts });
   },
 
-  removeFloatingText: (id) => { set({ floatingTexts: get().floatingTexts.filter(t => t.id !== id) }); },
+  removeFloatingText: (id) => {
+    const t = _ftTimeouts.get(id);
+    if (t) { clearTimeout(t); _ftTimeouts.delete(id); }
+    set({ floatingTexts: get().floatingTexts.filter(ft => ft.id !== id) });
+  },
 
   setActiveTab: (tab) => set({ activeTab: tab }),
 
@@ -1241,6 +1278,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   resetGame: () => {
+    _ftTimeouts.forEach(t => clearTimeout(t));
+    _ftTimeouts.clear();
     set({
       crystals: 0, crystalsExp: 0, totalClicks: 0, totalEarned: 0, totalEarnedExp: 0, clickPower: 1, multiplier: 1, autoRate: 0,
       prestige: 0, prestigePoints: 0, combo: 0, comboTimer: 0, maxCombo: 0, lastClickTime: 0,

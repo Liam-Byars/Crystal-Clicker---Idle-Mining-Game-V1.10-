@@ -487,3 +487,25 @@ Stage Summary:
 - Display: Numbers now show proper suffixes (AA through ZZZ, then AAAA+) instead of staying at Infinity
 - Database: Schema updated, save/load working with new exp fields
 - All verified via agent-browser: game loads, wheel spins and shows daily cooldown, saves work with exp fields
+---
+Task ID: 1
+Agent: Main Agent
+Task: Fix autoclicker lag by stacking damage numbers instead of creating individual floating texts
+
+Work Log:
+- Read and analyzed the FloatingText system in gameStore.ts and page.tsx
+- Identified the root cause: every click created a new FloatingText with its own framer-motion animation, causing hundreds of concurrent animated elements during autoclicking
+- Added `count: number` field to the FloatingText interface
+- Added module-level `_ftTimeouts` Map for proper timeout management (cancel/reset on stack)
+- Rewrote `addFloatingText` with stacking logic: normal/crit/combo/golden types stack onto existing texts of the same type, combo maps to normal for stacking
+- Updated `removeFloatingText` to clean up timeouts from the map
+- Updated `resetGame` to clear all floating text timeouts
+- Modified floating text rendering in page.tsx: vertical offset by type (golden top, crit middle, normal bottom), show "×N" count when stacked, adjusted animation timing (1.4s with 45% hold before fade)
+- Capped total floating texts at 20 for safety
+
+Stage Summary:
+- Performance fix verified: 20 rapid clicks now produce only 3 floating texts instead of 20+
+- Stack display format: "1K ×5" for stacked damage numbers
+- Three visual stacks: golden (top), crit (middle), normal (bottom) with 22px vertical offset each
+- Non-click types (milestone, offline, powerup, event) remain unstacked as they are rare
+- All existing functionality preserved, no removals
