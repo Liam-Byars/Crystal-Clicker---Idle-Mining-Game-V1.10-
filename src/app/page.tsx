@@ -200,9 +200,9 @@ export default function GamePage() {
   // ====== Store Selectors (useShallow for all!) ======
   const crystals = useGameStore(s => s.crystals);
   const crystalsExp = useGameStore(s => s.crystalsExp);
-  const clickPower = useGameStore(s => s.clickPower);
-  const autoRate = useGameStore(s => s.autoRate);
-  const multiplier = useGameStore(s => s.multiplier);
+  const clickPowerLog = useGameStore(s => s.clickPowerLog);
+  const autoRateLog = useGameStore(s => s.autoRateLog);
+  const multiplierLog = useGameStore(s => s.multiplierLog);
   const combo = useGameStore(s => s.combo);
   const comboTimer = useGameStore(s => s.comboTimer);
   const maxCombo = useGameStore(s => s.maxCombo);
@@ -943,9 +943,9 @@ export default function GamePage() {
 
             {/* Quick Stats Below Crystal */}
             <div className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-gray-400">
-              <span>⚔️ Click: <span className="text-purple-300">{fmt(clickPower)}</span></span>
-              <span>⚙️ Auto: <span className="text-cyan-300">{fmt(autoRate)}/s</span></span>
-              <span>✖️ Mult: <span className="text-amber-300">x{fmt(multiplier)}</span></span>
+              <span>⚔️ Click: <span className="text-purple-300">{fmtExpLog(clickPowerLog)}</span></span>
+              <span>⚙️ Auto: <span className="text-cyan-300">{fmtExpLog(autoRateLog)}/s</span></span>
+              <span>✖️ Mult: <span className="text-amber-300">x{fmtExpLog(multiplierLog)}</span></span>
             </div>
             {prestigePoints > 0 && (
               <div className="mt-1 text-xs text-pink-400">
@@ -1219,9 +1219,9 @@ export default function GamePage() {
                       <CardContent className="px-4 pb-3 space-y-2">
                         <StatRow label="Crystals" value={fmt(crystals, crystalsExp)} icon="💎" />
                         <StatRow label="Total Earned" value={fmt(totalEarned, totalEarnedExp)} icon="💰" />
-                        <StatRow label="Click Power" value={fmt(clickPower)} icon="⚔️" />
-                        <StatRow label="Auto Rate" value={`${fmt(autoRate)}/s`} icon="⚙️" />
-                        <StatRow label="Multiplier" value={`x${fmt(multiplier)}`} icon="✖️" />
+                        <StatRow label="Click Power" value={fmtExpLog(clickPowerLog)} icon="⚔️" />
+                        <StatRow label="Auto Rate" value={`${fmtExpLog(autoRateLog)}/s`} icon="⚙️" />
+                        <StatRow label="Multiplier" value={`x${fmtExpLog(multiplierLog)}`} icon="✖️" />
                         <StatRow label="Prestige Points" value={fmt(prestigePoints)} icon="🌟" />
                       </CardContent>
                     </Card>
@@ -1390,7 +1390,7 @@ export default function GamePage() {
           <div className="flex items-center justify-between text-xs text-gray-600 max-w-5xl mx-auto">
             <span>Crystal Clicker v1.0</span>
             <div className="flex items-center gap-3">
-              <span className={autoRate > 0 ? 'cps-glow text-cyan-400' : ''}>
+              <span className={autoRateLog > -Infinity ? 'cps-glow text-cyan-400' : ''}>
                 ⚡ {clicksPerSecond} cps
               </span>
               <span>🏆 {unlockedCount}/{achievements.length}</span>
@@ -1476,7 +1476,7 @@ export default function GamePage() {
           else if (reward.type === 'golden') { addLog('🌟', reward.description, '#fbbf24'); }
           else { addLog('🎰', reward.description, '#22d3ee'); }
           sfxMilestone();
-        }} crystals={crystals} autoRate={autoRate} />
+        }} crystals={crystals} crystalsExp={crystalsExp} autoRateLog={autoRateLog} />
 
         {/* In-Game Legal Document Dialogs */}
         <Dialog open={legalTosOpen} onOpenChange={setLegalTosOpen}>

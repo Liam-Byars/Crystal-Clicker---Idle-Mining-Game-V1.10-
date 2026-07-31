@@ -63,10 +63,11 @@ interface LuckySpinProps {
   onClose: () => void;
   onReward: (reward: { type: string; value: number; description: string }) => void;
   crystals: number;
-  autoRate: number;
+  autoRateLog: number;
+  crystalsExp?: number;
 }
 
-export function LuckySpin({ open, onClose, onReward, crystals, autoRate }: LuckySpinProps) {
+export function LuckySpin({ open, onClose, onReward, autoRateLog, crystals, crystalsExp }: LuckySpinProps) {
   const [spinning, setSpinning] = useState(false);
   const [prizeIndex, setPrizeIndex] = useState(-1);
   const [cooldownMs, setCooldownMs] = useState(() => hasSpunToday() ? getTimeUntilMidnight() : 0);
@@ -120,7 +121,9 @@ export function LuckySpin({ open, onClose, onReward, crystals, autoRate }: Lucky
       let reward = prize.getReward();
       // Jackpot: give 5 minutes of auto-income worth of crystals
       if (prize.label === 'Jackpot') {
-        const jackpot = Math.max(autoRate * 300, 1000); // 5 min of auto * some multiplier
+        // 5 min of auto-income: 10^(autoRateLog + log(300))
+        const jackpotLog = autoRateLog > -Infinity ? autoRateLog + Math.log10(300) : 3;
+        const jackpot = jackpotLog > 15 ? 1e15 : Math.round(Math.pow(10, jackpotLog));
         reward = { type: 'crystals', value: jackpot, description: `JACKPOT! +${jackpot.toLocaleString()} Crystals!` };
       }
       setResult({ prize, reward });
@@ -129,7 +132,7 @@ export function LuckySpin({ open, onClose, onReward, crystals, autoRate }: Lucky
       setCooldownMs(getTimeUntilMidnight());
       setSpinning(false);
     }, 4200);
-  }, [canSpin, onReward, autoRate]);
+  }, [canSpin, onReward, autoRateLog]);
 
   const cooldownStr = onCooldown
     ? `${Math.floor(cooldownMs / 3600000)}h ${Math.floor((cooldownMs % 3600000) / 60000)}m`

@@ -19,9 +19,21 @@
   - **Fix:** Rewrote damage calculation to use **log10-space multiplication** (addition of logs): `valueLog = log10(clickPower) + log10(multiplier) + log10(comboMult) + ...`. This NEVER overflows. Added `valueLog` field to FloatingText. Display uses `fmtExpLog(valueLog)` for precise numbers at any scale. Also fixed clickGolden with same approach.
 - **Fixed save 500 error (null clickPower/multiplier/autoRate)**
   - Added null guards (`?? 0` / `?? 1`) in save route to prevent Prisma errors from corrupted save data.
+- **Fixed all three stats (click/auto/mult) showing "10 EY" (Infinity) for advanced players**
+  - **Root cause:** `recalcStats()` used regular `for` loops with `+=` to sum upgrade contributions. Area upgrades have exponentially growing values (up to 10^280 per level). Even ONE level of a late-game upgrade overflowed JS MAX_VALUE, making ALL stats Infinity.
+  - **Fix:** Rewrote `recalcStats` to compute entirely in log10 space using `logAdd`. Each upgrade's total contribution is `log(value) + log(level)` (exact for constant per-level values), accumulated via `logAdd`. Runs in O(upgrades) instead of O(total levels).
+  - Added `clickPowerLog`, `autoRateLog`, `multiplierLog` to GameState. Click damage calculation uses these directly. Auto income uses `autoRateLog`. All stat displays use `fmtExpLog` for correct formatting at any scale. Updated LuckySpin to accept `autoRateLog`.
 - **Files modified:**
-  - `src/app/page.tsx` — Floating text rendering: stable key, JS opacity, ±50px spacing, valueLog display
-  - `src/stores/gameStore.ts` — Log-space click damage, log-space batching, valueLog in FloatingText, tick sync
+  - `src/app/page.tsx` — Stat displays use `fmtExpLog(log values)`, updated LuckySpin props
+  - `src/stores/gameStore.ts` — Log-space recalcStats, log stats in state, log-space click damage/auto income
+  - `src/components/lucky-spin.tsx` — Accept `autoRateLog` prop
+  - `src/app/api/clicker/save/route.ts` — Null guards for save data
+- **Lint:** Passes clean (0 errors)
+- **Dev server:** Compiles and runs without errors, saves returning 200
+- **Files modified:**
+  - `src/app/page.tsx` — Stat displays use `fmtExpLog(log values)`, updated LuckySpin props
+  - `src/stores/gameStore.ts` — Log-space recalcStats, log stats in state, log-space click damage/auto income
+  - `src/components/lucky-spin.tsx` — Accept `autoRateLog` prop
   - `src/app/api/clicker/save/route.ts` — Null guards for save data
 - **Lint:** Passes clean (0 errors)
 - **Dev server:** Compiles and runs without errors, saves returning 200

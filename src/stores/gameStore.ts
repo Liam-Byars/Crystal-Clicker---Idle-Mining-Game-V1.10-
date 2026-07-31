@@ -90,8 +90,11 @@ export interface GameState {
   totalEarned: number;
   totalEarnedExp: number; // overflow exponent for totalEarned
   clickPower: number;
+  clickPowerLog: number; // log10 of clickPower, for precise huge numbers
   multiplier: number;
+  multiplierLog: number; // log10 of multiplier
   autoRate: number;
+  autoRateLog: number; // log10 of autoRate
 
   // Prestige
   prestige: number;
@@ -870,25 +873,51 @@ const MILESTONE_DEFS: Omit<Milestone, 'celebrated'>[] = [
 ];
 
 function recalcStats(upgrades: Upgrade[]) {
-  let clickPower = 1; let autoRate = 0; let multiplier = 1;
+  // Compute all stats in log10 space to handle values beyond JS MAX_VALUE
+  let clickPowerLog = 0; // log10(clickPower), starts at 1 → log(1) = 0
+  let autoRateLog = -Infinity; // log10(autoRate), starts at 0 → -Infinity
+  let multiplierLog = 0; // log10(multiplier), starts at 1 → log(1) = 0
   let goldenChance = 0.03; let critChance = 0.05;
+
   for (const u of upgrades) {
-    for (let i = 0; i < u.level; i++) {
-      switch (u.effect) {
-        case 'clickPower': clickPower += u.value; break;
-        case 'autoRate': autoRate += u.value; break;
-        case 'multiplier': multiplier += u.value; break;
-        case 'goldenChance': goldenChance += u.value; break;
-        case 'critChance': critChance += u.value; break;
+    if (u.level <= 0) continue;
+    switch (u.effect) {
+      case 'clickPower': {
+        // Total contribution = u.value * u.level
+        // log(u.value * u.level) = log(u.value) + log(u.level)
+        const contrib = Math.log10(Math.max(u.value, 1e-300)) + Math.log10(u.level);
+        clickPowerLog = logAdd(clickPowerLog, contrib);
+        break;
       }
+      case 'autoRate': {
+        const contrib = Math.log10(Math.max(u.value, 1e-300)) + Math.log10(u.level);
+        autoRateLog = logAdd(autoRateLog, contrib);
+        break;
+      }
+      case 'multiplier': {
+        // Base amplifier adds 0.2 per level (additive to multiplier value)
+        // Area resonances add huge values (also additive)
+        // Use logAdd to correctly sum them in log space
+        const contrib = Math.log10(Math.max(u.value, 1e-300)) + Math.log10(u.level);
+        multiplierLog = logAdd(multiplierLog, contrib);
+        break;
+      }
+      case 'goldenChance': goldenChance += u.value * u.level; break;
+      case 'critChance': critChance += u.value * u.level; break;
     }
   }
-  return { clickPower, autoRate, multiplier, goldenChance: Math.min(goldenChance, 0.75), critChance: Math.min(critChance, 1.0) };
+  return {
+    clickPowerLog,
+    autoRateLog,
+    multiplierLog,
+    goldenChance: Math.min(goldenChance, 0.75),
+    critChance: Math.min(critChance, 1.0),
+  };
 }
 
 // ====== Store ======
 export const useGameStore = create<GameState>((set, get) => ({
-  crystals: 0, crystalsExp: 0, totalClicks: 0, totalEarned: 0, totalEarnedExp: 0, clickPower: 1, multiplier: 1, autoRate: 0,
+  crystals: 0, crystalsExp: 0, totalClicks: 0, totalEarned: 0, totalEarnedExp: 0, clickPower: 1, clickPowerLog: 0, multiplier: 1, multiplierLog: 0, autoRate: 0, autoRateLog: -Infinity,
   prestige: 0, prestigePoints: 0,
   combo: 0, comboTimer: 0, maxCombo: 0, lastClickTime: 0,
   clickTimestamps: [], clicksPerSecond: 0, bestSessionCps: 0,
@@ -925,7 +954,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const COMBO_MILESTONES: [number, number][] = [[10, 5], [25, 15], [50, 50], [100, 200]];
     for (const [threshold, mult] of COMBO_MILESTONES) {
       if (prevCombo < threshold && newCombo >= threshold) {
-        const bmLog = toLog(s.clickPower) + Math.log10(s.multiplier) + Math.log10(mult) + Math.log10(1 + s.prestigePoints * 0.1);
+        const bmLog = s.clickPowerLog + s.multiplierLog + Math.log10(mult) + Math.log10(1 + s.prestigePoints * 0.1);
         comboBonusLog = logAdd(comboBonusLog, bmLog);
       }
     }
@@ -935,8 +964,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     const puMult = s.activePowerUp?.effect === 'doubleClick' ? s.activePowerUp.value : 1;
     const evMult = s.activeEvent?.effect === 'doubleClick' ? s.activeEvent.value : 1;
 
-    // Compute click damage in log10 space — multiplication becomes addition, never overflows
-    let valueLog = toLog(s.clickPower) + Math.log10(s.multiplier) + Math.log10(comboMult) + Math.log10(prestMult) + Math.log10(puMult) + Math.log10(evMult);
+    // Compute click damage in log10 space — uses log stats directly, never overflows
+    let valueLog = s.clickPowerLog + s.multiplierLog + Math.log10(comboMult) + Math.log10(prestMult) + Math.log10(puMult) + Math.log10(evMult);
 
     let isCrit = false;
     if (Math.random() < s.critChance) { isCrit = true; valueLog += Math.log10(s.critMultiplier); }
@@ -1027,7 +1056,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       (s.totalEarnedExp > 0 ? Math.min(Math.pow(10, SAFE_LOG), s.totalEarned) : s.totalEarned) / 1000
     ));
     set({
-      crystals: 0, crystalsExp: 0, totalClicks: 0, totalEarned: 0, totalEarnedExp: 0, clickPower: 1, multiplier: 1, autoRate: 0,
+      crystals: 0, crystalsExp: 0, totalClicks: 0, totalEarned: 0, totalEarnedExp: 0, clickPower: 1, clickPowerLog: 0, multiplier: 1, multiplierLog: 0, autoRate: 0, autoRateLog: -Infinity,
       prestige: s.prestige + 1, prestigePoints: s.prestigePoints + pts,
       combo: 0, comboTimer: 0, maxCombo: 0,
       goldenClicks: 0, goldenChance: 0.03, critChance: 0.05, totalCrits: 0,
@@ -1142,25 +1171,27 @@ export const useGameStore = create<GameState>((set, get) => ({
       _pendingClicks = 0; _pendingSessionEarned = 0; _pendingCrits = 0;
     }
 
-    // Auto income (additive to batched click gains)
-    if (s.autoRate > 0) {
-      let rate = s.autoRate;
+    // Auto income (additive to batched click gains, uses log space)
+    if (s.autoRateLog > -Infinity) {
+      let rateLog = s.autoRateLog;
       const puBonus = s.activePowerUp?.effect === 'tripleAuto' ? s.activePowerUp.value : 1;
       const evBonus = s.activeEvent?.effect === 'doubleAuto' ? s.activeEvent.value : 1;
-      rate *= puBonus * evBonus;
+      rateLog += Math.log10(puBonus) + Math.log10(evBonus);
       const prestMult = 1 + s.prestigePoints * 0.1;
-      const income = isFinite(rate * prestMult) ? rate * prestMult * 0.1 : Math.pow(10, SAFE_LOG);
-      // Use batched values as base if they exist
+      const incomeLog = rateLog + Math.log10(prestMult) + Math.log10(0.1); // 0.1 = 100ms tick
+      // Add to crystals (use batched values as base if available)
       const baseC = updates.crystals ?? s.crystals;
       const baseCE = updates.crystalsExp ?? s.crystalsExp;
       const baseTE = updates.totalEarned ?? s.totalEarned;
       const baseTEE = updates.totalEarnedExp ?? s.totalEarnedExp;
       const baseSE = updates.sessionEarned ?? s.sessionEarned;
-      const cR = safeAdd(baseC, baseCE, income);
-      const teR = safeAdd(baseTE, baseTEE, income);
+      const cLog = toLog(baseC) + baseCE;
+      const teLog = toLog(baseTE) + baseTEE;
+      const cR = splitLog(logAdd(cLog, incomeLog));
+      const teR = splitLog(logAdd(teLog, incomeLog));
       updates.crystals = cR.value; updates.crystalsExp = cR.exp;
       updates.totalEarned = teR.value; updates.totalEarnedExp = teR.exp;
-      updates.sessionEarned = baseSE + Math.min(income, 1e15);
+      updates.sessionEarned = baseSE + Math.min(incomeLog < 15 ? Math.pow(10, incomeLog) : 1e15, 1e15);
     }
 
     // Combo decay
@@ -1362,7 +1393,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     _pendingClicks = 0; _pendingSessionEarned = 0; _pendingCrits = 0;
     _achCheckCounter = 0;
     set({
-      crystals: 0, crystalsExp: 0, totalClicks: 0, totalEarned: 0, totalEarnedExp: 0, clickPower: 1, multiplier: 1, autoRate: 0,
+      crystals: 0, crystalsExp: 0, totalClicks: 0, totalEarned: 0, totalEarnedExp: 0, clickPower: 1, clickPowerLog: 0, multiplier: 1, multiplierLog: 0, autoRate: 0, autoRateLog: -Infinity,
       prestige: 0, prestigePoints: 0, combo: 0, comboTimer: 0, maxCombo: 0, lastClickTime: 0,
       clickTimestamps: [], clicksPerSecond: 0, bestSessionCps: 0, critChance: 0.05, critMultiplier: 5, totalCrits: 0,
       goldenClicks: 0, goldenChance: 0.03, goldenActive: false, goldenTimer: 0, goldenClickValue: 0,
