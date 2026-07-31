@@ -1247,7 +1247,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         // Clear old timeout and set a new one
         const oldT = _ftTimeouts.get(existing.id);
         if (oldT) clearTimeout(oldT);
-        _ftTimeouts.set(existing.id, setTimeout(() => get().removeFloatingText(existing.id), 1400));
+        _ftTimeouts.set(existing.id, setTimeout(() => get().removeFloatingText(existing.id), 10000));
         set({ floatingTextId: s.floatingTextId + 1, floatingTexts: updated });
         return;
       }
@@ -1256,7 +1256,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     // Non-stackable or no existing stack: create a new floating text
     const ft: FloatingText = { id: s.floatingTextId, value, x, y, type, count: 1 };
     const texts = [...s.floatingTexts, ft].slice(-20);
-    _ftTimeouts.set(ft.id, setTimeout(() => get().removeFloatingText(ft.id), 1400));
+    _ftTimeouts.set(ft.id, setTimeout(() => get().removeFloatingText(ft.id), 10000));
     set({ floatingTextId: s.floatingTextId + 1, floatingTexts: texts });
   },
 

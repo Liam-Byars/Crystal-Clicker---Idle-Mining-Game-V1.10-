@@ -914,8 +914,8 @@ export default function GamePage() {
                 <motion.div
                   key={ft.id}
                   initial={{ opacity: 1, y: ft.y + yOffset, x: ft.x, scale: 1.1 }}
-                  animate={{ opacity: [1, 1, 0], y: ft.y + yOffset - 70, scale: [1.1, 1, 0.7] }}
-                  transition={{ duration: 1.4, times: [0, 0.45, 1], ease: 'easeOut' }}
+                  animate={{ opacity: [1, 1, 0], scale: [1.1, 1, 0.8] }}
+                  transition={{ duration: 10, times: [0, 0.8, 1], ease: 'easeOut' }}
                   className="absolute font-bold text-lg pointer-events-none select-none"
                   style={{ color: floatColors[ft.type], left: 0, textShadow: '0 0 8px currentColor' }}
                 >
