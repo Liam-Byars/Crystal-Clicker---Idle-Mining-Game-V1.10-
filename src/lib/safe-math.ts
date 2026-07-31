@@ -6,6 +6,8 @@ export const SAFE_LOG = 280; // mantissa is kept below 1e280
 
 /** Add two numbers in log10 space: log10(10^a + 10^b) */
 export function logAdd(a: number, b: number): number {
+  if (!isFinite(a)) return isFinite(b) ? b : 400;
+  if (!isFinite(b)) return a;
   if (a < -300) return b;
   if (b < -300) return a;
   if (a < b) { const t = a; a = b; b = t; }
@@ -16,6 +18,7 @@ export function logAdd(a: number, b: number): number {
 
 /** Subtract in log10 space: log10(10^a - 10^b), assumes a >= b */
 export function logSub(a: number, b: number): number {
+  if (!isFinite(a) || !isFinite(b)) return isFinite(a) ? a : 400;
   if (a <= b) return -Infinity;
   const diff = a - b;
   if (diff > 40) return a; // b is negligible
@@ -31,6 +34,8 @@ export function toLog(n: number): number {
 
 /** Split a total log10 value into (mantissa, exp) where mantissa < 1e280 */
 export function splitLog(totalLog: number): { value: number; exp: number } {
+  if (!isFinite(totalLog)) return { value: 1, exp: 0 };
+  if (totalLog <= -300) return { value: 0, exp: 0 };
   if (totalLog <= SAFE_LOG) {
     return { value: Math.pow(10, Math.max(0, totalLog)), exp: 0 };
   }

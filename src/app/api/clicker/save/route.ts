@@ -34,27 +34,33 @@ export async function POST(request: NextRequest) {
       unlockedAreas: body.unlockedAreas ?? ['naica'],
     };
 
+    // Sanitize numeric fields — NaN must never be written to DB
+    const safe = (v: unknown, fallback: number) => {
+      const n = typeof v === 'number' ? v : Number(v);
+      return isFinite(n) ? n : fallback;
+    };
+
     // Write to SQLite (local server database)
     const sqliteData = {
-      crystals: saveData.crystals ?? 0,
-      crystalsExp: saveData.crystalsExp,
-      totalClicks: saveData.totalClicks ?? 0,
-      totalEarned: saveData.totalEarned ?? 0,
-      totalEarnedExp: saveData.totalEarnedExp,
-      clickPower: saveData.clickPower ?? 1,
-      multiplier: saveData.multiplier ?? 1,
-      autoRate: saveData.autoRate ?? 0,
-      prestige: saveData.prestige ?? 0,
-      prestigePoints: saveData.prestigePoints ?? 0,
+      crystals: safe(saveData.crystals, 0),
+      crystalsExp: safe(saveData.crystalsExp, 0),
+      totalClicks: safe(saveData.totalClicks, 0),
+      totalEarned: safe(saveData.totalEarned, 0),
+      totalEarnedExp: safe(saveData.totalEarnedExp, 0),
+      clickPower: safe(saveData.clickPower, 1),
+      multiplier: safe(saveData.multiplier, 1),
+      autoRate: safe(saveData.autoRate, 0),
+      prestige: safe(saveData.prestige, 0),
+      prestigePoints: safe(saveData.prestigePoints, 0),
       upgrades: JSON.stringify(saveData.upgrades),
       achievements: JSON.stringify(saveData.achievements),
-      goldenClicks: saveData.goldenClicks ?? 0,
-      totalCrits: saveData.totalCrits,
-      maxCombo: saveData.maxCombo ?? 0,
-      lastOnlineTime: saveData.lastOnlineTime,
-      totalEvents: saveData.totalEvents,
-      currentArea: saveData.currentArea,
-      unlockedAreas: JSON.stringify(saveData.unlockedAreas),
+      goldenClicks: safe(saveData.goldenClicks, 0),
+      totalCrits: safe(saveData.totalCrits, 0),
+      maxCombo: safe(saveData.maxCombo, 0),
+      lastOnlineTime: safe(saveData.lastOnlineTime, Date.now()),
+      totalEvents: safe(saveData.totalEvents, 0),
+      currentArea: saveData.currentArea ?? 'naica',
+      unlockedAreas: JSON.stringify(saveData.unlockedAreas ?? ['naica']),
     };
 
     const existing = await db.clickerSave.findUnique({ where: { userId } });

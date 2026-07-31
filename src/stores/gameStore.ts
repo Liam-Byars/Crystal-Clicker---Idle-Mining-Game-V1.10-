@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { GENERATED_AREAS, GENERATED_UPGRADES } from '@/lib/mine-generator';
-import { safeAdd, canAfford, toLog, capNum, splitLog, getUpgradeCostLog, getMaxBuyCountLog, getTotalCostNLog, logAdd, SAFE_LOG } from '@/lib/safe-math';
+import { safeAdd, canAfford, toLog, capNum, splitLog, getUpgradeCostLog, getMaxBuyCountLog, getTotalCostNLog, logAdd, logSub, SAFE_LOG } from '@/lib/safe-math';
 
 // ====== Interfaces ======
 export interface Upgrade {
@@ -1032,8 +1032,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     const costLog = getUpgradeCostLog(u.baseCost, u.costMultiplier, u.level);
     const myLog = toLog(s.crystals) + s.crystalsExp;
     if (myLog < costLog) return false;
-    // Subtract cost using log math
-    const newMyLog = myLog + Math.log10(1 - Math.pow(10, costLog - myLog));
+    // Subtract cost using log math (use logSub to avoid NaN from floating point edge cases)
+    const newMyLog = logSub(myLog, costLog);
     const cSplit = splitLog(newMyLog);
     const nu = [...s.upgrades]; nu[idx] = { ...u, level: u.level + 1 };
     const stats = recalcStats(nu);
@@ -1150,17 +1150,34 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     // Flush batched click accumulation (log10 space)
     if (isFinite(_pendingCrystalsLog) || _pendingClicks > 0) {
-      // Add pending crystals in log space
-      const currentLog = toLog(s.crystals) + s.crystalsExp;
-      const newCrystalLog = isFinite(_pendingCrystalsLog) ? logAdd(currentLog, _pendingCrystalsLog) : currentLog;
-      const cR = splitLog(newCrystalLog);
-      updates.crystals = cR.value; updates.crystalsExp = cR.exp;
+      // Guard: if state is corrupted (NaN), reset crystals and flush pending
+      const cv = s.crystals, ce = s.crystalsExp;
+      const tev = s.totalEarned, tee = s.totalEarnedExp;
+      const cvOk = typeof cv === 'number' && isFinite(cv);
+      const ceOk = typeof ce === 'number' && isFinite(ce);
+      const tevOk = typeof tev === 'number' && isFinite(tev);
+      const teeOk = typeof tee === 'number' && isFinite(tee);
 
-      // Add pending total earned in log space
-      const teLog = toLog(s.totalEarned) + s.totalEarnedExp;
-      const newTeLog = isFinite(_pendingTotalEarnedLog) ? logAdd(teLog, _pendingTotalEarnedLog) : teLog;
-      const teR = splitLog(newTeLog);
-      updates.totalEarned = teR.value; updates.totalEarnedExp = teR.exp;
+      if (!cvOk || !ceOk) {
+        // Corrupted crystals state — rebuild from pending only
+        const cR = isFinite(_pendingCrystalsLog) ? splitLog(_pendingCrystalsLog) : { value: 0, exp: 0 };
+        updates.crystals = cR.value; updates.crystalsExp = cR.exp;
+      } else {
+        const currentLog = toLog(cv) + ce;
+        const newCrystalLog = isFinite(_pendingCrystalsLog) ? logAdd(currentLog, _pendingCrystalsLog) : currentLog;
+        const cR = splitLog(newCrystalLog);
+        updates.crystals = cR.value; updates.crystalsExp = cR.exp;
+      }
+
+      if (!tevOk || !teeOk) {
+        const teR = isFinite(_pendingTotalEarnedLog) ? splitLog(_pendingTotalEarnedLog) : { value: 0, exp: 0 };
+        updates.totalEarned = teR.value; updates.totalEarnedExp = teR.exp;
+      } else {
+        const teLog = toLog(tev) + tee;
+        const newTeLog = isFinite(_pendingTotalEarnedLog) ? logAdd(teLog, _pendingTotalEarnedLog) : teLog;
+        const teR = splitLog(newTeLog);
+        updates.totalEarned = teR.value; updates.totalEarnedExp = teR.exp;
+      }
 
       updates.totalClicks = s.totalClicks + _pendingClicks;
       updates.sessionClicks = s.sessionClicks + _pendingClicks;
@@ -1179,18 +1196,20 @@ export const useGameStore = create<GameState>((set, get) => ({
       rateLog += Math.log10(puBonus) + Math.log10(evBonus);
       const prestMult = 1 + s.prestigePoints * 0.1;
       const incomeLog = rateLog + Math.log10(prestMult) + Math.log10(0.1); // 0.1 = 100ms tick
-      // Add to crystals (use batched values as base if available)
+      // Add to crystals (use batched values as base if available, guard NaN)
       const baseC = updates.crystals ?? s.crystals;
       const baseCE = updates.crystalsExp ?? s.crystalsExp;
       const baseTE = updates.totalEarned ?? s.totalEarned;
       const baseTEE = updates.totalEarnedExp ?? s.totalEarnedExp;
       const baseSE = updates.sessionEarned ?? s.sessionEarned;
-      const cLog = toLog(baseC) + baseCE;
-      const teLog = toLog(baseTE) + baseTEE;
-      const cR = splitLog(logAdd(cLog, incomeLog));
-      const teR = splitLog(logAdd(teLog, incomeLog));
-      updates.crystals = cR.value; updates.crystalsExp = cR.exp;
-      updates.totalEarned = teR.value; updates.totalEarnedExp = teR.exp;
+      if (isFinite(baseC) && isFinite(baseCE) && isFinite(baseTE) && isFinite(baseTEE)) {
+        const cLog = toLog(baseC) + baseCE;
+        const teLog = toLog(baseTE) + baseTEE;
+        const cR = splitLog(logAdd(cLog, incomeLog));
+        const teR = splitLog(logAdd(teLog, incomeLog));
+        updates.crystals = cR.value; updates.crystalsExp = cR.exp;
+        updates.totalEarned = teR.value; updates.totalEarnedExp = teR.exp;
+      }
       updates.sessionEarned = baseSE + Math.min(incomeLog < 15 ? Math.pow(10, incomeLog) : 1e15, 1e15);
     }
 
@@ -1469,12 +1488,24 @@ export const useGameStore = create<GameState>((set, get) => ({
       : 0;
     const currentArea = (data.currentArea as string) || 'naica';
     const unlockedAreas = (data.unlockedAreas as string[]) || ['naica'];
+    // Sanitize all numeric fields — NaN from corrupted saves must not propagate
+    const safeNum = (v: unknown, fallback: number) => {
+      const n = v as number;
+      return (typeof n === 'number' && isFinite(n)) ? n : fallback;
+    };
+    const crystals = safeNum(data.crystals, 0);
+    const crystalsExp = safeNum(data.crystalsExp, 0);
+    // If crystals is 0 but exp is non-zero, that's invalid — reset exp
+    const finalCrystalsExp = crystals <= 0 ? 0 : crystalsExp;
+    const totalEarned = safeNum(data.totalEarned, 0);
+    const totalEarnedExp = safeNum(data.totalEarnedExp, 0);
+    const finalTeExp = totalEarned <= 0 ? 0 : totalEarnedExp;
     set({
-      crystals: isFinite(data.crystals as number) ? (data.crystals as number) : Math.pow(10, SAFE_LOG),
-      crystalsExp: (data.crystalsExp as number) ?? 0,
-      totalClicks: (data.totalClicks as number) ?? 0,
-      totalEarned: isFinite(data.totalEarned as number) ? (data.totalEarned as number) : Math.pow(10, SAFE_LOG),
-      totalEarnedExp: (data.totalEarnedExp as number) ?? 0, ...stats,
+      crystals,
+      crystalsExp: finalCrystalsExp,
+      totalClicks: safeNum(data.totalClicks, 0),
+      totalEarned,
+      totalEarnedExp: finalTeExp, ...stats,
       prestige: (data.prestige as number) ?? 0, prestigePoints: (data.prestigePoints as number) ?? 0,
       goldenClicks: (data.goldenClicks as number) ?? 0, totalCrits: (data.totalCrits as number) ?? 0,
       maxCombo: (data.maxCombo as number) ?? 0, totalEvents: (data.totalEvents as number) ?? 0, bestSessionCps: (data.bestSessionCps as number) ?? 0,
