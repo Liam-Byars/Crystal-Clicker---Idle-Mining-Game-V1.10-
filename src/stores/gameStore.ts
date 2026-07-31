@@ -204,11 +204,12 @@ const _FT_LIFE = 10000; // ms before fade-out starts
 const _FT_FADE = 2000;  // ms fade-out duration
 
 // ====== Click batching — avoids set() on every click ======
-let _pendingCrystals = 0;       // accumulated crystal gain
-let _pendingClicks = 0;        // accumulated click count
-let _pendingTotalEarned = 0;   // accumulated total earned
-let _pendingSessionEarned = 0; // accumulated session earned
-let _pendingCrits = 0;         // accumulated crit count
+// Accumulate in log10 space to preserve precision for huge numbers (DK/DM range)
+let _pendingCrystalsLog = -Infinity;  // log10 of accumulated crystal gain
+let _pendingTotalEarnedLog = -Infinity; // log10 of accumulated total earned
+let _pendingClicks = 0;        // accumulated click count (small int, no precision issue)
+let _pendingSessionEarned = 0; // accumulated session earned (capped at 1e15, no precision issue)
+let _pendingCrits = 0;         // accumulated crit count (small int)
 let _achCheckCounter = 0;     // throttle achievement checks
 
 // ====== Data Definitions ======
@@ -944,11 +945,12 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     const totalGain = isFinite(rv + comboBonus) ? Math.round((rv + comboBonus) * 100) / 100 : Math.pow(10, SAFE_LOG);
 
-    // Batch crystal/click accumulation — no set() here
-    _pendingCrystals += totalGain;
+    // Batch crystal/click accumulation in log10 space — preserves precision for huge numbers
+    const gainLog = toLog(totalGain);
+    _pendingCrystalsLog = logAdd(_pendingCrystalsLog, gainLog);
+    _pendingTotalEarnedLog = logAdd(_pendingTotalEarnedLog, gainLog);
     _pendingClicks += 1;
-    _pendingTotalEarned += totalGain;
-    _pendingSessionEarned += Math.min(totalGain, 1e15);
+    _pendingSessionEarned += Math.min(isFinite(totalGain) ? totalGain : 1e15, 1e15);
     if (isCrit) _pendingCrits += 1;
 
     // Only set visual state that MUST update immediately (combo, ripples, shake)
@@ -1107,18 +1109,27 @@ export const useGameStore = create<GameState>((set, get) => ({
     const s = get();
     const updates: Partial<GameState> = {};
 
-    // Flush batched click accumulation
-    if (_pendingCrystals > 0 || _pendingClicks > 0) {
-      const cR = safeAdd(s.crystals, s.crystalsExp, _pendingCrystals);
-      const teR = safeAdd(s.totalEarned, s.totalEarnedExp, _pendingTotalEarned);
+    // Flush batched click accumulation (log10 space)
+    if (isFinite(_pendingCrystalsLog) || _pendingClicks > 0) {
+      // Add pending crystals in log space
+      const currentLog = toLog(s.crystals) + s.crystalsExp;
+      const newCrystalLog = isFinite(_pendingCrystalsLog) ? logAdd(currentLog, _pendingCrystalsLog) : currentLog;
+      const cR = splitLog(newCrystalLog);
       updates.crystals = cR.value; updates.crystalsExp = cR.exp;
+
+      // Add pending total earned in log space
+      const teLog = toLog(s.totalEarned) + s.totalEarnedExp;
+      const newTeLog = isFinite(_pendingTotalEarnedLog) ? logAdd(teLog, _pendingTotalEarnedLog) : teLog;
+      const teR = splitLog(newTeLog);
       updates.totalEarned = teR.value; updates.totalEarnedExp = teR.exp;
+
       updates.totalClicks = s.totalClicks + _pendingClicks;
       updates.sessionClicks = s.sessionClicks + _pendingClicks;
       updates.sessionEarned = s.sessionEarned + _pendingSessionEarned;
       if (_pendingCrits > 0) updates.totalCrits = s.totalCrits + _pendingCrits;
-      _pendingCrystals = 0; _pendingClicks = 0;
-      _pendingTotalEarned = 0; _pendingSessionEarned = 0; _pendingCrits = 0;
+
+      _pendingCrystalsLog = -Infinity; _pendingTotalEarnedLog = -Infinity;
+      _pendingClicks = 0; _pendingSessionEarned = 0; _pendingCrits = 0;
     }
 
     // Auto income (additive to batched click gains)
@@ -1337,8 +1348,8 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   resetGame: () => {
     for (const k of Object.keys(_stackPending)) delete _stackPending[k];
-    _pendingCrystals = 0; _pendingClicks = 0;
-    _pendingTotalEarned = 0; _pendingSessionEarned = 0; _pendingCrits = 0;
+    _pendingCrystalsLog = -Infinity; _pendingTotalEarnedLog = -Infinity;
+    _pendingClicks = 0; _pendingSessionEarned = 0; _pendingCrits = 0;
     _achCheckCounter = 0;
     set({
       crystals: 0, crystalsExp: 0, totalClicks: 0, totalEarned: 0, totalEarnedExp: 0, clickPower: 1, multiplier: 1, autoRate: 0,

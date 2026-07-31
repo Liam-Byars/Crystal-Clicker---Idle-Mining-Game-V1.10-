@@ -10,11 +10,13 @@
   - **Fix (page.tsx):** Changed to stable `key={ft.id}`, replaced CSS animation with JS-computed opacity (`Date.now() - ft.createdAt`), added `transition: opacity 0.3s ease-out` for smooth fade. Increased vertical spacing from ±36px to ±50px.
 - **Fixed autoclicker crash / performance**
   - **Root cause:** The `click()` function called `set()` on EVERY click for crystals, totalClicks, totalEarned, sessionEarned, totalCrits — plus called `checkAchievements()` and `checkMilestones()`. With an autoclicker at 50+ clicks/sec, this meant 50+ `set()` calls/sec, each triggering a full component re-render.
-  - **Fix (gameStore.ts):** Added module-level batch accumulators (`_pendingCrystals`, `_pendingClicks`, etc.). The `click()` function now only updates these in memory (zero re-renders for crystal data). The `tick()` function (100ms) flushes the batch into a single `set()` call. Achievement/milestone checks moved to tick, throttled to every 500ms.
-  - **Additional optimization:** Auto income now reads from batched values (additive), not stale state. Tick forces re-renders during fade phase for smooth opacity transitions.
+  - **Fix (gameStore.ts):** Added module-level batch accumulators in **log10 space** (`_pendingCrystalsLog`, `_pendingTotalEarnedLog`) using `logAdd`. The `click()` function accumulates in memory without re-renders. The `tick()` flushes into a single `set()` call. Achievement/milestone checks throttled to every 500ms.
+- **Fixed precision loss for large numbers (DK/DM range)**
+  - **Root cause:** Initial batching used regular `_pendingCrystals += totalGain` which loses ALL precision for numbers >10^15. For users at DK/DM range (~10^280), crystal gains were being truncated to wrong values.
+  - **Fix:** Changed accumulators to log10 space: `_pendingCrystalsLog = logAdd(_pendingCrystalsLog, toLog(totalGain))`. Tick flush uses `splitLog(logAdd(currentLog, pendingLog))` for correct log-space arithmetic. Auto income correctly adds to batched values.
 - **Files modified:**
   - `src/app/page.tsx` — Floating text rendering: stable key, JS opacity, ±50px spacing
-  - `src/stores/gameStore.ts` — Click batching, tick flush, throttled achievements, fade-phase re-render
+  - `src/stores/gameStore.ts` — Click batching (log-space), tick flush, throttled achievements, fade-phase re-render
 - **Lint:** Passes clean (0 errors)
 - **Dev server:** Compiles and runs without errors
 
