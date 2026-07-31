@@ -901,7 +901,7 @@ export default function GamePage() {
                 animate={{ opacity: 1, y: 0 }}
                 className="mt-2 text-yellow-300 text-sm font-medium"
               >
-                Click for {fmt(goldenClickValue)} crystals!
+                Click for {isFinite(goldenClickValue) ? fmtExpLog(goldenClickValue) : '0'} crystals!
               </motion.div>
             )}
 

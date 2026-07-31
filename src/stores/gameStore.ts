@@ -922,7 +922,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   combo: 0, comboTimer: 0, maxCombo: 0, lastClickTime: 0,
   clickTimestamps: [], clicksPerSecond: 0, bestSessionCps: 0,
   critChance: 0.05, critMultiplier: 5, totalCrits: 0,
-  goldenClicks: 0, goldenChance: 0.03, goldenActive: false, goldenTimer: 0, goldenClickValue: 0,
+  goldenClicks: 0, goldenChance: 0.03, goldenActive: false, goldenTimer: 0, goldenClickValue: -Infinity,
   activePowerUp: null, powerUpTimer: 0,
   activeEvent: null, eventTimer: 0, totalEvents: 0,
   buyQuantity: 1 as BuyQuantity,
@@ -1006,8 +1006,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     const s = get();
     if (!s.goldenActive) return;
     const evMult = s.activeEvent?.effect === 'tripleGolden' ? s.activeEvent.value : 1;
-    // Compute in log space to avoid overflow
-    const valueLog = toLog(s.goldenClickValue) + Math.log10(1 + s.prestigePoints * 0.1) + Math.log10(evMult);
+    // goldenClickValue is stored as log10 — add event multiplier only (prestige already included at spawn)
+    const valueLog = s.goldenClickValue + Math.log10(evMult);
     const cLog = toLog(s.crystals) + s.crystalsExp;
     const teLog = toLog(s.totalEarned) + s.totalEarnedExp;
     const cR = splitLog(logAdd(cLog, valueLog));
@@ -1088,9 +1088,9 @@ export const useGameStore = create<GameState>((set, get) => ({
       if (s.activeEvent?.effect === 'tripleGolden') chance *= s.activeEvent.value;
       chance *= (s.goldenChance / 0.03);
       if (Math.random() < chance) {
-        const bvRaw = s.clickPower * s.multiplier * 10 * (1 + s.prestigePoints * 0.1);
-        const bv = isFinite(bvRaw) ? Math.round(bvRaw * 10) / 10 : Math.pow(10, SAFE_LOG);
-        set({ goldenActive: true, goldenTimer: 400, goldenClickValue: bv });
+        const prestMult = 1 + s.prestigePoints * 0.1;
+        const goldenLog = s.clickPowerLog + s.multiplierLog + Math.log10(10) + Math.log10(prestMult);
+        set({ goldenActive: true, goldenTimer: 400, goldenClickValue: goldenLog });
       }
     }
   },
@@ -1228,11 +1228,12 @@ export const useGameStore = create<GameState>((set, get) => ({
       if (s.activeEvent?.effect === 'tripleGolden') chance *= s.activeEvent.value;
       chance *= (s.goldenChance / 0.03);
       if (Math.random() < chance) {
-        const bvRaw = s.clickPower * s.multiplier * 10 * (1 + s.prestigePoints * 0.1);
-        const bv = isFinite(bvRaw) ? Math.round(bvRaw * 10) / 10 : Math.pow(10, SAFE_LOG);
+        // Compute golden value in log space using actual effective stats
+        const prestMult = 1 + s.prestigePoints * 0.1;
+        const goldenLog = s.clickPowerLog + s.multiplierLog + Math.log10(10) + Math.log10(prestMult);
         updates.goldenActive = true;
         updates.goldenTimer = 400;
-        updates.goldenClickValue = bv;
+        updates.goldenClickValue = goldenLog;
       }
     }
 
@@ -1415,7 +1416,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       crystals: 0, crystalsExp: 0, totalClicks: 0, totalEarned: 0, totalEarnedExp: 0, clickPower: 1, clickPowerLog: 0, multiplier: 1, multiplierLog: 0, autoRate: 0, autoRateLog: -Infinity,
       prestige: 0, prestigePoints: 0, combo: 0, comboTimer: 0, maxCombo: 0, lastClickTime: 0,
       clickTimestamps: [], clicksPerSecond: 0, bestSessionCps: 0, critChance: 0.05, critMultiplier: 5, totalCrits: 0,
-      goldenClicks: 0, goldenChance: 0.03, goldenActive: false, goldenTimer: 0, goldenClickValue: 0,
+      goldenClicks: 0, goldenChance: 0.03, goldenActive: false, goldenTimer: 0, goldenClickValue: -Infinity,
       activePowerUp: null, powerUpTimer: 0, activeEvent: null, eventTimer: 0, totalEvents: 0,
       buyQuantity: 1 as BuyQuantity,
       sessionStartTime: Date.now(), sessionClicks: 0, sessionEarned: 0,
