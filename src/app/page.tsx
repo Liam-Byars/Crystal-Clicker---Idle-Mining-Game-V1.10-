@@ -3,7 +3,7 @@
 import React, { useEffect, useCallback, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useShallow } from 'zustand/react/shallow';
-import { useGameStore, getUpgradeCost, getMaxBuyCount, getTotalCostN, AREAS, getUpgradesForArea } from '@/stores';
+import { useGameStore, getMaxBuyCount, AREAS, getUpgradesForArea, getUpgradeCostLogSafe, getTotalCostNLogSafe } from '@/stores';
 import type { BuyQuantity, FloatingText, Upgrade, Achievement, Area } from '@/stores';
 import { WorldMap } from '@/components/world-map';
 import { LuckySpin } from '@/components/lucky-spin';
@@ -26,6 +26,10 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { LogOut, UserCircle, Volume2, VolumeX, LogIn, FileText, ShieldCheck } from 'lucide-react';
 
 // ====== Helpers ======
+function toLogSafe(n: number): number {
+  if (!isFinite(n) || n <= 0) return -Infinity;
+  return Math.log10(n);
+}
 function fmtExpLog(log: number): string {
   if (log < 0) return '0';
   if (log < 3) {
@@ -486,32 +490,29 @@ export default function GamePage() {
   const getBuyInfo = useCallback((u: Upgrade) => {
     const st = useGameStore.getState();
     const bq = st.buyQuantity;
-    const myLog = Math.log10(Math.max(st.crystals, 1)) + st.crystalsExp;
+    const myLog = toLogSafe(st.crystals) + st.crystalsExp;
     if (bq === 1) {
-      const cost = getUpgradeCost(u);
-      const costLog = Math.log10(Math.max(isFinite(cost) ? cost : 1, 1));
+      const costLog = getUpgradeCostLogSafe(u);
       const canBuy = myLog >= costLog && (!u.maxLevel || u.level < u.maxLevel);
-      return { count: 1, cost, canBuy, label: fmt(cost) };
+      return { count: 1, costLog, canBuy, label: fmtExpLog(costLog) };
     }
     if (bq === 10) {
       const n = Math.min(10, u.maxLevel ? u.maxLevel - u.level : 10);
-      const cost = getTotalCostN(u, n);
-      const costLog = Math.log10(Math.max(isFinite(cost) ? cost : 1, 1));
+      const costLog = n > 0 ? getTotalCostNLogSafe(u, n) : -Infinity;
       const canBuy = n > 0 && myLog >= costLog;
-      return { count: n, cost, canBuy, label: `${n}x ${fmt(cost)}` };
+      return { count: n, costLog, canBuy, label: n > 0 ? `${n}x ${fmtExpLog(costLog)}` : '—' };
     }
     if (bq === 100) {
       const n = Math.min(100, u.maxLevel ? u.maxLevel - u.level : 100);
-      const cost = getTotalCostN(u, n);
-      const costLog = Math.log10(Math.max(isFinite(cost) ? cost : 1, 1));
+      const costLog = n > 0 ? getTotalCostNLogSafe(u, n) : -Infinity;
       const canBuy = n > 0 && myLog >= costLog;
-      return { count: n, cost, canBuy, label: `${n}x ${fmt(cost)}` };
+      return { count: n, costLog, canBuy, label: n > 0 ? `${n}x ${fmtExpLog(costLog)}` : '—' };
     }
     // max
     const n = getMaxBuyCount(u, st.crystals, st.crystalsExp);
-    const cost = n > 0 ? getTotalCostN(u, n) : getUpgradeCost(u);
+    const costLog = n > 0 ? getTotalCostNLogSafe(u, n) : getUpgradeCostLogSafe(u);
     const canBuy = n > 0;
-    return { count: n, cost, canBuy, label: `${n}x ${fmt(cost)}` };
+    return { count: n, costLog, canBuy, label: n > 0 ? `${n}x ${fmtExpLog(costLog)}` : fmtExpLog(costLog) };
   }, []);
 
   // ====== Render ======
@@ -1153,7 +1154,7 @@ export default function GamePage() {
                                     <TooltipContent side="left" className="bg-gray-900 border-gray-700 text-xs">
                                       {u.maxLevel
                                         ? `Max Level: ${u.maxLevel}`
-                                        : `Next cost: ${fmt(getUpgradeCost(u))}`}
+                                        : `Next cost: ${fmtExpLog(getUpgradeCostLogSafe(u))}`}
                                     </TooltipContent>
                                   </Tooltip>
                                 </CardContent>
