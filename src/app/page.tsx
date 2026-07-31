@@ -912,6 +912,12 @@ export default function GamePage() {
                 const age = Date.now() - ft.createdAt;
                 // Stay fully visible for 10s, then fade over 2s
                 const opacity = age > 10000 ? Math.max(0, 1 - (age - 10000) / 2000) : 1;
+                // Use valueLog for precise display of huge numbers
+                const displayStr = ft.type === 'milestone'
+                  ? '🎉 MILESTONE!'
+                  : (ft.valueLog != null && ft.valueLog > 15
+                    ? fmtExpLog(ft.valueLog)
+                    : fmt(ft.value));
                 return (
                 <div
                   key={ft.id}
@@ -927,8 +933,8 @@ export default function GamePage() {
                   }}
                 >
                   {ft.type === 'milestone'
-                    ? '🎉 MILESTONE!'
-                    : <>{fmt(ft.value)}{ft.count > 1 && <span className="text-sm opacity-80 ml-0.5">×{ft.count}</span>}</>
+                    ? displayStr
+                    : <>{displayStr}{ft.count > 1 && <span className="text-sm opacity-80 ml-0.5">×{ft.count}</span>}</>
                   }
                 </div>
                 );

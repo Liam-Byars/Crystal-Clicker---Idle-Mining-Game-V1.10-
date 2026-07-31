@@ -29,6 +29,7 @@ export interface Achievement {
 export interface FloatingText {
   id: number;
   value: number;
+  valueLog?: number; // log10 of value, for precise display of huge numbers
   x: number;
   y: number;
   type: 'normal' | 'golden' | 'combo' | 'crit' | 'powerup' | 'event' | 'offline' | 'milestone';
@@ -183,7 +184,7 @@ export interface GameState {
   updateNotification: () => void;
   updateClickSpeed: () => void;
   checkMilestones: () => void;
-  addFloatingText: (x: number, y: number, value: number, type?: FloatingText['type']) => void;
+  addFloatingText: (x: number, y: number, value: number, type?: FloatingText['type'], valueLog?: number) => void;
   removeFloatingText: (id: number) => void;
   setActiveTab: (tab: 'upgrades' | 'achievements' | 'stats' | 'prestige' | 'map') => void;
   switchArea: (areaId: string) => void;
@@ -199,7 +200,7 @@ export interface GameState {
 
 // ====== Floating text stack throttle & cleanup ======
 // Module-level accumulators — no React re-renders until tick syncs
-const _stackPending: Record<string, { id: number; count: number; value: number; x: number; y: number; lastClick: number }> = {};
+const _stackPending: Record<string, { id: number; count: number; value: number; valueLog?: number; x: number; y: number; lastClick: number }> = {};
 const _FT_LIFE = 10000; // ms before fade-out starts
 const _FT_FADE = 2000;  // ms fade-out duration
 
@@ -919,12 +920,13 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (now - s.lastClickTime < 500) newCombo = Math.min(s.combo + 1, 100);
     if (newCombo > newMax) newMax = newCombo;
 
-    // Combo milestone bonuses
-    let comboBonus = 0;
+    // Combo milestone bonuses (computed in log space)
+    let comboBonusLog = -Infinity;
     const COMBO_MILESTONES: [number, number][] = [[10, 5], [25, 15], [50, 50], [100, 200]];
     for (const [threshold, mult] of COMBO_MILESTONES) {
       if (prevCombo < threshold && newCombo >= threshold) {
-        comboBonus += s.clickPower * s.multiplier * mult * (1 + s.prestigePoints * 0.1);
+        const bmLog = toLog(s.clickPower) + Math.log10(s.multiplier) + Math.log10(mult) + Math.log10(1 + s.prestigePoints * 0.1);
+        comboBonusLog = logAdd(comboBonusLog, bmLog);
       }
     }
 
@@ -932,25 +934,25 @@ export const useGameStore = create<GameState>((set, get) => ({
     const prestMult = 1 + s.prestigePoints * 0.1;
     const puMult = s.activePowerUp?.effect === 'doubleClick' ? s.activePowerUp.value : 1;
     const evMult = s.activeEvent?.effect === 'doubleClick' ? s.activeEvent.value : 1;
-    let value = s.clickPower * s.multiplier * comboMult * prestMult * puMult * evMult;
-    // Cap to prevent overflow
-    if (!isFinite(value)) value = Math.pow(10, SAFE_LOG);
+
+    // Compute click damage in log10 space — multiplication becomes addition, never overflows
+    let valueLog = toLog(s.clickPower) + Math.log10(s.multiplier) + Math.log10(comboMult) + Math.log10(prestMult) + Math.log10(puMult) + Math.log10(evMult);
 
     let isCrit = false;
-    if (Math.random() < s.critChance) { isCrit = true; value = Math.min(value * s.critMultiplier, Math.pow(10, SAFE_LOG)); }
-    if (!isFinite(comboBonus)) comboBonus = Math.pow(10, SAFE_LOG);
+    if (Math.random() < s.critChance) { isCrit = true; valueLog += Math.log10(s.critMultiplier); }
 
-    const rv = isFinite(value) ? Math.round(value * 10) / 10 : 0;
     const tt: FloatingText['type'] = isCrit ? 'crit' : newCombo > 1 ? 'combo' : 'normal';
 
-    const totalGain = isFinite(rv + comboBonus) ? Math.round((rv + comboBonus) * 100) / 100 : Math.pow(10, SAFE_LOG);
+    // Total gain in log space (click damage + combo milestone bonus)
+    const totalGainLog = isFinite(comboBonusLog) ? logAdd(valueLog, comboBonusLog) : valueLog;
 
     // Batch crystal/click accumulation in log10 space — preserves precision for huge numbers
-    const gainLog = toLog(totalGain);
-    _pendingCrystalsLog = logAdd(_pendingCrystalsLog, gainLog);
-    _pendingTotalEarnedLog = logAdd(_pendingTotalEarnedLog, gainLog);
+    _pendingCrystalsLog = logAdd(_pendingCrystalsLog, totalGainLog);
+    _pendingTotalEarnedLog = logAdd(_pendingTotalEarnedLog, totalGainLog);
     _pendingClicks += 1;
-    _pendingSessionEarned += Math.min(isFinite(totalGain) ? totalGain : 1e15, 1e15);
+    // Session earned capped at 1e15 for display
+    const sessionGain = totalGainLog < 15 ? Math.pow(10, totalGainLog) : 1e15;
+    _pendingSessionEarned += sessionGain;
     if (isCrit) _pendingCrits += 1;
 
     // Only set visual state that MUST update immediately (combo, ripples, shake)
@@ -962,26 +964,34 @@ export const useGameStore = create<GameState>((set, get) => ({
       clickTimestamps: recent, clicksPerSecond: recent.length,
       ripples: [...s.ripples.slice(-6), { id: newRippleId, x, y, type: tt }], rippleId: newRippleId,
     });
-    get().addFloatingText(x, y, rv, tt);
-    if (comboBonus > 0) get().addFloatingText(x, y - 30, comboBonus, 'milestone');
+    // Pass valueLog for precise display of huge numbers
+    const displayValue = valueLog < 15 ? Math.pow(10, valueLog) : 0;
+    get().addFloatingText(x, y, displayValue, tt, valueLog);
+    if (isFinite(comboBonusLog)) {
+      const cbDisplay = comboBonusLog < 15 ? Math.pow(10, comboBonusLog) : 0;
+      get().addFloatingText(x, y - 30, cbDisplay, 'milestone', comboBonusLog);
+    }
   },
 
   clickGolden: (x, y) => {
     const s = get();
     if (!s.goldenActive) return;
     const evMult = s.activeEvent?.effect === 'tripleGolden' ? s.activeEvent.value : 1;
-    const raw = s.goldenClickValue * (1 + s.prestigePoints * 0.1) * evMult;
-    const value = isFinite(raw) ? Math.round(raw * 10) / 10 : Math.pow(10, SAFE_LOG);
-    const cR = safeAdd(s.crystals, s.crystalsExp, value);
-    const teR = safeAdd(s.totalEarned, s.totalEarnedExp, value);
+    // Compute in log space to avoid overflow
+    const valueLog = toLog(s.goldenClickValue) + Math.log10(1 + s.prestigePoints * 0.1) + Math.log10(evMult);
+    const cLog = toLog(s.crystals) + s.crystalsExp;
+    const teLog = toLog(s.totalEarned) + s.totalEarnedExp;
+    const cR = splitLog(logAdd(cLog, valueLog));
+    const teR = splitLog(logAdd(teLog, valueLog));
     set({
       crystals: cR.value, crystalsExp: cR.exp,
       totalEarned: teR.value, totalEarnedExp: teR.exp,
-      sessionEarned: s.sessionEarned + Math.min(value, 1e15),
+      sessionEarned: s.sessionEarned + Math.min(valueLog < 15 ? Math.pow(10, valueLog) : 1e15, 1e15),
       goldenClicks: s.goldenClicks + 1, goldenActive: false, goldenTimer: 0,
       screenShake: true, crystalPulse: 4,
     });
-    get().addFloatingText(x, y, value, 'golden');
+    const displayValue = valueLog < 15 ? Math.pow(10, valueLog) : 0;
+    get().addFloatingText(x, y, displayValue, 'golden', valueLog);
     get().checkAchievements(); get().checkMilestones();
   },
 
@@ -1239,9 +1249,9 @@ export const useGameStore = create<GameState>((set, get) => ({
     const synced = s.floatingTexts.map(ft => {
       const key = ft.type === 'combo' ? 'normal' : ft.type;
       const p = _stackPending[key];
-      if (p && p.id === ft.id && (p.count !== ft.count || p.value !== ft.value)) {
+      if (p && p.id === ft.id && (p.count !== ft.count || p.valueLog !== ft.valueLog)) {
         // Reset createdAt so the 12s timer restarts from the latest click
-        return { ...ft, count: p.count, value: p.value, x: p.x, y: p.y, createdAt: p.lastClick };
+        return { ...ft, count: p.count, value: p.value, valueLog: p.valueLog, x: p.x, y: p.y, createdAt: p.lastClick };
       }
       return ft;
     }).filter(ft => ftNow - ft.createdAt < _FT_LIFE + _FT_FADE);
@@ -1306,7 +1316,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
   },
 
-  addFloatingText: (x, y, value, type = 'normal') => {
+  addFloatingText: (x, y, value, type = 'normal', valueLog) => {
     const s = get();
     const isStackable = type === 'normal' || type === 'crit' || type === 'combo' || type === 'golden';
     const stackKey = type === 'combo' ? 'normal' : type;
@@ -1317,15 +1327,15 @@ export const useGameStore = create<GameState>((set, get) => ({
       const pending = _stackPending[stackKey];
       if (pending && s.floatingTexts.some(ft => ft.id === pending.id)) {
         // Just bump the counter in memory — no React re-render
-        _stackPending[stackKey] = { ...pending, count: pending.count + 1, value, x, y, lastClick: now };
+        _stackPending[stackKey] = { ...pending, count: pending.count + 1, value, valueLog, x, y, lastClick: now };
         return;
       }
     }
 
     // Create new floating text (first of its type, or non-stackable)
-    const ft: FloatingText = { id: s.floatingTextId, value, x, y, type, count: 1, createdAt: now };
+    const ft: FloatingText = { id: s.floatingTextId, value, valueLog, x, y, type, count: 1, createdAt: now };
     if (isStackable) {
-      _stackPending[stackKey] = { id: ft.id, count: 1, value, x, y, lastClick: now };
+      _stackPending[stackKey] = { id: ft.id, count: 1, value, valueLog, x, y, lastClick: now };
     }
     const texts = [...s.floatingTexts, ft].slice(-20);
     set({ floatingTextId: s.floatingTextId + 1, floatingTexts: texts });

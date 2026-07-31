@@ -14,11 +14,17 @@
 - **Fixed precision loss for large numbers (DK/DM range)**
   - **Root cause:** Initial batching used regular `_pendingCrystals += totalGain` which loses ALL precision for numbers >10^15. For users at DK/DM range (~10^280), crystal gains were being truncated to wrong values.
   - **Fix:** Changed accumulators to log10 space: `_pendingCrystalsLog = logAdd(_pendingCrystalsLog, toLog(totalGain))`. Tick flush uses `splitLog(logAdd(currentLog, pendingLog))` for correct log-space arithmetic. Auto income correctly adds to batched values.
+- **Fixed click damage capped at 10 DK for advanced players (EU range)**
+  - **Root cause:** Click damage was computed as `s.clickPower * s.multiplier * comboMult * prestMult * ...` — regular multiplication. When clickPower (~10^150) × multiplier (~10^160) > JS MAX_VALUE (~1.8e308), the product becomes Infinity and gets hard-capped at 10^280 (SAFE_LOG). Every click shows exactly "10.00DK" regardless of combo, crit, or any other multiplier.
+  - **Fix:** Rewrote damage calculation to use **log10-space multiplication** (addition of logs): `valueLog = log10(clickPower) + log10(multiplier) + log10(comboMult) + ...`. This NEVER overflows. Added `valueLog` field to FloatingText. Display uses `fmtExpLog(valueLog)` for precise numbers at any scale. Also fixed clickGolden with same approach.
+- **Fixed save 500 error (null clickPower/multiplier/autoRate)**
+  - Added null guards (`?? 0` / `?? 1`) in save route to prevent Prisma errors from corrupted save data.
 - **Files modified:**
-  - `src/app/page.tsx` — Floating text rendering: stable key, JS opacity, ±50px spacing
-  - `src/stores/gameStore.ts` — Click batching (log-space), tick flush, throttled achievements, fade-phase re-render
+  - `src/app/page.tsx` — Floating text rendering: stable key, JS opacity, ±50px spacing, valueLog display
+  - `src/stores/gameStore.ts` — Log-space click damage, log-space batching, valueLog in FloatingText, tick sync
+  - `src/app/api/clicker/save/route.ts` — Null guards for save data
 - **Lint:** Passes clean (0 errors)
-- **Dev server:** Compiles and runs without errors
+- **Dev server:** Compiles and runs without errors, saves returning 200
 
 ### Session 7 Work (Current)
 - **Rebuilt entire auth system from scratch** (previous session's auth files were lost)
