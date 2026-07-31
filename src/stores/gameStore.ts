@@ -1089,7 +1089,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       chance *= (s.goldenChance / 0.03);
       if (Math.random() < chance) {
         const prestMult = 1 + s.prestigePoints * 0.1;
-        const goldenLog = s.clickPowerLog + s.multiplierLog + Math.log10(10) + Math.log10(prestMult);
+        const goldenLog = s.clickPowerLog + s.multiplierLog + Math.log10(100) + Math.log10(prestMult);
         set({ goldenActive: true, goldenTimer: 400, goldenClickValue: goldenLog });
       }
     }
@@ -1230,7 +1230,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       if (Math.random() < chance) {
         // Compute golden value in log space using actual effective stats
         const prestMult = 1 + s.prestigePoints * 0.1;
-        const goldenLog = s.clickPowerLog + s.multiplierLog + Math.log10(10) + Math.log10(prestMult);
+        const goldenLog = s.clickPowerLog + s.multiplierLog + Math.log10(100) + Math.log10(prestMult);
         updates.goldenActive = true;
         updates.goldenTimer = 400;
         updates.goldenClickValue = goldenLog;
