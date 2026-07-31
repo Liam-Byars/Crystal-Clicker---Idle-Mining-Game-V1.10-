@@ -448,3 +448,42 @@ Stage Summary:
 - Guest → Google sign-in migration now works from both in-game menu AND initial sign-in screen
 - 3 new features: Daily Rewards, Lucky Spin, Activity Log
 - All changes compile clean with 0 lint errors
+---
+Task ID: 1
+Agent: Main
+Task: Fix wheel spin, change to daily cooldown, fix infinity number display
+
+Work Log:
+- Fixed Lucky Spin wheel: the cooldown interval was empty (setInterval(() => {}, 1000)), so the countdown never ticked down. Added proper tick logic.
+- Changed wheel from 30-minute cooldown to daily cooldown. Now stores today's date (YYYY-MM-DD) in localStorage instead of a timestamp. Resets at midnight.
+- Updated cooldown display format from MM:SS to Xh Ym for daily cooldown.
+- Updated description text from 'every 30 minutes' to 'once per day'.
+- Created /home/z/my-project/src/lib/safe-math.ts - a log10-based arithmetic utility to prevent JS number overflow. Provides safeAdd, logAdd, logSub, toLog, splitLog, getUpgradeCostLog, getMaxBuyCountLog, getTotalCostNLog, canAfford, capNum, safeMulLog, SAFE_LOG.
+- Added crystalsExp and totalEarnedExp fields to GameState interface, initial state, resetGame, performPrestige.
+- Modified click handler: caps overflow in clickPower*multiplier computation, uses safeAdd for crystals and totalEarned.
+- Modified clickGolden handler: uses safeAdd, caps overflow in golden value.
+- Modified buyUpgrade: uses log-space comparison (getUpgradeCostLog) instead of regular number comparison. Subtracts cost in log space.
+- Modified tick auto income: uses safeAdd, caps overflow in income computation.
+- Modified tick golden value and instant bonus: caps overflow, uses safeAdd.
+- Modified checkAreaUnlocks and checkMilestones: uses effective log (toLog + exp) for comparisons.
+- Modified claimOfflineEarnings, claimReward: use safeAdd.
+- Modified loadSave: handles Infinity values (converts to SAFE_MAX), loads crystalsExp/totalEarnedExp.
+- Modified getSaveData: includes crystalsExp/totalEarnedExp.
+- Added log-based utility functions: getUpgradeCostLogSafe, getTotalCostNLogSafe.
+- Updated getMaxBuyCount to accept optional moneyExp parameter and delegate to getMaxBuyCountLog.
+- Updated getTotalCostN to return Infinity when costs overflow instead of crashing.
+- Updated fmt() in page.tsx: added exp parameter, added fmtExpLog() helper for log-based formatting. Added quad-letter suffixes (AAAA-ZZZZ) beyond ZZZ. When exp > 0, uses log10(n) + exp for formatting. When n is Infinity, uses fmtExpLog(exp + 400).
+- Updated all fmt(crystals) calls to fmt(crystals, crystalsExp) and fmt(totalEarned, totalEarnedExp).
+- Updated getBuyInfo to use log-space comparison for affordability checks.
+- Updated handleBuy to pass crystalsExp to getMaxBuyCount.
+- Added crystalsExp and totalEarnedExp to Prisma schema (ClickerSave model).
+- Updated save API route to include crystalsExp and totalEarnedExp.
+- Updated load API route to return crystalsExp and totalEarnedExp.
+- Updated stores/index.ts exports.
+
+Stage Summary:
+- Wheel: Fixed (cooldown now ticks down properly, changed to daily reset at midnight)
+- Infinity numbers: Fixed (numbers past JS max ~1.79e308 now continue growing with AA-ZZ format by tracking overflow exponent separately)
+- Display: Numbers now show proper suffixes (AA through ZZZ, then AAAA+) instead of staying at Infinity
+- Database: Schema updated, save/load working with new exp fields
+- All verified via agent-browser: game loads, wheel spins and shows daily cooldown, saves work with exp fields

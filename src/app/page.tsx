@@ -26,20 +26,58 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { LogOut, UserCircle, Volume2, VolumeX, LogIn, FileText, ShieldCheck } from 'lucide-react';
 
 // ====== Helpers ======
-function fmt(n: number): string {
-  if (n < 0) return '-' + fmt(-n);
-  if (!isFinite(n)) {
-    // Number overflowed JS max — show as ∞ZZ+
-    return '∞ZZ+';
+function fmtExpLog(log: number): string {
+  if (log < 0) return '0';
+  if (log < 3) {
+    const v = Math.pow(10, log);
+    return v < 10 ? v.toFixed(1) : Math.floor(v).toString();
   }
+  if (log < 6) return (Math.pow(10, log - 3)).toFixed(1) + 'K';
+  if (log < 9) return (Math.pow(10, log - 6)).toFixed(2) + 'M';
+  if (log < 12) return (Math.pow(10, log - 9)).toFixed(2) + 'B';
+  if (log < 15) return (Math.pow(10, log - 12)).toFixed(2) + 'T';
+  // AA-ZZ double-letter suffixes (676 tiers, each 1000x)
+  const tier = Math.floor((log - 15) / 3);
+  if (tier >= 0 && tier < 676) {
+    const first = String.fromCharCode(65 + Math.floor(tier / 26));
+    const second = String.fromCharCode(65 + (tier % 26));
+    const divisor_log = 15 + tier * 3;
+    return (Math.pow(10, log - divisor_log)).toFixed(2) + first + second;
+  }
+  // Beyond ZZ: triple-letter suffixes (AAA-ZZZ)
+  const tier2 = tier - 676;
+  if (tier2 >= 0 && tier2 < 17576) {
+    const a = String.fromCharCode(65 + Math.floor(tier2 / 676));
+    const b = String.fromCharCode(65 + Math.floor((tier2 % 676) / 26));
+    const c = String.fromCharCode(65 + (tier2 % 26));
+    const divisor_log = 15 + tier * 3;
+    return (Math.pow(10, log - divisor_log)).toFixed(2) + a + b + c;
+  }
+  // Beyond ZZZ: quad-letter suffixes
+  const tier3 = tier2 - 17576;
+  if (tier3 >= 0 && tier3 < 456976) {
+    const a = String.fromCharCode(65 + Math.floor(tier3 / 17576));
+    const b = String.fromCharCode(65 + Math.floor((tier3 % 17576) / 676));
+    const c = String.fromCharCode(65 + Math.floor(((tier3 % 17576) % 676) / 26));
+    const d = String.fromCharCode(65 + (tier3 % 26));
+    const divisor_log = 15 + tier * 3;
+    return (Math.pow(10, log - divisor_log)).toFixed(2) + a + b + c + d;
+  }
+  return Math.pow(10, log).toExponential(2);
+}
+
+function fmt(n: number, exp = 0): string {
+  if (n < 0) return '-' + fmt(-n, exp);
+  if (!isFinite(n)) return fmtExpLog(exp + 400);
+  if (exp > 0) return fmtExpLog(Math.log10(n) + exp);
   if (n < 1000) return n < 10 ? n.toFixed(1) : Math.floor(n).toString();
   if (n < 1e6) return (n / 1e3).toFixed(1) + 'K';
   if (n < 1e9) return (n / 1e6).toFixed(2) + 'M';
   if (n < 1e12) return (n / 1e9).toFixed(2) + 'B';
   if (n < 1e15) return (n / 1e12).toFixed(2) + 'T';
   // AA-ZZ double-letter suffixes (676 tiers, each 1000x)
-  const exp = Math.floor(Math.log10(n));
-  const tier = Math.floor((exp - 15) / 3);
+  const e = Math.floor(Math.log10(n));
+  const tier = Math.floor((e - 15) / 3);
   if (tier >= 0 && tier < 676) {
     const first = String.fromCharCode(65 + Math.floor(tier / 26));
     const second = String.fromCharCode(65 + (tier % 26));
@@ -161,6 +199,7 @@ export default function GamePage() {
 
   // ====== Store Selectors (useShallow for all!) ======
   const crystals = useGameStore(s => s.crystals);
+  const crystalsExp = useGameStore(s => s.crystalsExp);
   const clickPower = useGameStore(s => s.clickPower);
   const autoRate = useGameStore(s => s.autoRate);
   const multiplier = useGameStore(s => s.multiplier);
@@ -182,6 +221,7 @@ export default function GamePage() {
   const prestigePoints = useGameStore(s => s.prestigePoints);
   const totalClicks = useGameStore(s => s.totalClicks);
   const totalEarned = useGameStore(s => s.totalEarned);
+  const totalEarnedExp = useGameStore(s => s.totalEarnedExp);
   const sessionClicks = useGameStore(s => s.sessionClicks);
   const sessionEarned = useGameStore(s => s.sessionEarned);
   const sessionStartTime = useGameStore(s => s.sessionStartTime);
@@ -431,7 +471,7 @@ export default function GamePage() {
     } else if (st.buyQuantity === 100) {
       count = Math.min(100, u.maxLevel ? u.maxLevel - u.level : 100);
     } else if (st.buyQuantity === 'max') {
-      count = getMaxBuyCount(u, st.crystals);
+      count = getMaxBuyCount(u, st.crystals, st.crystalsExp);
     }
 
     let bought = false;
@@ -446,25 +486,29 @@ export default function GamePage() {
   const getBuyInfo = useCallback((u: Upgrade) => {
     const st = useGameStore.getState();
     const bq = st.buyQuantity;
+    const myLog = Math.log10(Math.max(st.crystals, 1)) + st.crystalsExp;
     if (bq === 1) {
       const cost = getUpgradeCost(u);
-      const canBuy = st.crystals >= cost && (!u.maxLevel || u.level < u.maxLevel);
+      const costLog = Math.log10(Math.max(isFinite(cost) ? cost : 1, 1));
+      const canBuy = myLog >= costLog && (!u.maxLevel || u.level < u.maxLevel);
       return { count: 1, cost, canBuy, label: fmt(cost) };
     }
     if (bq === 10) {
       const n = Math.min(10, u.maxLevel ? u.maxLevel - u.level : 10);
       const cost = getTotalCostN(u, n);
-      const canBuy = n > 0 && st.crystals >= cost;
+      const costLog = Math.log10(Math.max(isFinite(cost) ? cost : 1, 1));
+      const canBuy = n > 0 && myLog >= costLog;
       return { count: n, cost, canBuy, label: `${n}x ${fmt(cost)}` };
     }
     if (bq === 100) {
       const n = Math.min(100, u.maxLevel ? u.maxLevel - u.level : 100);
       const cost = getTotalCostN(u, n);
-      const canBuy = n > 0 && st.crystals >= cost;
+      const costLog = Math.log10(Math.max(isFinite(cost) ? cost : 1, 1));
+      const canBuy = n > 0 && myLog >= costLog;
       return { count: n, cost, canBuy, label: `${n}x ${fmt(cost)}` };
     }
     // max
-    const n = getMaxBuyCount(u, st.crystals);
+    const n = getMaxBuyCount(u, st.crystals, st.crystalsExp);
     const cost = n > 0 ? getTotalCostN(u, n) : getUpgradeCost(u);
     const canBuy = n > 0;
     return { count: n, cost, canBuy, label: `${n}x ${fmt(cost)}` };
@@ -735,7 +779,7 @@ export default function GamePage() {
                 transition={{ duration: 0.2 }}
               >
                 <div className="text-4xl sm:text-5xl font-bold text-gradient-purple tracking-tight">
-                  {fmt(crystals)}
+                  {fmt(crystals, crystalsExp)}
                 </div>
                 <div className="text-sm text-purple-300/60 mt-1">crystals</div>
               <div className="text-xs text-gray-500 mt-0.5 flex items-center justify-center gap-1">
@@ -963,7 +1007,7 @@ export default function GamePage() {
                   <span className="text-gray-400">
                     {nextMilestone.icon} Next: {nextMilestone.label}
                   </span>
-                  <span className="text-gray-500">{fmt(totalEarned)} / {fmt(nextMilestone.value)}</span>
+                  <span className="text-gray-500">{fmt(totalEarned, totalEarnedExp)} / {fmt(nextMilestone.value)}</span>
                 </div>
                 <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
                   <motion.div
@@ -1153,8 +1197,8 @@ export default function GamePage() {
                         <CardTitle className="text-sm text-gray-300">Resources</CardTitle>
                       </CardHeader>
                       <CardContent className="px-4 pb-3 space-y-2">
-                        <StatRow label="Crystals" value={fmt(crystals)} icon="💎" />
-                        <StatRow label="Total Earned" value={fmt(totalEarned)} icon="💰" />
+                        <StatRow label="Crystals" value={fmt(crystals, crystalsExp)} icon="💎" />
+                        <StatRow label="Total Earned" value={fmt(totalEarned, totalEarnedExp)} icon="💰" />
                         <StatRow label="Click Power" value={fmt(clickPower)} icon="⚔️" />
                         <StatRow label="Auto Rate" value={`${fmt(autoRate)}/s`} icon="⚙️" />
                         <StatRow label="Multiplier" value={`x${fmt(multiplier)}`} icon="✖️" />
@@ -1264,7 +1308,7 @@ export default function GamePage() {
                           </div>
                           <div className="flex justify-between text-sm">
                             <span className="text-gray-400">Total Earned</span>
-                            <span className="text-gray-300">{fmt(totalEarned)}</span>
+                            <span className="text-gray-300">{fmt(totalEarned, totalEarnedExp)}</span>
                           </div>
                           <Separator className="bg-gray-700/30" />
                           <div className="flex justify-between text-sm">

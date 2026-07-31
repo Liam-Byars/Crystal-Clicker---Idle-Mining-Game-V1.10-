@@ -20,8 +20,10 @@ export async function GET(request: NextRequest) {
     // Parse SQLite save
     const sqliteData = sqliteSave ? {
       crystals: sqliteSave.crystals,
+      crystalsExp: sqliteSave.crystalsExp ?? 0,
       totalClicks: sqliteSave.totalClicks,
       totalEarned: sqliteSave.totalEarned,
+      totalEarnedExp: sqliteSave.totalEarnedExp ?? 0,
       clickPower: sqliteSave.clickPower,
       multiplier: sqliteSave.multiplier,
       autoRate: sqliteSave.autoRate,

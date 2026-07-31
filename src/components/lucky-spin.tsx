@@ -9,7 +9,7 @@ interface SpinPrize {
   label: string;
   icon: string;
   color: string;
-  weight: number; // Higher = more common
+  weight: number;
   getReward: () => { type: 'crystals' | 'prestige' | 'mult' | 'golden' | 'auto'; value: number; description: string };
 }
 
@@ -24,8 +24,30 @@ const PRIZES: SpinPrize[] = [
 ];
 
 const TOTAL_WEIGHT = PRIZES.reduce((s, p) => s + p.weight, 0);
-const SPIN_COOLDOWN = 30 * 60 * 1000; // 30 minutes
-const STORAGE_KEY = 'crystal_clicker_spin_cd';
+const STORAGE_KEY = 'crystal_clicker_spin_date';
+
+function getTodayStr(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function hasSpunToday(): boolean {
+  try {
+    return localStorage.getItem(STORAGE_KEY) === getTodayStr();
+  } catch { return false; }
+}
+
+function markSpunToday(): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, getTodayStr());
+  } catch { /* ignore */ }
+}
+
+function getTimeUntilMidnight(): number {
+  const now = new Date();
+  const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 0);
+  return midnight.getTime() - now.getTime();
+}
 
 function pickPrize(): number {
   let r = Math.random() * TOTAL_WEIGHT;
@@ -34,14 +56,6 @@ function pickPrize(): number {
     if (r <= 0) return i;
   }
   return 0;
-}
-
-function getCooldownRemaining(): number {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return 0;
-    return Math.max(0, Number(raw) - Date.now());
-  } catch { return 0; }
 }
 
 interface LuckySpinProps {
@@ -55,13 +69,24 @@ interface LuckySpinProps {
 export function LuckySpin({ open, onClose, onReward, crystals, autoRate }: LuckySpinProps) {
   const [spinning, setSpinning] = useState(false);
   const [prizeIndex, setPrizeIndex] = useState(-1);
-  const [cooldownMs, setCooldownMs] = useState(() => getCooldownRemaining());
+  const [cooldownMs, setCooldownMs] = useState(() => hasSpunToday() ? getTimeUntilMidnight() : 0);
   const [result, setResult] = useState<{ prize: SpinPrize; reward: ReturnType<SpinPrize['getReward']> } | null>(null);
   const wheelRef = useRef<HTMLDivElement>(null);
   const cooldownIv = useRef<ReturnType<typeof setInterval>>();
 
+  // Tick the cooldown down every second
   useEffect(() => {
+    if (cooldownIv.current) clearInterval(cooldownIv.current);
+    if (!open) return;
     cooldownIv.current = setInterval(() => {
+      setCooldownMs(prev => {
+        const next = prev - 1000;
+        if (next <= 0) {
+          if (cooldownIv.current) clearInterval(cooldownIv.current);
+          return 0;
+        }
+        return next;
+      });
     }, 1000);
     return () => { if (cooldownIv.current) clearInterval(cooldownIv.current); };
   }, [open]);
@@ -100,14 +125,14 @@ export function LuckySpin({ open, onClose, onReward, crystals, autoRate }: Lucky
       }
       setResult({ prize, reward });
       onReward(reward);
-      try { localStorage.setItem(STORAGE_KEY, String(Date.now() + SPIN_COOLDOWN)); } catch { /* ignore */ }
-      setCooldownMs(SPIN_COOLDOWN);
+      markSpunToday();
+      setCooldownMs(getTimeUntilMidnight());
       setSpinning(false);
     }, 4200);
   }, [canSpin, onReward, autoRate]);
 
   const cooldownStr = onCooldown
-    ? `${Math.floor(cooldownMs / 60000)}:${String(Math.floor((cooldownMs % 60000) / 1000)).padStart(2, '0')}`
+    ? `${Math.floor(cooldownMs / 3600000)}h ${Math.floor((cooldownMs % 3600000) / 60000)}m`
     : '';
 
   return (
@@ -118,7 +143,7 @@ export function LuckySpin({ open, onClose, onReward, crystals, autoRate }: Lucky
             🎰 Lucky Spin
           </DialogTitle>
           <DialogDescription className="text-center text-gray-400">
-            Spin once every 30 minutes for a chance to win big!
+            Free spin once per day for a chance to win big!
           </DialogDescription>
         </DialogHeader>
 
@@ -192,7 +217,7 @@ export function LuckySpin({ open, onClose, onReward, crystals, autoRate }: Lucky
                 Spinning...
               </span>
             ) : onCooldown ? (
-              `⏳ Cooldown ${cooldownStr}`
+              `⏳ Next spin in ${cooldownStr}`
             ) : (
               '🎰 Spin! (Free)'
             )}

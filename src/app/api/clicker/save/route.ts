@@ -14,8 +14,10 @@ export async function POST(request: NextRequest) {
     // Build the full save data object
     const saveData = {
       crystals: body.crystals,
+      crystalsExp: body.crystalsExp ?? 0,
       totalClicks: body.totalClicks,
       totalEarned: body.totalEarned,
+      totalEarnedExp: body.totalEarnedExp ?? 0,
       clickPower: body.clickPower,
       multiplier: body.multiplier,
       autoRate: body.autoRate,
@@ -35,8 +37,10 @@ export async function POST(request: NextRequest) {
     // Write to SQLite (local server database)
     const sqliteData = {
       crystals: saveData.crystals,
+      crystalsExp: saveData.crystalsExp,
       totalClicks: saveData.totalClicks,
       totalEarned: saveData.totalEarned,
+      totalEarnedExp: saveData.totalEarnedExp,
       clickPower: saveData.clickPower,
       multiplier: saveData.multiplier,
       autoRate: saveData.autoRate,

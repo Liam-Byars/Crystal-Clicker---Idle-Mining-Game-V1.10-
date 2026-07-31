@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { GENERATED_AREAS, GENERATED_UPGRADES } from '@/lib/mine-generator';
+import { safeAdd, canAfford, toLog, capNum, splitLog, getUpgradeCostLog, getMaxBuyCountLog, getTotalCostNLog, logAdd, SAFE_LOG } from '@/lib/safe-math';
 
 // ====== Interfaces ======
 export interface Upgrade {
@@ -81,8 +82,10 @@ export type BuyQuantity = 1 | 10 | 100 | 'max';
 export interface GameState {
   // Core resources
   crystals: number;
+  crystalsExp: number; // overflow exponent: effective = crystals * 10^crystalsExp
   totalClicks: number;
   totalEarned: number;
+  totalEarnedExp: number; // overflow exponent for totalEarned
   clickPower: number;
   multiplier: number;
   autoRate: number;
@@ -803,21 +806,26 @@ function buildAchievementConditions(): Achievement[] {
 export const getUpgradeCost = (u: Upgrade) => Math.floor(u.baseCost * Math.pow(u.costMultiplier, u.level));
 export const getCostForLevel = (u: Upgrade, lvl: number) => Math.floor(u.baseCost * Math.pow(u.costMultiplier, lvl));
 
-export const getMaxBuyCount = (u: Upgrade, money: number): number => {
-  const cap = u.maxLevel ? u.maxLevel - u.level : 10000;
-  let total = 0; let count = 0;
-  for (let i = 0; i < cap; i++) {
-    const c = getCostForLevel(u, u.level + i);
-    if (total + c > money) break;
-    total += c; count++;
-  }
-  return count;
+export const getMaxBuyCount = (u: Upgrade, money: number, moneyExp = 0): number => {
+  return getMaxBuyCountLog(u.baseCost, u.costMultiplier, u.level, money, moneyExp, u.maxLevel);
 };
 
 export const getTotalCostN = (u: Upgrade, n: number): number => {
   let t = 0;
-  for (let i = 0; i < n; i++) t += getCostForLevel(u, u.level + i);
+  for (let i = 0; i < n; i++) {
+    const c = getCostForLevel(u, u.level + i);
+    if (!isFinite(c) || !isFinite(t + c)) return Infinity;
+    t += c;
+  }
   return t;
+};
+
+export const getUpgradeCostLogSafe = (u: Upgrade): number => {
+  return getUpgradeCostLog(u.baseCost, u.costMultiplier, u.level);
+};
+
+export const getTotalCostNLogSafe = (u: Upgrade, n: number): number => {
+  return getTotalCostNLog(u.baseCost, u.costMultiplier, u.level, n);
 };
 
 const POWER_UP_DEFS: Omit<PowerUp, 'timer'>[] = [
@@ -862,7 +870,7 @@ function recalcStats(upgrades: Upgrade[]) {
 
 // ====== Store ======
 export const useGameStore = create<GameState>((set, get) => ({
-  crystals: 0, totalClicks: 0, totalEarned: 0, clickPower: 1, multiplier: 1, autoRate: 0,
+  crystals: 0, crystalsExp: 0, totalClicks: 0, totalEarned: 0, totalEarnedExp: 0, clickPower: 1, multiplier: 1, autoRate: 0,
   prestige: 0, prestigePoints: 0,
   combo: 0, comboTimer: 0, maxCombo: 0, lastClickTime: 0,
   clickTimestamps: [], clicksPerSecond: 0, bestSessionCps: 0,
@@ -908,19 +916,24 @@ export const useGameStore = create<GameState>((set, get) => ({
     const puMult = s.activePowerUp?.effect === 'doubleClick' ? s.activePowerUp.value : 1;
     const evMult = s.activeEvent?.effect === 'doubleClick' ? s.activeEvent.value : 1;
     let value = s.clickPower * s.multiplier * comboMult * prestMult * puMult * evMult;
+    // Cap to prevent overflow
+    if (!isFinite(value)) value = Math.pow(10, SAFE_LOG);
 
     let isCrit = false;
-    if (Math.random() < s.critChance) { isCrit = true; value *= s.critMultiplier; }
+    if (Math.random() < s.critChance) { isCrit = true; value = Math.min(value * s.critMultiplier, Math.pow(10, SAFE_LOG)); }
+    if (!isFinite(comboBonus)) comboBonus = Math.pow(10, SAFE_LOG);
 
-    const rv = Math.round(value * 10) / 10;
+    const rv = isFinite(value) ? Math.round(value * 10) / 10 : 0;
     const tt: FloatingText['type'] = isCrit ? 'crit' : newCombo > 1 ? 'combo' : 'normal';
     const newRippleId = s.rippleId + 1;
 
-    const totalGain = Math.round((rv + comboBonus) * 100) / 100;
+    const totalGain = isFinite(rv + comboBonus) ? Math.round((rv + comboBonus) * 100) / 100 : Math.pow(10, SAFE_LOG);
+    const cR = safeAdd(s.crystals, s.crystalsExp, totalGain);
+    const teR = safeAdd(s.totalEarned, s.totalEarnedExp, totalGain);
     set({
-      crystals: Math.round((s.crystals + totalGain) * 100) / 100,
-      totalClicks: s.totalClicks + 1, totalEarned: Math.round((s.totalEarned + totalGain) * 100) / 100,
-      sessionClicks: s.sessionClicks + 1, sessionEarned: Math.round((s.sessionEarned + totalGain) * 100) / 100,
+      crystals: cR.value, crystalsExp: cR.exp,
+      totalClicks: s.totalClicks + 1, totalEarned: teR.value, totalEarnedExp: teR.exp,
+      sessionClicks: s.sessionClicks + 1, sessionEarned: s.sessionEarned + Math.min(totalGain, 1e15),
       combo: newCombo, comboTimer: 60, maxCombo: newMax, lastClickTime: now,
       totalCrits: isCrit ? s.totalCrits + 1 : s.totalCrits,
       screenShake: isCrit || newCombo >= 10,
@@ -939,11 +952,14 @@ export const useGameStore = create<GameState>((set, get) => ({
     const s = get();
     if (!s.goldenActive) return;
     const evMult = s.activeEvent?.effect === 'tripleGolden' ? s.activeEvent.value : 1;
-    const value = Math.round(s.goldenClickValue * (1 + s.prestigePoints * 0.1) * evMult * 10) / 10;
+    const raw = s.goldenClickValue * (1 + s.prestigePoints * 0.1) * evMult;
+    const value = isFinite(raw) ? Math.round(raw * 10) / 10 : Math.pow(10, SAFE_LOG);
+    const cR = safeAdd(s.crystals, s.crystalsExp, value);
+    const teR = safeAdd(s.totalEarned, s.totalEarnedExp, value);
     set({
-      crystals: Math.round((s.crystals + value) * 100) / 100,
-      totalEarned: Math.round((s.totalEarned + value) * 100) / 100,
-      sessionEarned: Math.round((s.sessionEarned + value) * 100) / 100,
+      crystals: cR.value, crystalsExp: cR.exp,
+      totalEarned: teR.value, totalEarnedExp: teR.exp,
+      sessionEarned: s.sessionEarned + Math.min(value, 1e15),
       goldenClicks: s.goldenClicks + 1, goldenActive: false, goldenTimer: 0,
       screenShake: true, crystalPulse: 4,
     });
@@ -956,11 +972,15 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (idx === -1) return false;
     const u = { ...s.upgrades[idx] };
     if (u.maxLevel && u.level >= u.maxLevel) return false;
-    const cost = getUpgradeCost(u);
-    if (s.crystals < cost) return false;
+    const costLog = getUpgradeCostLog(u.baseCost, u.costMultiplier, u.level);
+    const myLog = toLog(s.crystals) + s.crystalsExp;
+    if (myLog < costLog) return false;
+    // Subtract cost using log math
+    const newMyLog = myLog + Math.log10(1 - Math.pow(10, costLog - myLog));
+    const cSplit = splitLog(newMyLog);
     const nu = [...s.upgrades]; nu[idx] = { ...u, level: u.level + 1 };
     const stats = recalcStats(nu);
-    set({ crystals: Math.round((s.crystals - cost) * 100) / 100, upgrades: nu, ...stats });
+    set({ crystals: cSplit.value, crystalsExp: cSplit.exp, upgrades: nu, ...stats });
     get().checkAchievements();
     get().checkAreaUnlocks();
     return true;
@@ -969,10 +989,17 @@ export const useGameStore = create<GameState>((set, get) => ({
   setBuyQuantity: (q) => set({ buyQuantity: q }),
 
   performPrestige: () => {
-    const s = get(); if (s.totalEarned < 1000) return;
-    const pts = Math.floor(Math.sqrt(s.totalEarned / 1000));
+    const s = get();
+    // Use effective total for prestige calc
+    const effectiveLog = toLog(s.totalEarned) + s.totalEarnedExp;
+    if (effectiveLog < 3) return; // need at least 1000 total
+    // pts = floor(sqrt(total/1000)), in log: log(pts) = 0.5 * (effectiveLog - 3)
+    const ptsLog = 0.5 * (effectiveLog - 3);
+    const pts = ptsLog > 15 ? Math.floor(Math.pow(10, 15)) : Math.floor(Math.sqrt(
+      (s.totalEarnedExp > 0 ? Math.min(Math.pow(10, SAFE_LOG), s.totalEarned) : s.totalEarned) / 1000
+    ));
     set({
-      crystals: 0, totalClicks: 0, totalEarned: 0, clickPower: 1, multiplier: 1, autoRate: 0,
+      crystals: 0, crystalsExp: 0, totalClicks: 0, totalEarned: 0, totalEarnedExp: 0, clickPower: 1, multiplier: 1, autoRate: 0,
       prestige: s.prestige + 1, prestigePoints: s.prestigePoints + pts,
       combo: 0, comboTimer: 0, maxCombo: 0,
       goldenClicks: 0, goldenChance: 0.03, critChance: 0.05, totalCrits: 0,
@@ -1004,8 +1031,9 @@ export const useGameStore = create<GameState>((set, get) => ({
       if (s.activeEvent?.effect === 'tripleGolden') chance *= s.activeEvent.value;
       chance *= (s.goldenChance / 0.03);
       if (Math.random() < chance) {
-        const bv = s.clickPower * s.multiplier * 10 * (1 + s.prestigePoints * 0.1);
-        set({ goldenActive: true, goldenTimer: 400, goldenClickValue: Math.round(bv * 10) / 10 });
+        const bvRaw = s.clickPower * s.multiplier * 10 * (1 + s.prestigePoints * 0.1);
+        const bv = isFinite(bvRaw) ? Math.round(bvRaw * 10) / 10 : Math.pow(10, SAFE_LOG);
+        set({ goldenActive: true, goldenTimer: 400, goldenClickValue: bv });
       }
     }
   },
@@ -1070,10 +1098,12 @@ export const useGameStore = create<GameState>((set, get) => ({
       const evBonus = s.activeEvent?.effect === 'doubleAuto' ? s.activeEvent.value : 1;
       rate *= puBonus * evBonus;
       const prestMult = 1 + s.prestigePoints * 0.1;
-      const income = rate * prestMult * 0.1;
-      updates.crystals = Math.round((s.crystals + income) * 100) / 100;
-      updates.totalEarned = Math.round((s.totalEarned + income) * 100) / 100;
-      updates.sessionEarned = Math.round((s.sessionEarned + income) * 100) / 100;
+      const income = isFinite(rate * prestMult) ? rate * prestMult * 0.1 : Math.pow(10, SAFE_LOG);
+      const cR = safeAdd(s.crystals, s.crystalsExp, income);
+      const teR = safeAdd(s.totalEarned, s.totalEarnedExp, income);
+      updates.crystals = cR.value; updates.crystalsExp = cR.exp;
+      updates.totalEarned = teR.value; updates.totalEarnedExp = teR.exp;
+      updates.sessionEarned = s.sessionEarned + Math.min(income, 1e15);
     }
 
     // Combo decay
@@ -1091,10 +1121,11 @@ export const useGameStore = create<GameState>((set, get) => ({
       if (s.activeEvent?.effect === 'tripleGolden') chance *= s.activeEvent.value;
       chance *= (s.goldenChance / 0.03);
       if (Math.random() < chance) {
-        const bv = s.clickPower * s.multiplier * 10 * (1 + s.prestigePoints * 0.1);
+        const bvRaw = s.clickPower * s.multiplier * 10 * (1 + s.prestigePoints * 0.1);
+        const bv = isFinite(bvRaw) ? Math.round(bvRaw * 10) / 10 : Math.pow(10, SAFE_LOG);
         updates.goldenActive = true;
         updates.goldenTimer = 400;
-        updates.goldenClickValue = Math.round(bv * 10) / 10;
+        updates.goldenClickValue = bv;
       }
     }
 
@@ -1121,9 +1152,16 @@ export const useGameStore = create<GameState>((set, get) => ({
     } else if (s.totalClicks > 20 && Math.random() < 0.0008) {
       const t = POWER_UP_DEFS[Math.floor(Math.random() * POWER_UP_DEFS.length)];
       if (t.effect === 'instantBonus') {
-        const b = Math.round((s.autoRate * 30 + s.clickPower * 5) * 10) / 10;
-        updates.crystals = Math.round(((updates.crystals ?? s.crystals) + b) * 100) / 100;
-        updates.totalEarned = Math.round(((updates.totalEarned ?? s.totalEarned) + b) * 100) / 100;
+        const bRaw = s.autoRate * 30 + s.clickPower * 5;
+        const b = isFinite(bRaw) ? Math.round(bRaw * 10) / 10 : Math.pow(10, SAFE_LOG);
+        const curC = updates.crystals ?? s.crystals;
+        const curCE = updates.crystalsExp ?? s.crystalsExp;
+        const curTE = updates.totalEarned ?? s.totalEarned;
+        const curTEE = updates.totalEarnedExp ?? s.totalEarnedExp;
+        const cR = safeAdd(curC, curCE, b);
+        const teR = safeAdd(curTE, curTEE, b);
+        updates.crystals = cR.value; updates.crystalsExp = cR.exp;
+        updates.totalEarned = teR.value; updates.totalEarnedExp = teR.exp;
         updates.crystalPulse = 2;
       } else {
         updates.activePowerUp = { ...t, timer: t.duration };
@@ -1160,14 +1198,22 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   checkAreaUnlocks: () => {
     const s = get();
-    const newlyUnlocked = AREAS.filter(a => a.unlockAt > 0 && s.totalEarned >= a.unlockAt && !s.unlockedAreas.includes(a.id)).map(a => a.id);
+    const effectiveLog = toLog(s.totalEarned) + s.totalEarnedExp;
+    const newlyUnlocked = AREAS.filter(a => {
+      const unlockLog = toLog(a.unlockAt);
+      return a.unlockAt > 0 && effectiveLog >= unlockLog && !s.unlockedAreas.includes(a.id);
+    }).map(a => a.id);
     if (newlyUnlocked.length > 0) set({ unlockedAreas: [...s.unlockedAreas, ...newlyUnlocked] });
   },
 
   checkMilestones: () => {
     const s = get();
     get().checkAreaUnlocks();
-    const nm = s.milestones.map(m => (!m.celebrated && s.totalEarned >= m.value ? { ...m, celebrated: true } : m));
+    const effectiveLog = toLog(s.totalEarned) + s.totalEarnedExp;
+    const nm = s.milestones.map(m => {
+      const mLog = toLog(m.value);
+      return (!m.celebrated && effectiveLog >= mLog ? { ...m, celebrated: true } : m);
+    });
     const just = nm.find((m, i) => m.celebrated && !s.milestones[i].celebrated);
     if (just) {
       set({ milestones: nm, screenShake: true, crystalPulse: 5 });
@@ -1196,7 +1242,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   resetGame: () => {
     set({
-      crystals: 0, totalClicks: 0, totalEarned: 0, clickPower: 1, multiplier: 1, autoRate: 0,
+      crystals: 0, crystalsExp: 0, totalClicks: 0, totalEarned: 0, totalEarnedExp: 0, clickPower: 1, multiplier: 1, autoRate: 0,
       prestige: 0, prestigePoints: 0, combo: 0, comboTimer: 0, maxCombo: 0, lastClickTime: 0,
       clickTimestamps: [], clicksPerSecond: 0, bestSessionCps: 0, critChance: 0.05, critMultiplier: 5, totalCrits: 0,
       goldenClicks: 0, goldenChance: 0.03, goldenActive: false, goldenTimer: 0, goldenClickValue: 0,
@@ -1218,9 +1264,11 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   claimOfflineEarnings: () => {
     const s = get(); if (s.offlineEarned <= 0) return;
+    const cR = safeAdd(s.crystals, s.crystalsExp, s.offlineEarned);
+    const teR = safeAdd(s.totalEarned, s.totalEarnedExp, s.offlineEarned);
     set({
-      crystals: Math.round((s.crystals + s.offlineEarned) * 100) / 100,
-      totalEarned: Math.round((s.totalEarned + s.offlineEarned) * 100) / 100,
+      crystals: cR.value, crystalsExp: cR.exp,
+      totalEarned: teR.value, totalEarnedExp: teR.exp,
       offlineEarned: 0, showOfflineBonus: false,
     });
     get().checkAchievements(); get().checkMilestones();
@@ -1230,10 +1278,13 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   claimReward: (amount, prestige) => {
     const s = get();
+    const capped = isFinite(amount) ? amount : Math.pow(10, SAFE_LOG);
+    const cR = safeAdd(s.crystals, s.crystalsExp, capped);
+    const teR = safeAdd(s.totalEarned, s.totalEarnedExp, capped);
     const updates: Partial<GameState> = {
-      crystals: Math.round((s.crystals + amount) * 100) / 100,
-      totalEarned: Math.round((s.totalEarned + amount) * 100) / 100,
-      sessionEarned: Math.round((s.sessionEarned + amount) * 100) / 100,
+      crystals: cR.value, crystalsExp: cR.exp,
+      totalEarned: teR.value, totalEarnedExp: teR.exp,
+      sessionEarned: s.sessionEarned + Math.min(capped, 1e15),
       crystalPulse: 3,
     };
     if (prestige) updates.prestigePoints = s.prestigePoints + prestige;
@@ -1268,8 +1319,11 @@ export const useGameStore = create<GameState>((set, get) => ({
     const currentArea = (data.currentArea as string) || 'naica';
     const unlockedAreas = (data.unlockedAreas as string[]) || ['naica'];
     set({
-      crystals: (data.crystals as number) ?? 0, totalClicks: (data.totalClicks as number) ?? 0,
-      totalEarned: (data.totalEarned as number) ?? 0, ...stats,
+      crystals: isFinite(data.crystals as number) ? (data.crystals as number) : Math.pow(10, SAFE_LOG),
+      crystalsExp: (data.crystalsExp as number) ?? 0,
+      totalClicks: (data.totalClicks as number) ?? 0,
+      totalEarned: isFinite(data.totalEarned as number) ? (data.totalEarned as number) : Math.pow(10, SAFE_LOG),
+      totalEarnedExp: (data.totalEarnedExp as number) ?? 0, ...stats,
       prestige: (data.prestige as number) ?? 0, prestigePoints: (data.prestigePoints as number) ?? 0,
       goldenClicks: (data.goldenClicks as number) ?? 0, totalCrits: (data.totalCrits as number) ?? 0,
       maxCombo: (data.maxCombo as number) ?? 0, totalEvents: (data.totalEvents as number) ?? 0, bestSessionCps: (data.bestSessionCps as number) ?? 0,
@@ -1283,7 +1337,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   getSaveData: () => {
     const s = get();
     return {
-      crystals: s.crystals, totalClicks: s.totalClicks, totalEarned: s.totalEarned,
+      crystals: s.crystals, crystalsExp: s.crystalsExp, totalClicks: s.totalClicks, totalEarned: s.totalEarned, totalEarnedExp: s.totalEarnedExp,
       clickPower: s.clickPower, multiplier: s.multiplier, autoRate: s.autoRate,
       prestige: s.prestige, prestigePoints: s.prestigePoints,
       upgrades: s.upgrades.map(u => ({ id: u.id, level: u.level })),

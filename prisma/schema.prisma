@@ -29,8 +29,10 @@ model ClickerSave {
   id            String   @id @default(cuid())
   userId        String   @unique
   crystals      Float    @default(0)
+  crystalsExp   Float    @default(0)
   totalClicks   Int      @default(0)
   totalEarned   Float    @default(0)
+  totalEarnedExp Float   @default(0)
   clickPower    Float    @default(1)
   multiplier    Float    @default(1)
   autoRate      Float    @default(0)
