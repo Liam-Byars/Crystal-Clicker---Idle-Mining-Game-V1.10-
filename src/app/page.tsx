@@ -25,6 +25,10 @@ import { LogOut, UserCircle, Volume2, VolumeX, LogIn, FileText, ShieldCheck } fr
 // ====== Helpers ======
 function fmt(n: number): string {
   if (n < 0) return '-' + fmt(-n);
+  if (!isFinite(n)) {
+    // Number overflowed JS max — show as ∞ZZ+
+    return '∞ZZ+';
+  }
   if (n < 1000) return n < 10 ? n.toFixed(1) : Math.floor(n).toString();
   if (n < 1e6) return (n / 1e3).toFixed(1) + 'K';
   if (n < 1e9) return (n / 1e6).toFixed(2) + 'M';
@@ -39,7 +43,16 @@ function fmt(n: number): string {
     const divisor = Math.pow(10, 15 + tier * 3);
     return (n / divisor).toFixed(2) + first + second;
   }
-  // Beyond ZZ
+  // Beyond ZZ: triple-letter suffixes (AAA-ZZZ, 17,576 more tiers)
+  const tier2 = tier - 676;
+  if (tier2 >= 0 && tier2 < 17576) {
+    const a = String.fromCharCode(65 + Math.floor(tier2 / 676));
+    const b = String.fromCharCode(65 + Math.floor((tier2 % 676) / 26));
+    const c = String.fromCharCode(65 + (tier2 % 26));
+    const divisor = Math.pow(10, 15 + tier * 3);
+    return (n / divisor).toFixed(2) + a + b + c;
+  }
+  // Truly beyond all suffixes
   return n.toExponential(2);
 }
 
@@ -829,7 +842,7 @@ export default function GamePage() {
             <div className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-gray-400">
               <span>⚔️ Click: <span className="text-purple-300">{fmt(clickPower)}</span></span>
               <span>⚙️ Auto: <span className="text-cyan-300">{fmt(autoRate)}/s</span></span>
-              <span>✖️ Mult: <span className="text-amber-300">x{multiplier.toFixed(1)}</span></span>
+              <span>✖️ Mult: <span className="text-amber-300">x{fmt(multiplier)}</span></span>
             </div>
             {prestigePoints > 0 && (
               <div className="mt-1 text-xs text-pink-400">
@@ -1092,8 +1105,8 @@ export default function GamePage() {
                         <StatRow label="Total Earned" value={fmt(totalEarned)} icon="💰" />
                         <StatRow label="Click Power" value={fmt(clickPower)} icon="⚔️" />
                         <StatRow label="Auto Rate" value={`${fmt(autoRate)}/s`} icon="⚙️" />
-                        <StatRow label="Multiplier" value={`x${multiplier.toFixed(1)}`} icon="✖️" />
-                        <StatRow label="Prestige Points" value={String(prestigePoints)} icon="🌟" />
+                        <StatRow label="Multiplier" value={`x${fmt(multiplier)}`} icon="✖️" />
+                        <StatRow label="Prestige Points" value={fmt(prestigePoints)} icon="🌟" />
                       </CardContent>
                     </Card>
 
