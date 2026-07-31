@@ -906,24 +906,28 @@ export default function GamePage() {
             )}
 
             {/* Floating Texts - Stacked by type (golden/crit/normal) */}
+            <style>{`@keyframes ftFade{0%,80%{opacity:1}100%{opacity:0}}`}</style>
             <div className="absolute inset-0 pointer-events-none overflow-hidden">
               {floatingTexts.map(ft => {
-                // Vertical offset by type so they stack: golden on top, crit middle, normal bottom
-                const yOffset = ft.type === 'golden' ? -22 : ft.type === 'crit' ? 0 : 22;
+                const yOffset = ft.type === 'golden' ? -36 : ft.type === 'crit' ? 0 : 36;
                 return (
-                <motion.div
-                  key={ft.id}
-                  initial={{ opacity: 1, y: ft.y + yOffset, x: ft.x, scale: 1.1 }}
-                  animate={{ opacity: [1, 1, 0], scale: [1.1, 1, 0.8] }}
-                  transition={{ duration: 10, times: [0, 0.8, 1], ease: 'easeOut' }}
+                <div
+                  key={ft.id + '-' + ft.count}
                   className="absolute font-bold text-lg pointer-events-none select-none"
-                  style={{ color: floatColors[ft.type], left: 0, textShadow: '0 0 8px currentColor' }}
+                  style={{
+                    color: floatColors[ft.type],
+                    left: 0,
+                    top: ft.y + yOffset,
+                    transform: `translateX(${ft.x}px)`,
+                    textShadow: '0 0 8px currentColor',
+                    animation: 'ftFade 12s ease-out forwards',
+                  }}
                 >
                   {ft.type === 'milestone'
                     ? '🎉 MILESTONE!'
                     : <>{fmt(ft.value)}{ft.count > 1 && <span className="text-sm opacity-80 ml-0.5">×{ft.count}</span>}</>
                   }
-                </motion.div>
+                </div>
                 );
               })}
             </div>

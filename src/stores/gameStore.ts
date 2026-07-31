@@ -33,6 +33,7 @@ export interface FloatingText {
   y: number;
   type: 'normal' | 'golden' | 'combo' | 'crit' | 'powerup' | 'event' | 'offline' | 'milestone';
   count: number;
+  createdAt: number;
 }
 
 export interface PowerUp {
@@ -196,8 +197,11 @@ export interface GameState {
   claimReward: (amount: number, prestige?: number) => void;
 }
 
-// ====== Floating text timeout management ======
-const _ftTimeouts = new Map<number, ReturnType<typeof setTimeout>>();
+// ====== Floating text stack throttle & cleanup ======
+// Module-level accumulators — no React re-renders until tick syncs
+const _stackPending: Record<string, { id: number; count: number; value: number; x: number; y: number; lastClick: number }> = {};
+const _FT_LIFE = 10000; // ms before fade-out starts
+const _FT_FADE = 2000;  // ms fade-out duration
 
 // ====== Data Definitions ======
 const DEFAULT_UPGRADES: Upgrade[] = [
@@ -1191,6 +1195,30 @@ export const useGameStore = create<GameState>((set, get) => ({
     updates.clicksPerSecond = r.length;
     if (r.length > s.bestSessionCps) updates.bestSessionCps = r.length;
 
+    // Floating text stack sync (throttled to tick rate ~10Hz)
+    const ftNow = Date.now();
+    const synced = s.floatingTexts.map(ft => {
+      const key = ft.type === 'combo' ? 'normal' : ft.type;
+      const p = _stackPending[key];
+      if (p && p.id === ft.id && (p.count !== ft.count || p.value !== ft.value)) {
+        // Reset createdAt so the 12s timer restarts from the latest click
+        return { ...ft, count: p.count, value: p.value, x: p.x, y: p.y, createdAt: p.lastClick };
+      }
+      return ft;
+    }).filter(ft => ftNow - ft.createdAt < _FT_LIFE + _FT_FADE);
+    // Clean up expired stacks
+    for (const key of Object.keys(_stackPending)) {
+      const ft = synced.find(f => f.id === _stackPending[key].id);
+      if (!ft) delete _stackPending[key];
+    }
+    if (synced.length !== s.floatingTexts.length) {
+      updates.floatingTexts = synced;
+    } else {
+      // Check if any stack data actually changed
+      const changed = synced.some((ft, i) => ft !== s.floatingTexts[i]);
+      if (changed) updates.floatingTexts = synced;
+    }
+
     // Screen shake / crystal pulse clear
     if (s.screenShake) setTimeout(() => set({ screenShake: false }), 150);
     if (s.crystalPulse > 0) setTimeout(() => set({ crystalPulse: 0 }), 200);
@@ -1227,42 +1255,30 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   addFloatingText: (x, y, value, type = 'normal') => {
     const s = get();
-    // Stackable click types: normal, crit, combo (treated as normal), golden
     const isStackable = type === 'normal' || type === 'crit' || type === 'combo' || type === 'golden';
     const stackKey = type === 'combo' ? 'normal' : type;
+    const now = Date.now();
 
     if (isStackable) {
-      // Find the most recent existing text of the same stack type
-      const existing = [...s.floatingTexts].reverse().find(ft => {
-        const ftKey = ft.type === 'combo' ? 'normal' : ft.type;
-        return ftKey === stackKey;
-      });
-      if (existing) {
-        // Stack: increment count, update position and value, reset removal timeout
-        const updated = s.floatingTexts.map(ft =>
-          ft.id === existing.id
-            ? { ...ft, count: ft.count + 1, x, y, value }
-            : ft
-        );
-        // Clear old timeout and set a new one
-        const oldT = _ftTimeouts.get(existing.id);
-        if (oldT) clearTimeout(oldT);
-        _ftTimeouts.set(existing.id, setTimeout(() => get().removeFloatingText(existing.id), 10000));
-        set({ floatingTextId: s.floatingTextId + 1, floatingTexts: updated });
+      // Check module-level pending stack (avoids set() on every click)
+      const pending = _stackPending[stackKey];
+      if (pending && s.floatingTexts.some(ft => ft.id === pending.id)) {
+        // Just bump the counter in memory — no React re-render
+        _stackPending[stackKey] = { ...pending, count: pending.count + 1, value, x, y, lastClick: now };
         return;
       }
     }
 
-    // Non-stackable or no existing stack: create a new floating text
-    const ft: FloatingText = { id: s.floatingTextId, value, x, y, type, count: 1 };
+    // Create new floating text (first of its type, or non-stackable)
+    const ft: FloatingText = { id: s.floatingTextId, value, x, y, type, count: 1, createdAt: now };
+    if (isStackable) {
+      _stackPending[stackKey] = { id: ft.id, count: 1, value, x, y, lastClick: now };
+    }
     const texts = [...s.floatingTexts, ft].slice(-20);
-    _ftTimeouts.set(ft.id, setTimeout(() => get().removeFloatingText(ft.id), 10000));
     set({ floatingTextId: s.floatingTextId + 1, floatingTexts: texts });
   },
 
   removeFloatingText: (id) => {
-    const t = _ftTimeouts.get(id);
-    if (t) { clearTimeout(t); _ftTimeouts.delete(id); }
     set({ floatingTexts: get().floatingTexts.filter(ft => ft.id !== id) });
   },
 
@@ -1278,8 +1294,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   resetGame: () => {
-    _ftTimeouts.forEach(t => clearTimeout(t));
-    _ftTimeouts.clear();
+    for (const k of Object.keys(_stackPending)) delete _stackPending[k];
     set({
       crystals: 0, crystalsExp: 0, totalClicks: 0, totalEarned: 0, totalEarnedExp: 0, clickPower: 1, multiplier: 1, autoRate: 0,
       prestige: 0, prestigePoints: 0, combo: 0, comboTimer: 0, maxCombo: 0, lastClickTime: 0,
