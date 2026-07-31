@@ -100,6 +100,7 @@ export interface GameState {
   // Click speed tracking
   clickTimestamps: number[];
   clicksPerSecond: number;
+  bestSessionCps: number;
 
   // Critical hits
   critChance: number;
@@ -188,6 +189,7 @@ export interface GameState {
   getSaveData: () => Record<string, unknown>;
   claimOfflineEarnings: () => void;
   dismissOfflineBonus: () => void;
+  claimReward: (amount: number, prestige?: number) => void;
 }
 
 // ====== Data Definitions ======
@@ -649,6 +651,7 @@ const ACHIEVEMENT_DEFS = [
   { id: 'combo_10', name: 'Combo Master', description: 'Reach a 10x combo', icon: '💥' },
   { id: 'combo_25', name: 'Combo Legend', description: 'Reach a 25x combo', icon: '🌀' },
   { id: 'combo_50', name: 'Combo God', description: 'Reach a 50x combo', icon: '☄️' },
+  { id: 'combo_100', name: 'Combo Transcendence', description: 'Reach a 100x combo', icon: '🌟' },
   { id: 'crit_first', name: 'Critical Thinker', description: 'Land your first critical hit', icon: '🎯' },
   { id: 'crit_100', name: 'Critical Master', description: 'Land 100 critical hits', icon: '💫' },
   { id: 'crit_500', name: 'Critical Legend', description: 'Land 500 critical hits', icon: '💥' },
@@ -737,6 +740,7 @@ function buildAchievementConditions(): Achievement[] {
         case 'combo_10': return s.maxCombo >= 10;
         case 'combo_25': return s.maxCombo >= 25;
         case 'combo_50': return s.maxCombo >= 50;
+        case 'combo_100': return s.maxCombo >= 100;
         case 'crit_first': return s.totalCrits >= 1;
         case 'crit_100': return s.totalCrits >= 100;
         case 'crit_500': return s.totalCrits >= 500;
@@ -861,7 +865,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   crystals: 0, totalClicks: 0, totalEarned: 0, clickPower: 1, multiplier: 1, autoRate: 0,
   prestige: 0, prestigePoints: 0,
   combo: 0, comboTimer: 0, maxCombo: 0, lastClickTime: 0,
-  clickTimestamps: [], clicksPerSecond: 0,
+  clickTimestamps: [], clicksPerSecond: 0, bestSessionCps: 0,
   critChance: 0.05, critMultiplier: 5, totalCrits: 0,
   goldenClicks: 0, goldenChance: 0.03, goldenActive: false, goldenTimer: 0, goldenClickValue: 0,
   activePowerUp: null, powerUpTimer: 0,
@@ -885,9 +889,19 @@ export const useGameStore = create<GameState>((set, get) => ({
   click: (x, y) => {
     const s = get(); const now = Date.now();
     const recent = [...s.clickTimestamps, now].filter(t => now - t < 1000);
+    const prevCombo = s.combo;
     let newCombo = 1; let newMax = s.maxCombo;
-    if (now - s.lastClickTime < 500) newCombo = Math.min(s.combo + 1, 50);
+    if (now - s.lastClickTime < 500) newCombo = Math.min(s.combo + 1, 100);
     if (newCombo > newMax) newMax = newCombo;
+
+    // Combo milestone bonuses
+    let comboBonus = 0;
+    const COMBO_MILESTONES: [number, number][] = [[10, 5], [25, 15], [50, 50], [100, 200]];
+    for (const [threshold, mult] of COMBO_MILESTONES) {
+      if (prevCombo < threshold && newCombo >= threshold) {
+        comboBonus += s.clickPower * s.multiplier * mult * (1 + s.prestigePoints * 0.1);
+      }
+    }
 
     const comboMult = 1 + (newCombo - 1) * 0.1;
     const prestMult = 1 + s.prestigePoints * 0.1;
@@ -902,10 +916,11 @@ export const useGameStore = create<GameState>((set, get) => ({
     const tt: FloatingText['type'] = isCrit ? 'crit' : newCombo > 1 ? 'combo' : 'normal';
     const newRippleId = s.rippleId + 1;
 
+    const totalGain = Math.round((rv + comboBonus) * 100) / 100;
     set({
-      crystals: Math.round((s.crystals + rv) * 100) / 100,
-      totalClicks: s.totalClicks + 1, totalEarned: Math.round((s.totalEarned + rv) * 100) / 100,
-      sessionClicks: s.sessionClicks + 1, sessionEarned: Math.round((s.sessionEarned + rv) * 100) / 100,
+      crystals: Math.round((s.crystals + totalGain) * 100) / 100,
+      totalClicks: s.totalClicks + 1, totalEarned: Math.round((s.totalEarned + totalGain) * 100) / 100,
+      sessionClicks: s.sessionClicks + 1, sessionEarned: Math.round((s.sessionEarned + totalGain) * 100) / 100,
       combo: newCombo, comboTimer: 60, maxCombo: newMax, lastClickTime: now,
       totalCrits: isCrit ? s.totalCrits + 1 : s.totalCrits,
       screenShake: isCrit || newCombo >= 10,
@@ -915,6 +930,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       ripples: [...s.ripples.slice(-6), { id: newRippleId, x, y, type: tt }], rippleId: newRippleId,
     });
     get().addFloatingText(x, y, rv, tt);
+    if (comboBonus > 0) get().addFloatingText(x, y - 30, comboBonus, 'milestone');
     get().checkAchievements();
     get().checkMilestones();
   },
@@ -1131,6 +1147,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const r = s.clickTimestamps.filter(t => now - t < 1000);
     updates.clickTimestamps = r;
     updates.clicksPerSecond = r.length;
+    if (r.length > s.bestSessionCps) updates.bestSessionCps = r.length;
 
     // Screen shake / crystal pulse clear
     if (s.screenShake) setTimeout(() => set({ screenShake: false }), 150);
@@ -1181,7 +1198,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     set({
       crystals: 0, totalClicks: 0, totalEarned: 0, clickPower: 1, multiplier: 1, autoRate: 0,
       prestige: 0, prestigePoints: 0, combo: 0, comboTimer: 0, maxCombo: 0, lastClickTime: 0,
-      clickTimestamps: [], clicksPerSecond: 0, critChance: 0.05, critMultiplier: 5, totalCrits: 0,
+      clickTimestamps: [], clicksPerSecond: 0, bestSessionCps: 0, critChance: 0.05, critMultiplier: 5, totalCrits: 0,
       goldenClicks: 0, goldenChance: 0.03, goldenActive: false, goldenTimer: 0, goldenClickValue: 0,
       activePowerUp: null, powerUpTimer: 0, activeEvent: null, eventTimer: 0, totalEvents: 0,
       buyQuantity: 1 as BuyQuantity,
@@ -1210,6 +1227,20 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   dismissOfflineBonus: () => set({ offlineEarned: 0, showOfflineBonus: false }),
+
+  claimReward: (amount, prestige) => {
+    const s = get();
+    const updates: Partial<GameState> = {
+      crystals: Math.round((s.crystals + amount) * 100) / 100,
+      totalEarned: Math.round((s.totalEarned + amount) * 100) / 100,
+      sessionEarned: Math.round((s.sessionEarned + amount) * 100) / 100,
+      crystalPulse: 3,
+    };
+    if (prestige) updates.prestigePoints = s.prestigePoints + prestige;
+    set(updates);
+    get().checkAchievements();
+    get().checkMilestones();
+  },
 
   loadSave: (data) => {
     const su = data.upgrades as { id: string; level: number }[] | undefined;
@@ -1241,7 +1272,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       totalEarned: (data.totalEarned as number) ?? 0, ...stats,
       prestige: (data.prestige as number) ?? 0, prestigePoints: (data.prestigePoints as number) ?? 0,
       goldenClicks: (data.goldenClicks as number) ?? 0, totalCrits: (data.totalCrits as number) ?? 0,
-      maxCombo: (data.maxCombo as number) ?? 0, totalEvents: (data.totalEvents as number) ?? 0,
+      maxCombo: (data.maxCombo as number) ?? 0, totalEvents: (data.totalEvents as number) ?? 0, bestSessionCps: (data.bestSessionCps as number) ?? 0,
       upgrades, achievements, lastOnlineTime: Date.now(),
       offlineEarned, showOfflineBonus: offlineEarned > 0,
       currentArea, unlockedAreas,
@@ -1258,7 +1289,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       upgrades: s.upgrades.map(u => ({ id: u.id, level: u.level })),
       achievements: s.achievements.map(a => ({ id: a.id, unlocked: a.unlocked })),
       goldenClicks: s.goldenClicks, totalCrits: s.totalCrits, maxCombo: s.maxCombo,
-      totalEvents: s.totalEvents, lastOnlineTime: Date.now(),
+      totalEvents: s.totalEvents, bestSessionCps: s.bestSessionCps, lastOnlineTime: Date.now(),
       currentArea: s.currentArea, unlockedAreas: s.unlockedAreas,
     };
   },

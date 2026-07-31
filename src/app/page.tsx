@@ -6,6 +6,9 @@ import { useShallow } from 'zustand/react/shallow';
 import { useGameStore, getUpgradeCost, getMaxBuyCount, getTotalCostN, AREAS, getUpgradesForArea } from '@/stores';
 import type { BuyQuantity, FloatingText, Upgrade, Achievement, Area } from '@/stores';
 import { WorldMap } from '@/components/world-map';
+import { LuckySpin } from '@/components/lucky-spin';
+import { ActivityLog } from '@/components/activity-log';
+import type { LogEntry } from '@/components/activity-log';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -142,6 +145,17 @@ export default function GamePage() {
   const [zzCelebration, setZzCelebration] = useState(false);
   const prevNotifRef = useRef<string | null>(null);
 
+  // Daily Reward
+  const [dailyReward, setDailyReward] = useState<{day: number; crystals: number; prestige: number; cycle: number; streak: number} | null>(null);
+
+  // Lucky Spin & Activity Log
+  const [spinOpen, setSpinOpen] = useState(false);
+  const logIdRef = useRef(0);
+  const [activityLog, setActivityLog] = useState<LogEntry[]>([]);
+  const addLog = useCallback((icon: string, text: string, color: string) => {
+    setActivityLog(prev => [...prev.slice(-49), {id: logIdRef.current++, icon, text, color, time: Date.now()}]);
+  }, []);
+
   // ====== Auth ======
   const { user, loading: authLoading, isGuest, logout, signInWithGoogle, userId, displayName, photoURL } = useAuth();
 
@@ -224,6 +238,31 @@ export default function GamePage() {
     const iv = setInterval(() => setSessionTime(Date.now() - sessionStartTime), 1000);
     return () => clearInterval(iv);
   }, [sessionStartTime]);
+
+  // ====== Daily Reward Check ======
+  const claimReward = useGameStore(s => s.claimReward);
+  useEffect(() => {
+    if (!userId) return;
+    const timer = setTimeout(() => {
+      try {
+        const key = `crystal_clicker_daily_${userId}`;
+        const raw = localStorage.getItem(key);
+        const now = Date.now();
+        let lastClaim = 0;
+        let streak = 0;
+        if (raw) { const d = JSON.parse(raw); lastClaim = d.lastClaim || 0; streak = d.streak || 0; }
+        if (now - lastClaim < 86400000) return;
+        if (lastClaim > 0 && now - lastClaim >= 172800000) streak = 0;
+        streak += 1;
+        const dayInCycle = ((streak - 1) % 7) + 1;
+        const cycle = Math.floor((streak - 1) / 7);
+        const cycleMult = Math.pow(2, cycle);
+        const REWARDS = [1000, 5000, 25000, 100000, 500000, 2500000, 10000000];
+        setDailyReward({ day: dayInCycle, crystals: REWARDS[dayInCycle - 1] * cycleMult, prestige: dayInCycle === 7 ? 1 * (cycle + 1) : 0, cycle, streak });
+      } catch { /* ignore */ }
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, [userId]);
 
   // ====== Sparkle Particles ======
   useEffect(() => {
@@ -846,9 +885,22 @@ export default function GamePage() {
             </div>
             {prestigePoints > 0 && (
               <div className="mt-1 text-xs text-pink-400">
-                🌟 Prestige Bonus: +{(prestigePoints * 10)}% all income
+                🌟 Prestige Bonus: +{fmt(prestigePoints * 10)}% all income
               </div>
             )}
+
+            {/* Lucky Spin Button */}
+            <Button
+              className="mt-4 bg-gradient-to-r from-yellow-600/80 to-amber-600/80 hover:from-yellow-500 hover:to-amber-500 text-white text-xs px-4 h-8 rounded-lg shadow-md shadow-yellow-500/10 cursor-pointer"
+              onClick={() => setSpinOpen(true)}
+            >
+              🎰 Lucky Spin
+            </Button>
+
+            {/* Activity Log */}
+            <div className="mt-3 w-full max-w-xs mx-auto">
+              <ActivityLog entries={activityLog} />
+            </div>
           </div>
 
           {/* ====== RIGHT: Tabs Panel ====== */}
@@ -1319,6 +1371,48 @@ export default function GamePage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* ====== DAILY REWARD DIALOG ====== */}
+        <Dialog open={!!dailyReward} onOpenChange={() => undefined}>
+          <DialogContent className="bg-gray-900 border-yellow-700/50 sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-xl text-center text-yellow-300">🎁 Daily Reward!</DialogTitle>
+              <DialogDescription className="text-center text-gray-400">Day {dailyReward?.day} of 7 — Streak: {dailyReward?.streak}</DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <div className="flex justify-center gap-1.5 mb-6">
+                {[1,2,3,4,5,6,7].map(d => (
+                  <div key={d} className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center text-xs font-bold transition-all ${
+                    (dailyReward?.day ?? 0) > d ? 'bg-yellow-600/40 text-yellow-300 border border-yellow-500/50'
+                    : (dailyReward?.day ?? 0) === d ? 'bg-yellow-500 text-black border-2 border-yellow-300 scale-110'
+                    : 'bg-gray-800/60 text-gray-600 border border-gray-700/50'}
+                  }`}>{d === 7 ? '🌟' : d}</div>
+                ))}
+              </div>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-gradient-gold mb-2">+{dailyReward ? fmt(dailyReward.crystals) : '0'}</div>
+                <p className="text-sm text-gray-400">crystals</p>
+                {dailyReward && dailyReward.prestige > 0 && <p className="text-sm text-pink-400 mt-2 font-medium">+{dailyReward.prestige} Prestige Point{dailyReward.prestige > 1 ? 's' : ''} 🌟</p>}
+              </div>
+            </div>
+            <DialogFooter className="flex-col gap-2 sm:flex-col">
+              <Button className="w-full bg-gradient-to-r from-yellow-600 to-amber-600 hover:from-yellow-700 hover:to-amber-700 text-white font-medium" onClick={() => {
+                if (!dailyReward || !userId) return;
+                claimReward(dailyReward.crystals, dailyReward.prestige || undefined);
+                try { localStorage.setItem(`crystal_clicker_daily_${userId}`, JSON.stringify({ lastClaim: Date.now(), streak: dailyReward.streak })); } catch { /* ignore */ }
+                sfxMilestone(); setDailyReward(null);
+              }}>Claim Reward 🎁</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* ====== LUCKY SPIN DIALOG ====== */}
+        <LuckySpin open={spinOpen} onClose={() => setSpinOpen(false)} onReward={(reward) => {
+          if (reward.type === 'crystals') { claimReward(reward.value); addLog('💎', reward.description, '#a855f7'); }
+          else if (reward.type === 'golden') { addLog('🌟', reward.description, '#fbbf24'); }
+          else { addLog('🎰', reward.description, '#22d3ee'); }
+          sfxMilestone();
+        }} crystals={crystals} autoRate={autoRate} />
 
         {/* In-Game Legal Document Dialogs */}
         <Dialog open={legalTosOpen} onOpenChange={setLegalTosOpen}>

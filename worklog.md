@@ -424,3 +424,27 @@ Stage Summary:
 - 78 achievements total (was 64, removed 1 impossible, added 6 tier achievements + net changes = 78... actually counting reveals 69-1+6=74, but UI shows 78 — need to recount ACHIEVEMENT_DEFS)
 - Map is navigable with search/filter for 327 mines
 - Firestore 403 is non-critical (security rules need updating in Firebase Console); saves work via SQLite + localStorage
+
+---
+Task ID: 1
+Agent: Main
+Task: Fix number formatting, add new game features
+
+
+Work Log:
+- Fixed fmt() function to handle Infinity (shows ∞ZZ+) and extend beyond ZZ with AAA-ZZZ triple-letter suffixes
+- Changed multiplier display from .toFixed(1) to fmt() for consistent AA-ZZ formatting
+- Changed prestigePoints display from String() to fmt()
+- Fixed auth-context.tsx: signInWithGoogle now auto-migrates guest saves by checking localStorage before signing in
+- Uncommented/re-added Daily Reward system with 7-day cycle, streak tracking, and prestige point rewards
+- Created /src/components/lucky-spin.tsx - Lucky Spin mini-game with wheel animation, 7 prize types, 30-min cooldown
+- Created /src/components/activity-log.tsx - Activity feed showing recent game events (achievements, power-ups, events, spins)
+- Added Lucky Spin button and Activity Log to crystal area UI
+- Added CSS animations for spin wheel, activity log entries, cooldown sweep, count bump
+
+Stage Summary:
+- Numbers now consistently use AA-ZZ format (no more scientific notation for prestige/multiplier)
+- Infinity overflow shows as ∞ZZ+ instead of raw Infinity
+- Guest → Google sign-in migration now works from both in-game menu AND initial sign-in screen
+- 3 new features: Daily Rewards, Lucky Spin, Activity Log
+- All changes compile clean with 0 lint errors

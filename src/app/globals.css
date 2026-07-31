@@ -295,6 +295,75 @@
   animation: cps-glow 2s ease-in-out infinite;
 }
 
+/* ====== GOLDEN CRYSTAL POPUP ====== */
+@keyframes golden-popup-bob {
+  0%, 100% { transform: translateY(0) rotate(-5deg); }
+  25% { transform: translateY(-12px) rotate(3deg); }
+  50% { transform: translateY(-6px) rotate(-3deg); }
+  75% { transform: translateY(-15px) rotate(5deg); }
+}
+
+@keyframes golden-popup-glow {
+  0%, 100% { filter: drop-shadow(0 0 12px rgba(251, 191, 36, 0.8)) drop-shadow(0 0 30px rgba(251, 191, 36, 0.4)); }
+  50% { filter: drop-shadow(0 0 20px rgba(251, 191, 36, 1)) drop-shadow(0 0 50px rgba(251, 191, 36, 0.6)); }
+}
+
+.golden-popup {
+  animation: golden-popup-bob 2s ease-in-out infinite, golden-popup-glow 1.5s ease-in-out infinite;
+  cursor: pointer;
+  z-index: 30;
+}
+
+.golden-popup:hover {
+  filter: drop-shadow(0 0 25px rgba(251, 191, 36, 1)) drop-shadow(0 0 60px rgba(251, 191, 36, 0.8)) !important;
+  transform: scale(1.15);
+}
+
+/* ====== ACHIEVEMENT TOAST ====== */
+@keyframes toast-slide-in {
+  0% { transform: translateX(100%); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes toast-slide-out {
+  0% { transform: translateX(0); opacity: 1; }
+  100% { transform: translateX(100%); opacity: 0; }
+}
+
+@keyframes toast-progress {
+  0% { width: 100%; }
+  100% { width: 0%; }
+}
+
+/* ====== COMBO GLOW LEVELS ====== */
+@keyframes combo-glow-10 {
+  0%, 100% { box-shadow: 0 0 15px rgba(249, 115, 22, 0.4), 0 0 40px rgba(249, 115, 22, 0.15); }
+  50% { box-shadow: 0 0 25px rgba(249, 115, 22, 0.6), 0 0 60px rgba(249, 115, 22, 0.25); }
+}
+
+@keyframes combo-glow-25 {
+  0%, 100% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.5), 0 0 50px rgba(249, 115, 22, 0.3); }
+  50% { box-shadow: 0 0 30px rgba(239, 68, 68, 0.7), 0 0 70px rgba(249, 115, 22, 0.4); }
+}
+
+@keyframes combo-glow-50 {
+  0%, 100% { box-shadow: 0 0 25px rgba(236, 72, 153, 0.6), 0 0 60px rgba(239, 68, 68, 0.4); }
+  50% { box-shadow: 0 0 35px rgba(236, 72, 153, 0.8), 0 0 80px rgba(239, 68, 68, 0.5); }
+}
+
+@keyframes combo-glow-100 {
+  0%, 100% { box-shadow: 0 0 30px rgba(168, 85, 247, 0.7), 0 0 70px rgba(236, 72, 153, 0.5), 0 0 100px rgba(59, 130, 246, 0.3); }
+  50% { box-shadow: 0 0 40px rgba(168, 85, 247, 0.9), 0 0 90px rgba(236, 72, 153, 0.6), 0 0 120px rgba(59, 130, 246, 0.4); }
+}
+
+.combo-glow-10 { animation: combo-glow-10 0.8s ease-in-out infinite; }
+.combo-glow-25 { animation: combo-glow-25 0.6s ease-in-out infinite; }
+.combo-glow-50 { animation: combo-glow-50 0.5s ease-in-out infinite; }
+.combo-glow-100 { animation: combo-glow-100 0.4s ease-in-out infinite; }
+
+/* ====== TAB GLOW MAP ====== */
+.tab-glow-map { box-shadow: inset 0 -2px 0 rgba(34, 197, 94, 0.6); }
+
 /* ====== ZZ REACH CELEBRATION ====== */
 @keyframes zz-vortex-spin {
   0% { transform: rotate(0deg) scale(0.5); opacity: 0; }
@@ -327,4 +396,63 @@
   0%, 100% { background: radial-gradient(circle, rgba(168,85,247,0.15) 0%, transparent 70%); }
   33% { background: radial-gradient(circle, rgba(251,191,36,0.15) 0%, transparent 70%); }
   66% { background: radial-gradient(circle, rgba(34,211,238,0.15) 0%, transparent 70%); }
+}
+
+/* ====== LUCKY SPIN ====== */
+@keyframes spin-wheel {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(var(--spin-deg)); }
+}
+
+.spin-wheel-anim {
+  animation: spin-wheel var(--spin-duration) cubic-bezier(0.17, 0.67, 0.12, 0.99) forwards;
+}
+
+@keyframes spin-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(251, 191, 36, 0.3), inset 0 0 20px rgba(251, 191, 36, 0.1); }
+  50% { box-shadow: 0 0 40px rgba(251, 191, 36, 0.5), inset 0 0 30px rgba(251, 191, 36, 0.2); }
+}
+
+.spin-glow {
+  animation: spin-glow 2s ease-in-out infinite;
+}
+
+/* ====== ACTIVITY LOG ====== */
+@keyframes log-entry-in {
+  0% { transform: translateX(-10px); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+.log-entry {
+  animation: log-entry-in 0.3s ease-out;
+}
+
+@keyframes log-fade {
+  0% { opacity: 1; }
+  100% { opacity: 0.3; }
+}
+
+.log-fade {
+  animation: log-fade 0.5s ease-out;
+}
+
+/* ====== NUMBER COUNTER ANIMATION ====== */
+@keyframes count-up {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+
+.count-bump {
+  animation: count-up 0.15s ease-out;
+}
+
+/* ====== LUCKY SPIN COOLDOWN ====== */
+@keyframes cooldown-sweep {
+  0% { background: conic-gradient(rgba(251,191,36,0.4) 0%, transparent 0%); }
+  100% { background: conic-gradient(rgba(251,191,36,0.4) 100%, transparent 100%); }
+}
+
+.cooldown-sweep {
+  animation: cooldown-sweep var(--cd-duration) linear forwards;
 }
