@@ -906,13 +906,15 @@ export default function GamePage() {
             )}
 
             {/* Floating Texts - Stacked by type (golden/crit/normal) */}
-            <style>{`@keyframes ftFade{0%,80%{opacity:1}100%{opacity:0}}`}</style>
             <div className="absolute inset-0 pointer-events-none overflow-hidden">
               {floatingTexts.map(ft => {
-                const yOffset = ft.type === 'golden' ? -36 : ft.type === 'crit' ? 0 : 36;
+                const yOffset = ft.type === 'golden' ? -50 : ft.type === 'crit' ? 0 : 50;
+                const age = Date.now() - ft.createdAt;
+                // Stay fully visible for 10s, then fade over 2s
+                const opacity = age > 10000 ? Math.max(0, 1 - (age - 10000) / 2000) : 1;
                 return (
                 <div
-                  key={ft.id + '-' + ft.count}
+                  key={ft.id}
                   className="absolute font-bold text-lg pointer-events-none select-none"
                   style={{
                     color: floatColors[ft.type],
@@ -920,7 +922,8 @@ export default function GamePage() {
                     top: ft.y + yOffset,
                     transform: `translateX(${ft.x}px)`,
                     textShadow: '0 0 8px currentColor',
-                    animation: 'ftFade 12s ease-out forwards',
+                    opacity,
+                    transition: 'opacity 0.3s ease-out',
                   }}
                 >
                   {ft.type === 'milestone'

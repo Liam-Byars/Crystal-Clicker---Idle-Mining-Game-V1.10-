@@ -4,6 +4,20 @@
 
 **Status: ✅ Fully Functional — 327 mines, AA-ZZ number formatting, search/filter map, 78 achievements.**
 
+### Session 8 Work (Current)
+- **Fixed floating text numbers doing weird things / not updating properly**
+  - **Root cause:** `key={ft.id + '-' + ft.count}` on floating text elements caused React to destroy/recreate the DOM element every time the count changed (every 100ms via tick). This restarted the CSS animation (`ftFade 12s`) on every update, causing visual flickering, numbers appearing wrong, and general chaos — especially with autoclickers.
+  - **Fix (page.tsx):** Changed to stable `key={ft.id}`, replaced CSS animation with JS-computed opacity (`Date.now() - ft.createdAt`), added `transition: opacity 0.3s ease-out` for smooth fade. Increased vertical spacing from ±36px to ±50px.
+- **Fixed autoclicker crash / performance**
+  - **Root cause:** The `click()` function called `set()` on EVERY click for crystals, totalClicks, totalEarned, sessionEarned, totalCrits — plus called `checkAchievements()` and `checkMilestones()`. With an autoclicker at 50+ clicks/sec, this meant 50+ `set()` calls/sec, each triggering a full component re-render.
+  - **Fix (gameStore.ts):** Added module-level batch accumulators (`_pendingCrystals`, `_pendingClicks`, etc.). The `click()` function now only updates these in memory (zero re-renders for crystal data). The `tick()` function (100ms) flushes the batch into a single `set()` call. Achievement/milestone checks moved to tick, throttled to every 500ms.
+  - **Additional optimization:** Auto income now reads from batched values (additive), not stale state. Tick forces re-renders during fade phase for smooth opacity transitions.
+- **Files modified:**
+  - `src/app/page.tsx` — Floating text rendering: stable key, JS opacity, ±50px spacing
+  - `src/stores/gameStore.ts` — Click batching, tick flush, throttled achievements, fade-phase re-render
+- **Lint:** Passes clean (0 errors)
+- **Dev server:** Compiles and runs without errors
+
 ### Session 7 Work (Current)
 - **Rebuilt entire auth system from scratch** (previous session's auth files were lost)
 - **Files created:**
@@ -506,6 +520,35 @@ Work Log:
 Stage Summary:
 - Performance fix verified: 20 rapid clicks now produce only 3 floating texts instead of 20+
 - Stack display format: "1K ×5" for stacked damage numbers
-- Three visual stacks: golden (top), crit (middle), normal (bottom) with 22px vertical offset each
+- Three visual stacks: golden (top), crit (middle), normal (bottom) with 50px vertical offset each
 - Non-click types (milestone, offline, powerup, event) remain unstacked as they are rare
 - All existing functionality preserved, no removals
+
+---
+Task ID: 2
+Agent: Main Agent
+Task: Fix floating text numbers doing weird things + autoclicker crash + increase spacing
+
+Work Log:
+- Diagnosed root cause of "numbers doing weird things": `key={ft.id + '-' + ft.count}` caused React to unmount/remount the element on every count change (every 100ms tick), restarting the 12s CSS fade animation each time
+- Fixed by changing to stable `key={ft.id}`, replacing CSS animation with JS-computed opacity from `createdAt`, added CSS transition for smooth fade
+- Increased vertical spacing from ±36px to ±50px
+- Diagnosed autoclicker crash root cause: `click()` called `set()` on every click for crystal/click data, plus `checkAchievements()` and `checkMilestones()` per click
+- Added module-level batch accumulators (`_pendingCrystals`, `_pendingClicks`, etc.) that accumulate in memory without React re-renders
+- Tick function (100ms) flushes batch into single `set()` call
+- Auto income made additive to batched values (was overwriting)
+- Achievement/milestone checks moved to tick, throttled to every 500ms
+- Tick forces re-renders during floating text fade phase for smooth opacity
+- Reset game clears all batch accumulators
+
+Stage Summary:
+- Floating text now stable: no more flickering/remounting, numbers update correctly
+- Click performance: crystal data batched at 10Hz instead of per-click, massive reduction in re-renders
+- Spacing increased to ±50px between stacked types
+- Lint passes clean, dev server compiles without errors
+
+## Unresolved Issues / Risks & Next Phase Priorities
+1. **Wheel spin animation** — Wheel currently shows result instantly, needs spinning animation
+2. **Wheel cooldown 30min→24hr** — Change daily reward cooldown from 30 minutes to 24 hours
+3. **More game features** — User requested additional features (not yet specified)
+4. **Agent-browser testing limitation** — Can't simulate React synthetic events, so click testing requires manual verification

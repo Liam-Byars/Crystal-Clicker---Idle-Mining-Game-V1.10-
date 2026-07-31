@@ -203,6 +203,14 @@ const _stackPending: Record<string, { id: number; count: number; value: number; 
 const _FT_LIFE = 10000; // ms before fade-out starts
 const _FT_FADE = 2000;  // ms fade-out duration
 
+// ====== Click batching — avoids set() on every click ======
+let _pendingCrystals = 0;       // accumulated crystal gain
+let _pendingClicks = 0;        // accumulated click count
+let _pendingTotalEarned = 0;   // accumulated total earned
+let _pendingSessionEarned = 0; // accumulated session earned
+let _pendingCrits = 0;         // accumulated crit count
+let _achCheckCounter = 0;     // throttle achievement checks
+
 // ====== Data Definitions ======
 const DEFAULT_UPGRADES: Upgrade[] = [
   { id: 'sharpen', name: 'Sharpen Crystal', description: '+1 click power per level', icon: '⚔️', baseCost: 15, costMultiplier: 1.4, level: 0, effect: 'clickPower', value: 1, maxLevel: 2000},
@@ -933,27 +941,27 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     const rv = isFinite(value) ? Math.round(value * 10) / 10 : 0;
     const tt: FloatingText['type'] = isCrit ? 'crit' : newCombo > 1 ? 'combo' : 'normal';
-    const newRippleId = s.rippleId + 1;
 
     const totalGain = isFinite(rv + comboBonus) ? Math.round((rv + comboBonus) * 100) / 100 : Math.pow(10, SAFE_LOG);
-    const cR = safeAdd(s.crystals, s.crystalsExp, totalGain);
-    const teR = safeAdd(s.totalEarned, s.totalEarnedExp, totalGain);
+
+    // Batch crystal/click accumulation — no set() here
+    _pendingCrystals += totalGain;
+    _pendingClicks += 1;
+    _pendingTotalEarned += totalGain;
+    _pendingSessionEarned += Math.min(totalGain, 1e15);
+    if (isCrit) _pendingCrits += 1;
+
+    // Only set visual state that MUST update immediately (combo, ripples, shake)
+    const newRippleId = s.rippleId + 1;
     set({
-      crystals: cR.value, crystalsExp: cR.exp,
-      totalClicks: s.totalClicks + 1, totalEarned: teR.value, totalEarnedExp: teR.exp,
-      sessionClicks: s.sessionClicks + 1, sessionEarned: s.sessionEarned + Math.min(totalGain, 1e15),
       combo: newCombo, comboTimer: 60, maxCombo: newMax, lastClickTime: now,
-      totalCrits: isCrit ? s.totalCrits + 1 : s.totalCrits,
       screenShake: isCrit || newCombo >= 10,
       crystalPulse: isCrit ? 3 : newCombo >= 5 ? 2 : 1,
-      floatingTextId: s.floatingTextId + 1,
       clickTimestamps: recent, clicksPerSecond: recent.length,
       ripples: [...s.ripples.slice(-6), { id: newRippleId, x, y, type: tt }], rippleId: newRippleId,
     });
     get().addFloatingText(x, y, rv, tt);
     if (comboBonus > 0) get().addFloatingText(x, y - 30, comboBonus, 'milestone');
-    get().checkAchievements();
-    get().checkMilestones();
   },
 
   clickGolden: (x, y) => {
@@ -1099,7 +1107,21 @@ export const useGameStore = create<GameState>((set, get) => ({
     const s = get();
     const updates: Partial<GameState> = {};
 
-    // Auto income
+    // Flush batched click accumulation
+    if (_pendingCrystals > 0 || _pendingClicks > 0) {
+      const cR = safeAdd(s.crystals, s.crystalsExp, _pendingCrystals);
+      const teR = safeAdd(s.totalEarned, s.totalEarnedExp, _pendingTotalEarned);
+      updates.crystals = cR.value; updates.crystalsExp = cR.exp;
+      updates.totalEarned = teR.value; updates.totalEarnedExp = teR.exp;
+      updates.totalClicks = s.totalClicks + _pendingClicks;
+      updates.sessionClicks = s.sessionClicks + _pendingClicks;
+      updates.sessionEarned = s.sessionEarned + _pendingSessionEarned;
+      if (_pendingCrits > 0) updates.totalCrits = s.totalCrits + _pendingCrits;
+      _pendingCrystals = 0; _pendingClicks = 0;
+      _pendingTotalEarned = 0; _pendingSessionEarned = 0; _pendingCrits = 0;
+    }
+
+    // Auto income (additive to batched click gains)
     if (s.autoRate > 0) {
       let rate = s.autoRate;
       const puBonus = s.activePowerUp?.effect === 'tripleAuto' ? s.activePowerUp.value : 1;
@@ -1107,11 +1129,17 @@ export const useGameStore = create<GameState>((set, get) => ({
       rate *= puBonus * evBonus;
       const prestMult = 1 + s.prestigePoints * 0.1;
       const income = isFinite(rate * prestMult) ? rate * prestMult * 0.1 : Math.pow(10, SAFE_LOG);
-      const cR = safeAdd(s.crystals, s.crystalsExp, income);
-      const teR = safeAdd(s.totalEarned, s.totalEarnedExp, income);
+      // Use batched values as base if they exist
+      const baseC = updates.crystals ?? s.crystals;
+      const baseCE = updates.crystalsExp ?? s.crystalsExp;
+      const baseTE = updates.totalEarned ?? s.totalEarned;
+      const baseTEE = updates.totalEarnedExp ?? s.totalEarnedExp;
+      const baseSE = updates.sessionEarned ?? s.sessionEarned;
+      const cR = safeAdd(baseC, baseCE, income);
+      const teR = safeAdd(baseTE, baseTEE, income);
       updates.crystals = cR.value; updates.crystalsExp = cR.exp;
       updates.totalEarned = teR.value; updates.totalEarnedExp = teR.exp;
-      updates.sessionEarned = s.sessionEarned + Math.min(income, 1e15);
+      updates.sessionEarned = baseSE + Math.min(income, 1e15);
     }
 
     // Combo decay
@@ -1211,7 +1239,12 @@ export const useGameStore = create<GameState>((set, get) => ({
       const ft = synced.find(f => f.id === _stackPending[key].id);
       if (!ft) delete _stackPending[key];
     }
-    if (synced.length !== s.floatingTexts.length) {
+    // Force re-render during fade phase so JS-computed opacity transitions smoothly
+    const hasFading = synced.some(ft => {
+      const age = ftNow - ft.createdAt;
+      return age > _FT_LIFE && age < _FT_LIFE + _FT_FADE;
+    });
+    if (synced.length !== s.floatingTexts.length || hasFading) {
       updates.floatingTexts = synced;
     } else {
       // Check if any stack data actually changed
@@ -1223,7 +1256,16 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (s.screenShake) setTimeout(() => set({ screenShake: false }), 150);
     if (s.crystalPulse > 0) setTimeout(() => set({ crystalPulse: 0 }), 200);
 
-    if (Object.keys(updates).length > 0) set(updates);
+    if (Object.keys(updates).length > 0) {
+      set(updates);
+      // Throttled achievement/milestone checks (every ~500ms = 5 ticks)
+      _achCheckCounter++;
+      if (_achCheckCounter >= 5) {
+        _achCheckCounter = 0;
+        get().checkAchievements();
+        get().checkMilestones();
+      }
+    }
   },
 
   switchArea: (areaId) => set({ currentArea: areaId }),
@@ -1295,6 +1337,9 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   resetGame: () => {
     for (const k of Object.keys(_stackPending)) delete _stackPending[k];
+    _pendingCrystals = 0; _pendingClicks = 0;
+    _pendingTotalEarned = 0; _pendingSessionEarned = 0; _pendingCrits = 0;
+    _achCheckCounter = 0;
     set({
       crystals: 0, crystalsExp: 0, totalClicks: 0, totalEarned: 0, totalEarnedExp: 0, clickPower: 1, multiplier: 1, autoRate: 0,
       prestige: 0, prestigePoints: 0, combo: 0, comboTimer: 0, maxCombo: 0, lastClickTime: 0,
