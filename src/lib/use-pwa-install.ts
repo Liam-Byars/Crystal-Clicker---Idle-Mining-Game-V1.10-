@@ -21,7 +21,8 @@ export function usePwaInstall() {
       m.addEventListener('change', cb);
       return () => m.removeEventListener('change', cb);
     },
-    getIsStandalone
+    getIsStandalone,
+    () => false // server snapshot
   );
 
   const isIOS = typeof navigator !== 'undefined' ? /iPad|iPhone|iPod/.test(navigator.userAgent) : false;
