@@ -1378,11 +1378,13 @@ export default function GamePage() {
                           <>
                             <Separator className="bg-gray-700/30 my-1" />
                             <div className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Active Boosts</div>
-                            {shopBoosts.doubleClick > 0 && <StatRow label="2x Click Power" value={`${Math.ceil(shopBoosts.doubleClick / 10)}s`} icon="⚡" />}
-                            {shopBoosts.tripleAuto > 0 && <StatRow label="3x Auto Rate" value={`${Math.ceil(shopBoosts.tripleAuto / 10)}s`} icon="🔥" />}
-                            {shopBoosts.doubleGolden > 0 && <StatRow label="2x Golden Chance" value={`${Math.ceil(shopBoosts.doubleGolden / 10)}s`} icon="🌟" />}
+                            {shopBoosts.doubleClick > 0 && <StatRow label="2x Click Power" value={`${Math.ceil(shopBoosts.doubleClick / 10)}s`} icon="👆" />}
+                            {shopBoosts.tripleAuto > 0 && <StatRow label="3x Auto Income" value={`${Math.ceil(shopBoosts.tripleAuto / 10)}s`} icon="⚙️" />}
+                            {shopBoosts.multBoost > 0 && <StatRow label="+50% Multiplier" value={`${Math.ceil(shopBoosts.multBoost / 10)}s`} icon="📈" />}
                             {shopBoosts.critBoost > 0 && <StatRow label="+10% Crit Chance" value={`${Math.ceil(shopBoosts.critBoost / 10)}s`} icon="🎯" />}
-                            {shopBoosts.doubleAll > 0 && <StatRow label="2x All Income" value={`${Math.ceil(shopBoosts.doubleAll / 10)}s`} icon="📺" />}
+                            {shopBoosts.doubleGolden > 0 && <StatRow label="2x Golden Chance" value={`${Math.ceil(shopBoosts.doubleGolden / 10)}s`} icon="🌟" />}
+                            {shopBoosts.luckyBoost > 0 && <StatRow label="3x Golden Luck" value={`${Math.ceil(shopBoosts.luckyBoost / 10)}s`} icon="🍀" />}
+                            {shopBoosts.doubleAll > 0 && <StatRow label="2x All Income" value={`${Math.ceil(shopBoosts.doubleAll / 10)}s`} icon="🚀" />}
                           </>
                         )}
                         {ownedPremiumItems.length > 0 && (
@@ -1683,41 +1685,52 @@ export default function GamePage() {
                     {/* Section 1: Boosts */}
                     <Card className="bg-gray-900/40 border-gray-800/50">
                       <CardHeader className="pb-2 pt-3 px-4">
-                        <CardTitle className="text-sm text-gray-300">⚡ Boosts</CardTitle>
+                        <CardTitle className="text-sm text-gray-300">⚡ Temporary Boosts</CardTitle>
+                        <p className="text-[10px] text-gray-600 -mt-1">Cost: 30min auto income each</p>
                       </CardHeader>
                       <CardContent className="px-4 pb-3 space-y-2">
                         {[
-                          { id: 'doubleClick', icon: '⚡', name: '2x Click Power', desc: 'Double your click power', dur: '60s' },
-                          { id: 'tripleAuto', icon: '🔥', name: '3x Auto Rate', desc: 'Triple your auto income', dur: '60s' },
-                          { id: 'doubleGolden', icon: '🌟', name: '2x Golden Chance', desc: 'Double golden crystal chance', dur: '120s' },
-                          { id: 'critBoost', icon: '🎯', name: '+10% Crit Chance', desc: 'Extra 10% critical hit chance', dur: '60s' },
+                          { id: 'doubleClick', icon: '👆', name: '2x Click Power', desc: 'Double your click power', dur: '60s', maxDur: 600 },
+                          { id: 'tripleAuto', icon: '⚙️', name: '3x Auto Income', desc: 'Triple your passive income', dur: '60s', maxDur: 600 },
+                          { id: 'multBoost', icon: '📈', name: '+50% Multiplier', desc: 'Boosts all multipliers by 50%', dur: '90s', maxDur: 900 },
+                          { id: 'critBoost', icon: '🎯', name: '+10% Crit Chance', desc: 'Extra 10% critical hit chance', dur: '60s', maxDur: 600 },
+                          { id: 'doubleGolden', icon: '🌟', name: '2x Golden Chance', desc: 'Double golden spawn rate', dur: '2min', maxDur: 1200 },
+                          { id: 'luckyBoost', icon: '🍀', name: '3x Golden Luck', desc: 'Triple golden spawn rate', dur: '2min', maxDur: 1200 },
                         ].map(b => {
                           const timer = shopBoosts[b.id as keyof typeof shopBoosts] as number;
                           const isActive = timer > 0;
                           const myLog = toLogSafe(crystals) + crystalsExp;
-                          const costLog = autoRateLog + Math.log10(3600);
+                          const costLog = autoRateLog + Math.log10(1800);
                           const canBuy = myLog >= costLog && !isActive;
                           return (
-                            <div key={b.id} className="flex items-center gap-3 p-2 rounded-lg bg-gray-800/30">
-                              <div className="text-2xl w-9 h-9 flex items-center justify-center bg-gray-800/60 rounded-lg flex-shrink-0 relative">
+                            <div key={b.id} className={`flex items-center gap-3 p-2.5 rounded-lg border transition-all ${isActive ? 'bg-green-900/15 border-green-500/20' : 'bg-gray-800/30 border-transparent hover:border-gray-700/50'}`}>
+                              <div className="text-xl w-10 h-10 flex items-center justify-center bg-gray-800/60 rounded-lg flex-shrink-0 relative">
                                 {b.icon}
                                 {isActive && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse" />}
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-1.5">
                                   <span className="text-sm font-medium text-gray-200">{b.name}</span>
-                                  <span className="text-[10px] text-gray-500">{b.dur}</span>
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-800 text-gray-500">{b.dur}</span>
                                 </div>
-                                <p className="text-xs text-gray-500">{b.desc}</p>
-                                <p className="text-[10px] text-gray-600 mt-0.5">Cost: {fmtExpLog(costLog)} (1hr auto income)</p>
-                                {isActive && <p className="text-[10px] text-green-400">⏱ {Math.ceil(timer / 10)}s remaining</p>}
+                                <p className="text-xs text-gray-500 mt-0.5">{b.desc}</p>
+                                {isActive && (
+                                  <div className="mt-1">
+                                    <div className="w-full h-1 bg-gray-800 rounded-full overflow-hidden">
+                                      <div className="h-full bg-green-500 rounded-full transition-all duration-100" style={{ width: `${Math.min(100, (timer / b.maxDur) * 100)}%` }} />
+                                    </div>
+                                    <p className="text-[10px] text-green-400 mt-0.5">{Math.ceil(timer / 10)}s left</p>
+                                  </div>
+                                )}
                               </div>
                               <Button
                                 size="sm"
                                 disabled={!canBuy}
                                 onClick={() => { if (buyShopBoost(b.id)) sfxBuy(); }}
                                 className={`flex-shrink-0 text-xs h-8 min-w-[60px] ${
-                                  canBuy
+                                  isActive
+                                    ? 'bg-green-900/30 text-green-400 border border-green-500/30 cursor-default'
+                                    : canBuy
                                     ? 'bg-purple-600 hover:bg-purple-700 text-white'
                                     : 'bg-gray-800 text-gray-600 cursor-not-allowed'
                                 }`}
@@ -1733,85 +1746,107 @@ export default function GamePage() {
                     {/* Section 2: Free Rewards */}
                     <Card className="bg-gray-900/40 border-gray-800/50">
                       <CardHeader className="pb-2 pt-3 px-4">
-                        <CardTitle className="text-sm text-gray-300">📺 Free Rewards</CardTitle>
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-sm text-gray-300">🎁 Free Rewards</CardTitle>
+                          {adCooldown > 0 && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-800 text-gray-500">
+                              {Math.ceil(adCooldown / 10)}s cooldown
+                            </span>
+                          )}
+                        </div>
                       </CardHeader>
                       <CardContent className="px-4 pb-3 space-y-2">
-                        {adCooldown > 0 && (
-                          <p className="text-xs text-gray-500 mb-2">⏱ Cooldown: {Math.ceil(adCooldown / 10)}s</p>
-                        )}
                         {[
-                          { type: 'doubleAll', icon: '📺', name: '2x All Income', desc: 'Double ALL income for 5 minutes', dur: '5 min' },
-                          { type: 'instantEarned', icon: '💰', name: '1% of Total Earned', desc: 'Instantly gain 1% of your lifetime earnings', dur: '' },
-                          { type: 'forceGolden', icon: '🌟', name: 'Guaranteed Golden', desc: 'Spawn a golden crystal immediately', dur: '' },
+                          { type: 'doubleAll', icon: '🚀', name: '2x All Income', desc: 'Double ALL income for 5 minutes', tag: '5 min boost' },
+                          { type: 'instantEarned', icon: '💰', name: '1% of Total Earned', desc: 'Instantly gain 1% of lifetime earnings', tag: 'instant' },
+                          { type: 'forceGolden', icon: '🌟', name: 'Golden Crystal', desc: 'Spawn a golden crystal immediately', tag: 'instant' },
                         ].map(r => {
                           const isWatching = adTimer?.type === r.type;
                           const isDisabled = adCooldown > 0 || isWatching;
                           return (
-                            <div key={r.type} className="flex items-center gap-3 p-2 rounded-lg bg-gray-800/30">
-                              <div className="text-2xl w-9 h-9 flex items-center justify-center bg-gray-800/60 rounded-lg flex-shrink-0">
+                            <div key={r.type} className={`flex items-center gap-3 p-2.5 rounded-lg border transition-all ${isWatching ? 'bg-cyan-900/15 border-cyan-500/20' : 'bg-gray-800/30 border-transparent hover:border-gray-700/50'}`}>
+                              <div className="text-xl w-10 h-10 flex items-center justify-center bg-gray-800/60 rounded-lg flex-shrink-0 relative">
                                 {r.icon}
+                                {isWatching && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-cyan-500 rounded-full animate-pulse" />}
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-1.5">
                                   <span className="text-sm font-medium text-gray-200">{r.name}</span>
-                                  {r.dur && <span className="text-[10px] text-gray-500">{r.dur}</span>}
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-800 text-gray-500">{r.tag}</span>
                                 </div>
-                                <p className="text-xs text-gray-500">{r.desc}</p>
+                                <p className="text-xs text-gray-500 mt-0.5">{r.desc}</p>
+                                {isWatching && (
+                                  <div className="mt-1">
+                                    <div className="w-full h-1 bg-gray-800 rounded-full overflow-hidden">
+                                      <div className="h-full bg-cyan-500 rounded-full transition-all duration-1000" style={{ width: `${((30 - adTimer.remaining) / 30) * 100}%` }} />
+                                    </div>
+                                    <p className="text-[10px] text-cyan-400 mt-0.5">{adTimer.remaining}s...</p>
+                                  </div>
+                                )}
                               </div>
                               {isWatching ? (
-                                <div className="flex-shrink-0 text-xs text-cyan-400 font-mono w-[60px] text-center">
-                                  {adTimer.remaining}s
+                                <div className="flex-shrink-0 text-xs text-cyan-400 font-mono animate-pulse w-[70px] text-center">
+                                  Waiting
                                 </div>
                               ) : (
                                 <Button
                                   size="sm"
                                   disabled={isDisabled}
                                   onClick={() => setAdTimer({ type: r.type, remaining: 30 })}
-                                  className={`flex-shrink-0 text-xs h-8 min-w-[60px] ${
+                                  className={`flex-shrink-0 text-xs h-8 min-w-[70px] ${
                                     isDisabled
                                       ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
                                       : 'bg-cyan-600 hover:bg-cyan-700 text-white'
                                   }`}
                                 >
-                                  Watch
+                                  {isDisabled ? 'Wait' : 'Claim'}
                                 </Button>
                               )}
                             </div>
                           );
                         })}
+                        <p className="text-[10px] text-gray-600 text-center pt-1">One reward per 3 minutes</p>
                       </CardContent>
                     </Card>
 
-                    {/* Section 3: Quick Buy */}
+                    {/* Section 3: Crystal Exchange */}
                     <Card className="bg-gray-900/40 border-gray-800/50">
                       <CardHeader className="pb-2 pt-3 px-4">
-                        <CardTitle className="text-sm text-gray-300">💎 Quick Buy</CardTitle>
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-sm text-gray-300">💎 Crystal Exchange</CardTitle>
+                          <span className="text-[10px] text-gray-600">1:1 trade rate</span>
+                        </div>
                       </CardHeader>
                       <CardContent className="px-4 pb-3 space-y-2">
-                        <p className="text-xs text-gray-500 mb-1">Buy instant crystal bursts at fair prices</p>
                         {[
-                          { secs: 60, label: 'Buy 1min income' },
-                          { secs: 600, label: 'Buy 10min income' },
-                          { secs: 3600, label: 'Buy 1hr income' },
+                          { secs: 60, icon: '⚡', label: '1 Minute', sub: 'of auto income' },
+                          { secs: 300, icon: '🔥', label: '5 Minutes', sub: 'of auto income' },
+                          { secs: 1800, icon: '💫', label: '30 Minutes', sub: 'of auto income' },
+                          { secs: 7200, icon: '🌟', label: '2 Hours', sub: 'of auto income' },
                         ].map(q => {
                           const costLog = autoRateLog + Math.log10(q.secs);
                           const myLog = toLogSafe(crystals) + crystalsExp;
                           const canBuy = myLog >= costLog && autoRateLog > -Infinity;
                           return (
-                            <div key={q.secs} className="flex items-center justify-between p-2 rounded-lg bg-gray-800/30">
-                              <span className="text-sm text-gray-300">{q.label}</span>
+                            <div key={q.secs} className={`flex items-center gap-3 p-2.5 rounded-lg border transition-all ${canBuy ? 'bg-gray-800/30 border-transparent hover:border-amber-500/20' : 'bg-gray-800/20 border-transparent opacity-60'}`}>
+                              <div className="text-xl w-10 h-10 flex items-center justify-center bg-amber-900/20 rounded-lg flex-shrink-0">
+                                {q.icon}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <span className="text-sm font-medium text-gray-200">Buy {q.label}</span>
+                                <p className="text-[10px] text-gray-500">{q.sub}</p>
+                              </div>
                               <Button
                                 size="sm"
                                 disabled={!canBuy}
                                 onClick={() => { if (buyInstantCrystals(q.secs)) sfxBuy(); }}
-                                className={`text-xs h-8 ${
+                                className={`flex-shrink-0 text-xs h-8 min-w-[80px] ${
                                   canBuy
                                     ? 'bg-amber-600 hover:bg-amber-700 text-white'
                                     : 'bg-gray-800 text-gray-600 cursor-not-allowed'
                                 }`}
                               >
-                                <span className="text-yellow-400 mr-1">💎</span>
-                                {fmtExpLog(costLog)}
+                                <span className="text-yellow-400 mr-1">💎</span>{fmtExpLog(costLog)}
                               </Button>
                             </div>
                           );

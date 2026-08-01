@@ -632,3 +632,33 @@ Stage Summary:
 - Full purchase flow: UI → Dialog → API → DB → State update
 - All gameplay perks integrated into gameStore mechanics
 - Verified end-to-end: shop renders, dialog opens, purchase succeeds, DB stores record
+
+### Session 10 Work (Current)
+- **Auto-save interval change**
+  - Default auto-save: 5 minutes (was 15s)
+  - With Auto-Save Pro premium: 30 seconds
+  - Updated premium item description to reflect new values
+- **Shop revamp — all 3 non-premium sections overhauled**
+  - **Temporary Boosts** (was "Boosts"):
+    - Added 2 new boosts: **+50% Multiplier** (90s) and **3x Golden Luck** (2min)
+    - Reduced cost from 1hr auto income to 30min
+    - Added progress bars for active boost timers
+    - Added border highlighting when boost is active
+    - Duration badges on each boost
+  - **Free Rewards** (was "Free Rewards" with 📺):
+    - Renamed icon to 🎁, changed button from "Watch" to "Claim"
+    - Added progress bar during 30s claim timer
+    - Cooldown badge in header instead of text
+    - Added tag pills ("5 min boost", "instant")
+    - Added "One reward per 3 minutes" footer note
+  - **Crystal Exchange** (was "Quick Buy"):
+    - Changed tiers: 1min, 5min, 30min, 2hr (was 1min/10min/1hr)
+    - Added icons per tier, sub-labels, hover borders
+    - Dimmed style when can't afford
+  - **Store mechanics** (gameStore.ts):
+    - Added `multBoost` and `luckyBoost` to shopBoosts interface + defaults
+    - `multBoost`: +0.5 log bonus to clicks AND auto income
+    - `luckyBoost`: 3x golden crystal spawn chance
+    - Duration map: multBoost=900 (90s), luckyBoost=1200 (2min)
+    - Updated Stats tab to show new boost timers
+    - Boost cost reduced from 1hr to 30min of auto income

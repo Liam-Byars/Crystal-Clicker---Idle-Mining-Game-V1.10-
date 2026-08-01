@@ -1,0 +1,679 @@
+  1377→                        {Object.entries(shopBoosts).some(([, v]) => v > 0) && (
+  1378→                          <>
+  1379→                            <Separator className="bg-gray-700/30 my-1" />
+  1380→                            <div className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Active Boosts</div>
+  1381→                            {shopBoosts.doubleClick > 0 && <StatRow label="2x Click Power" value={`${Math.ceil(shopBoosts.doubleClick / 10)}s`} icon="⚡" />}
+  1382→                            {shopBoosts.tripleAuto > 0 && <StatRow label="3x Auto Rate" value={`${Math.ceil(shopBoosts.tripleAuto / 10)}s`} icon="🔥" />}
+  1383→                            {shopBoosts.doubleGolden > 0 && <StatRow label="2x Golden Chance" value={`${Math.ceil(shopBoosts.doubleGolden / 10)}s`} icon="🌟" />}
+  1384→                            {shopBoosts.critBoost > 0 && <StatRow label="+10% Crit Chance" value={`${Math.ceil(shopBoosts.critBoost / 10)}s`} icon="🎯" />}
+  1385→                            {shopBoosts.doubleAll > 0 && <StatRow label="2x All Income" value={`${Math.ceil(shopBoosts.doubleAll / 10)}s`} icon="📺" />}
+  1386→                          </>
+  1387→                        )}
+  1388→                        {ownedPremiumItems.length > 0 && (
+  1389→                          <>
+  1390→                            <Separator className="bg-amber-700/20 my-1" />
+  1391→                            <div className="text-[10px] uppercase tracking-wider text-amber-500/60 font-semibold flex items-center gap-1"><Crown className="w-3 h-3" /> Premium Perks</div>
+  1392→                            {ownedPremiumItems.includes('auto_save_pro') && <StatRow label="Auto-Save Pro" value="Active" icon="💾" />}
+  1393→                            {ownedPremiumItems.includes('offline_master') && <StatRow label="Offline Master" value="75% eff / 16hr" icon="🌙" />}
+  1394→                            {ownedPremiumItems.includes('double_daily') && <StatRow label="Double Daily" value="2x rewards" icon="📅" />}
+  1395→                            {ownedPremiumItems.includes('golden_aura') && <StatRow label="Golden Aura" value="+5% chance" icon="✨" />}
+  1396→                            {ownedPremiumItems.includes('auto_golden') && <StatRow label="Auto-Golden" value="Auto 15s" icon="🧲" />}
+  1397→                            {ownedPremiumItems.includes('golden_power') && <StatRow label="Golden Power" value="200x base" icon="🌟" />}
+  1398→                            {ownedPremiumItems.includes('prestige_champion') && <StatRow label="Prestige Champ" value="+25% pts" icon="👑" />}
+  1399→                            {ownedPremiumItems.includes('prestige_start') && <StatRow label="Prestige Start" value="+0.5x/lvl" icon="🚀" />}
+  1400→                            {ownedPremiumItems.includes('combo_king') && <StatRow label="Combo King" value="2x window" icon="🔥" />}
+  1401→                            {ownedPremiumItems.includes('crit_master') && <StatRow label="Crit Master" value="+5% chance" icon="💎" />}
+  1402→                            {ownedPremiumItems.includes('crit_power') && <StatRow label="Devastating" value="+1x mult" icon="⚡" />}
+  1403→                          </>
+  1404→                        )}
+  1405→                      </CardContent>
+  1406→                    </Card>
+  1407→
+  1408→                    {/* Milestones */}
+  1409→                    <Card className="bg-gray-900/40 border-gray-800/50">
+  1410→                      <CardHeader className="pb-2 pt-3 px-4">
+  1411→                        <CardTitle className="text-sm text-gray-300">Milestones</CardTitle>
+  1412→                      </CardHeader>
+  1413→                      <CardContent className="px-4 pb-3">
+  1414→                        <div className="space-y-1.5">
+  1415→                          {milestones.map(m => (
+  1416→                            <div key={m.id} className="flex items-center justify-between text-xs">
+  1417→                              <span className={m.celebrated ? 'text-yellow-300' : 'text-gray-600'}>
+  1418→                                {m.icon} {m.label}
+  1419→                              </span>
+  1420→                              {m.celebrated && <span className="text-yellow-500">✓</span>}
+  1421→                            </div>
+  1422→                          ))}
+  1423→                        </div>
+  1424→                      </CardContent>
+  1425→                    </Card>
+  1426→
+  1427→                    {/* Reset */}
+  1428→                    <Separator className="bg-gray-800/50" />
+  1429→                    <div className="flex items-center justify-between">
+  1430→                      <span className="text-xs text-gray-500">Danger Zone</span>
+  1431→                      <Button
+  1432→                        size="sm"
+  1433→                        variant="ghost"
+  1434→                        className="text-xs text-red-500 hover:text-red-400 hover:bg-red-900/20"
+  1435→                        onClick={() => {
+  1436→                          if (confirm('Are you sure you want to reset ALL progress? This cannot be undone!')) {
+  1437→                            resetGame();
+  1438→                            fetch('/api/clicker/reset', { method: 'POST' });
+  1439→                          }
+  1440→                        }}
+  1441→                      >
+  1442→                        🗑️ Reset Game
+  1443→                      </Button>
+  1444→                    </div>
+  1445→                  </div>
+  1446→                </ScrollArea>
+  1447→              </TabsContent>
+  1448→
+  1449→              {/* ====== PRESTIGE TAB ====== */}
+  1450→              <TabsContent value="prestige" className="flex-1 min-h-0 mt-0">
+  1451→                <ScrollArea className="h-[calc(100vh-340px)] lg:h-[calc(100vh-320px)]">
+  1452→                  <div className="space-y-4 pr-3 pb-4">
+  1453→                    <Card className="bg-gradient-to-br from-pink-900/20 to-purple-900/20 border-pink-800/30">
+  1454→                      <CardHeader className="pb-2 pt-4 px-4">
+  1455→                        <CardTitle className="text-lg text-pink-300 flex items-center gap-2">
+  1456→                          🔄 Prestige System
+  1457→                        </CardTitle>
+  1458→                      </CardHeader>
+  1459→                      <CardContent className="px-4 pb-4 space-y-3">
+  1460→                        <p className="text-sm text-gray-400">
+  1461→                          Reset your crystals and upgrades to earn <span className="text-pink-300 font-medium">Prestige Points</span>,
+  1462→                          which permanently boost all income by <span className="text-pink-300 font-medium">+10% per point</span>.
+  1463→                        </p>
+  1464→                        <Separator className="bg-gray-700/30" />
+  1465→                        <div className="space-y-2">
+  1466→                          <div className="flex justify-between text-sm">
+  1467→                            <span className="text-gray-400">Current Prestige</span>
+  1468→                            <span className="text-pink-300 font-medium">{prestige} times</span>
+  1469→                          </div>
+  1470→                          <div className="flex justify-between text-sm">
+  1471→                            <span className="text-gray-400">Prestige Points</span>
+  1472→                            <span className="text-pink-300 font-medium">{prestigePoints}</span>
+  1473→                          </div>
+  1474→                          <div className="flex justify-between text-sm">
+  1475→                            <span className="text-gray-400">Current Bonus</span>
+  1476→                            <span className="text-pink-300 font-medium">+{prestigePoints * 10}%</span>
+  1477→                          </div>
+  1478→                          <div className="flex justify-between text-sm">
+  1479→                            <span className="text-gray-400">Total Earned</span>
+  1480→                            <span className="text-gray-300">{fmt(totalEarned, totalEarnedExp)}</span>
+  1481→                          </div>
+  1482→                          <Separator className="bg-gray-700/30" />
+  1483→                          <div className="flex justify-between text-sm">
+  1484→                            <span className="text-gray-400">Points on Prestige</span>
+  1485→                            <span className="text-yellow-300 font-bold">
+  1486→                              {(() => {
+  1487→                                const effectiveLog = toLogSafe(totalEarned) + totalEarnedExp;
+  1488→                                const ptsLog = 0.5 * (effectiveLog - 3); // log10(sqrt(total/1000))
+  1489→                                if (effectiveLog < 3) return 'Need 1,000 total';
+  1490→                                const pts = ptsLog > 15 ? '1e15+' : String(Math.floor(Math.pow(10, ptsLog)));
+  1491→                                return `+${pts}`;
+  1492→                              })()}
+  1493→                            </span>
+  1494→                          </div>
+  1495→                          <div className="flex justify-between text-sm">
+  1496→                            <span className="text-gray-400">New Total Bonus</span>
+  1497→                            <span className="text-pink-200 font-medium">
+  1498→                              {(() => {
+  1499→                                const effectiveLog = toLogSafe(totalEarned) + totalEarnedExp;
+  1500→                                const ptsLog = 0.5 * (effectiveLog - 3);
+  1501→                                if (effectiveLog < 3) return '—';
+  1502→                                const newPts = ptsLog > 15 ? 1e15 : Math.floor(Math.pow(10, ptsLog));
+  1503→                                return `+${(prestigePoints + newPts) * 10}%`;
+  1504→                              })()}
+  1505→                            </span>
+  1506→                          </div>
+  1507→                        </div>
+  1508→                        <Button
+  1509→                          className="w-full bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700 text-white font-medium"
+  1510→                          disabled={toLogSafe(totalEarned) + totalEarnedExp < 3}
+  1511→                          onClick={() => {
+  1512→                            if (confirm('Prestige will reset your crystals and upgrades. You keep achievements, prestige points, and golden/crit stats. Continue?')) {
+  1513→                              performPrestige();
+  1514→                              sfxMilestone();
+  1515→                            }
+  1516→                          }}
+  1517→                        >
+  1518→                          {toLogSafe(totalEarned) + totalEarnedExp >= 3 ? '🔄 Perform Prestige' : '🔒 Earn 1,000 total crystals first'}
+  1519→                        </Button>
+  1520→                      </CardContent>
+  1521→                    </Card>
+  1522→
+  1523→                    {/* Prestige Multiplier Info */}
+  1524→                    <Card className="bg-gray-900/40 border-gray-800/50">
+  1525→                      <CardHeader className="pb-2 pt-3 px-4">
+  1526→                        <CardTitle className="text-sm text-gray-300">Prestige Tiers</CardTitle>
+  1527→                      </CardHeader>
+  1528→                      <CardContent className="px-4 pb-3">
+  1529→                        <div className="space-y-1.5 text-xs">
+  1530→                          {[
+  1531→                            { pts: 1, bonus: '10%', earned: '1K' },
+  1532→                            { pts: 3, bonus: '30%', earned: '9K' },
+  1533→                            { pts: 5, bonus: '50%', earned: '25K' },
+  1534→                            { pts: 10, bonus: '100%', earned: '100K' },
+  1535→                            { pts: 20, bonus: '200%', earned: '400K' },
+  1536→                            { pts: 50, bonus: '500%', earned: '2.5M' },
+  1537→                          ].map(t => (
+  1538→                            <div key={t.pts} className="flex items-center justify-between text-gray-500">
+  1539→                              <span>{t.pts} pts → +{t.bonus} bonus</span>
+  1540→                              <span className="text-gray-600">({t.earned} total)</span>
+  1541→                            </div>
+  1542→                          ))}
+  1543→                        </div>
+  1544→                      </CardContent>
+  1545→                    </Card>
+  1546→                  </div>
+  1547→                </ScrollArea>
+  1548→              </TabsContent>
+  1549→
+  1550→              {/* ====== SHOP TAB ====== */}
+  1551→              <TabsContent value="shop" className="flex-1 min-h-0 mt-0">
+  1552→                <ScrollArea className="h-[calc(100vh-340px)] lg:h-[calc(100vh-320px)]">
+  1553→                  <div className="space-y-3 pr-3 pb-4">
+  1554→                    {/* Section 0: Premium Shop — Real Money Items */}
+  1555→                    <Card className="bg-gradient-to-b from-amber-950/30 to-gray-900/40 border-amber-500/20">
+  1556→                      <CardHeader className="pb-2 pt-3 px-4">
+  1557→                        <div className="flex items-center justify-between">
+  1558→                          <CardTitle className="text-sm text-amber-300 flex items-center gap-2">
+  1559→                            <Crown className="w-4 h-4" /> Premium Shop
+  1560→                          </CardTitle>
+  1561→                          <span className="text-[10px] text-amber-500/60">Permanent Upgrades</span>
+  1562→                        </div>
+  1563→                      </CardHeader>
+  1564→                      <CardContent className="px-4 pb-3">
+  1565→                        {/* Filter tabs */}
+  1566→                        <div className="flex gap-1 mb-3 overflow-x-auto pb-1">
+  1567→                          {['all', 'efficiency', 'golden', 'prestige', 'combat', 'qol'].map(cat => (
+  1568→                            <button
+  1569→                              key={cat}
+  1570→                              onClick={() => setPremiumFilter(cat)}
+  1571→                              className={`px-2.5 py-1 rounded-md text-[11px] font-medium whitespace-nowrap transition-all ${
+  1572→                                premiumFilter === cat
+  1573→                                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+  1574→                                  : 'bg-gray-800/40 text-gray-500 border border-transparent hover:text-gray-400'
+  1575→                              }`}
+  1576→                            >
+  1577→                              {cat === 'all' ? '💎 All' : cat === 'efficiency' ? '⚡ Efficiency' : cat === 'golden' ? '✨ Golden' : cat === 'prestige' ? '👑 Prestige' : cat === 'combat' ? '⚔️ Combat' : '🔧 QOL'}
+  1578→                              {cat !== 'all' && (
+  1579→                                <span className="ml-1 text-gray-600">{getPremiumItemsByCategory(cat).length}</span>
+  1580→                              )}
+  1581→                            </button>
+  1582→                          ))}
+  1583→                        </div>
+  1584→
+  1585→                        {/* Featured items banner */}
+  1586→                        {premiumFilter === 'all' && (
+  1587→                          <div className="mb-3 p-2.5 rounded-lg bg-gradient-to-r from-amber-900/20 via-yellow-900/20 to-amber-900/20 border border-amber-500/10">
+  1588→                            <p className="text-[10px] text-amber-400/60 mb-2 font-medium uppercase tracking-wider">⭐ Featured</p>
+  1589→                            <div className="flex gap-2 overflow-x-auto pb-1">
+  1590→                              {getFeaturedItems().map(item => {
+  1591→                                const owned = ownedPremiumItems.includes(item.id);
+  1592→                                const rarity = RARITY_COLORS[item.rarity];
+  1593→                                return (
+  1594→                                  <button
+  1595→                                    key={item.id}
+  1596→                                    onClick={() => !owned && setPremiumPurchaseDialog({ item, purchasing: false })}
+  1597→                                    className={`flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-lg border transition-all ${
+  1598→                                      owned
+  1599→                                        ? 'bg-green-900/20 border-green-500/20 cursor-default'
+  1600→                                        : `${rarity.bg} ${rarity.border} hover:scale-[1.02] cursor-pointer ${rarity.glow}`
+  1601→                                    }`}
+  1602→                                  >
+  1603→                                    <span className="text-xl">{item.icon}</span>
+  1604→                                    <div className="text-left">
+  1605→                                      <p className={`text-xs font-medium ${owned ? 'text-green-400' : rarity.text}`}>{item.name}</p>
+  1606→                                      <p className="text-[10px] text-gray-500">{owned ? '✓ Owned' : '$' + item.price.toFixed(2)}</p>
+  1607→                                    </div>
+  1608→                                  </button>
+  1609→                                );
+  1610→                              })}
+  1611→                            </div>
+  1612→                          </div>
+  1613→                        )}
+  1614→
+  1615→                        {/* All premium items grid */}
+  1616→                        <div className="space-y-2">
+  1617→                          {PREMIUM_ITEMS
+  1618→                            .filter(item => premiumFilter === 'all' || item.category === premiumFilter)
+  1619→                            .map(item => {
+  1620→                              const owned = ownedPremiumItems.includes(item.id);
+  1621→                              const rarity = RARITY_COLORS[item.rarity];
+  1622→                              return (
+  1623→                                <div
+  1624→                                  key={item.id}
+  1625→                                  className={`flex items-center gap-3 p-2.5 rounded-lg border transition-all ${
+  1626→                                    owned
+  1627→                                      ? 'bg-green-900/10 border-green-500/15'
+  1628→                                      : `${rarity.bg} ${rarity.border} hover:border-opacity-60`
+  1629→                                  }`}
+  1630→                                >
+  1631→                                  <div className={`text-2xl w-10 h-10 flex items-center justify-center rounded-lg flex-shrink-0 relative ${
+  1632→                                    owned ? 'bg-green-900/30' : 'bg-gray-800/60'
+  1633→                                  }`}>
+  1634→                                    {item.icon}
+  1635→                                    {!owned && item.rarity !== 'common' && (
+  1636→                                      <span className={`absolute -top-1 -right-1 px-1 py-0 rounded text-[8px] font-bold ${
+  1637→                                        item.rarity === 'rare' ? 'bg-blue-500/80 text-white'
+  1638→                                        : item.rarity === 'epic' ? 'bg-purple-500/80 text-white'
+  1639→                                        : 'bg-amber-500/80 text-black'
+  1640→                                      }`}>{rarity.label}</span>
+  1641→                                    )}
+  1642→                                    {owned && <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full flex items-center justify-center text-[7px]">✓</span>}
+  1643→                                  </div>
+  1644→                                  <div className="flex-1 min-w-0">
+  1645→                                    <div className="flex items-center gap-1.5">
+  1646→                                      <span className={`text-sm font-medium ${owned ? 'text-green-400' : rarity.text}`}>{item.name}</span>
+  1647→                                    </div>
+  1648→                                    <p className="text-xs text-gray-500 mt-0.5">{item.description}</p>
+  1649→                                    <p className="text-[10px] text-gray-600 mt-0.5">{item.perkDescription}</p>
+  1650→                                  </div>
+  1651→                                  <div className="flex-shrink-0 text-right">
+  1652→                                    {owned ? (
+  1653→                                      <span className="text-xs text-green-500 font-medium px-3 py-1.5 rounded-md bg-green-900/20">Owned ✓</span>
+  1654→                                    ) : (
+  1655→                                      <Button
+  1656→                                        size="sm"
+  1657→                                        onClick={() => setPremiumPurchaseDialog({ item, purchasing: false })}
+  1658→                                        className={`text-xs h-8 min-w-[70px] font-medium ${
+  1659→                                          item.rarity === 'legendary'
+  1660→                                            ? 'bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-700 hover:to-yellow-700 text-black'
+  1661→                                            : item.rarity === 'epic'
+  1662→                                            ? 'bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 text-white'
+  1663→                                            : item.rarity === 'rare'
+  1664→                                            ? 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white'
+  1665→                                            : 'bg-gray-600 hover:bg-gray-500 text-white'
+  1666→                                        }`}
+  1667→                                      >
+  1668→                                        <span className="mr-1">💎</span>{'$'}{item.price.toFixed(2)}
+  1669→                                      </Button>
+  1670→                                    )}
+  1671→                                  </div>
+  1672→                                </div>
+  1673→                              );
+  1674→                            })}
+  1675→                        </div>
+  1676→
+  1677→                        {ownedPremiumItems.length > 0 && (
+  1678→                          <p className="text-[10px] text-gray-600 mt-2 text-center">{ownedPremiumItems.length} of {PREMIUM_ITEMS.length} premium items owned</p>
+  1679→                        )}
+  1680→                      </CardContent>
+  1681→                    </Card>
+  1682→
+  1683→                    {/* Section 1: Boosts */}
+  1684→                    <Card className="bg-gray-900/40 border-gray-800/50">
+  1685→                      <CardHeader className="pb-2 pt-3 px-4">
+  1686→                        <CardTitle className="text-sm text-gray-300">⚡ Temporary Boosts</CardTitle>
+  1687→                        <p className="text-[10px] text-gray-600 -mt-1">Cost: 30min auto income each</p>
+  1688→                      </CardHeader>
+  1689→                      <CardContent className="px-4 pb-3 space-y-2">
+  1690→                        {[
+  1691→                          { id: 'doubleClick', icon: '👆', name: '2x Click Power', desc: 'Double your click power', dur: '60s', maxDur: 600 },
+  1692→                          { id: 'tripleAuto', icon: '⚙️', name: '3x Auto Income', desc: 'Triple your passive income', dur: '60s', maxDur: 600 },
+  1693→                          { id: 'multBoost', icon: '📈', name: '+50% Multiplier', desc: 'Boosts all multipliers by 50%', dur: '90s', maxDur: 900 },
+  1694→                          { id: 'critBoost', icon: '🎯', name: '+10% Crit Chance', desc: 'Extra 10% critical hit chance', dur: '60s', maxDur: 600 },
+  1695→                          { id: 'doubleGolden', icon: '🌟', name: '2x Golden Chance', desc: 'Double golden spawn rate', dur: '2min', maxDur: 1200 },
+  1696→                          { id: 'luckyBoost', icon: '🍀', name: '3x Golden Luck', desc: 'Triple golden spawn rate', dur: '2min', maxDur: 1200 },
+  1697→                        ].map(b => {
+  1698→                          const timer = shopBoosts[b.id as keyof typeof shopBoosts] as number;
+  1699→                          const isActive = timer > 0;
+  1700→                          const myLog = toLogSafe(crystals) + crystalsExp;
+  1701→                          const costLog = autoRateLog + Math.log10(1800);
+  1702→                          const canBuy = myLog >= costLog && !isActive;
+  1703→                          return (
+  1704→                            <div key={b.id} className={`flex items-center gap-3 p-2.5 rounded-lg border transition-all ${isActive ? 'bg-green-900/15 border-green-500/20' : 'bg-gray-800/30 border-transparent hover:border-gray-700/50'}`}>
+  1705→                              <div className="text-xl w-10 h-10 flex items-center justify-center bg-gray-800/60 rounded-lg flex-shrink-0 relative">
+  1706→                                {b.icon}
+  1707→                                {isActive && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse" />}
+  1708→                              </div>
+  1709→                              <div className="flex-1 min-w-0">
+  1710→                                <div className="flex items-center gap-1.5">
+  1711→                                  <span className="text-sm font-medium text-gray-200">{b.name}</span>
+  1712→                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-800 text-gray-500">{b.dur}</span>
+  1713→                                </div>
+  1714→                                <p className="text-xs text-gray-500 mt-0.5">{b.desc}</p>
+  1715→                                {isActive && (
+  1716→                                  <div className="mt-1">
+  1717→                                    <div className="w-full h-1 bg-gray-800 rounded-full overflow-hidden">
+  1718→                                      <div className="h-full bg-green-500 rounded-full transition-all duration-100" style={{ width: `${Math.min(100, (timer / b.maxDur) * 100)}%` }} />
+  1719→                                    </div>
+  1720→                                    <p className="text-[10px] text-green-400 mt-0.5">{Math.ceil(timer / 10)}s left</p>
+  1721→                                  </div>
+  1722→                                )}
+  1723→                              </div>
+  1724→                              <Button
+  1725→                                size="sm"
+  1726→                                disabled={!canBuy}
+  1727→                                onClick={() => { if (buyShopBoost(b.id)) sfxBuy(); }}
+  1728→                                className={`flex-shrink-0 text-xs h-8 min-w-[60px] ${
+  1729→                                  isActive
+  1730→                                    ? 'bg-green-900/30 text-green-400 border border-green-500/30 cursor-default'
+  1731→                                    : canBuy
+  1732→                                    ? 'bg-purple-600 hover:bg-purple-700 text-white'
+  1733→                                    : 'bg-gray-800 text-gray-600 cursor-not-allowed'
+  1734→                                }`}
+  1735→                              >
+  1736→                                {isActive ? 'Active' : 'Buy'}
+  1737→                              </Button>
+  1738→                            </div>
+  1739→                          );
+  1740→                        })}
+  1741→                      </CardContent>
+  1742→                    </Card>
+  1743→
+  1744→                    {/* Section 2: Free Rewards */}
+  1745→                    <Card className="bg-gray-900/40 border-gray-800/50">
+  1746→                      <CardHeader className="pb-2 pt-3 px-4">
+  1747→                        <CardTitle className="text-sm text-gray-300">🎁 Free Rewards</CardTitle>
+  1748→                        {adCooldown > 0 && (
+  1749→                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-800 text-gray-500">
+  1750→                            {Math.ceil(adCooldown / 10)}s cooldown
+  1751→                          </span>
+  1752→                        )}
+  1753→                      </CardHeader>
+  1754→                      <CardContent className="px-4 pb-3 space-y-2">
+  1755→                        {[
+  1756→                          { type: 'doubleAll', icon: '🚀', name: '2x All Income', desc: 'Double ALL income for 5 minutes', tag: '5 min boost' },
+  1757→                          { type: 'instantEarned', icon: '💰', name: '1% of Total Earned', desc: 'Instantly gain 1% of lifetime earnings', tag: 'instant' },
+  1758→                          { type: 'forceGolden', icon: '🌟', name: 'Golden Crystal', desc: 'Spawn a golden crystal immediately', tag: 'instant' },
+  1759→                        ].map(r => {
+  1760→                          const isWatching = adTimer?.type === r.type;
+  1761→                          const isDisabled = adCooldown > 0 || isWatching;
+  1762→                          return (
+  1763→                            <div key={r.type} className={`flex items-center gap-3 p-2.5 rounded-lg border transition-all ${isWatching ? 'bg-cyan-900/15 border-cyan-500/20' : 'bg-gray-800/30 border-transparent hover:border-gray-700/50'}`}>
+  1764→                              <div className="text-xl w-10 h-10 flex items-center justify-center bg-gray-800/60 rounded-lg flex-shrink-0 relative">
+  1765→                                {r.icon}
+  1766→                                {isWatching && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-cyan-500 rounded-full animate-pulse" />}
+  1767→                              </div>
+  1768→                              <div className="flex-1 min-w-0">
+  1769→                                <div className="flex items-center gap-1.5">
+  1770→                                  <span className="text-sm font-medium text-gray-200">{r.name}</span>
+  1771→                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-800 text-gray-500">{r.tag}</span>
+  1772→                                </div>
+  1773→                                <p className="text-xs text-gray-500 mt-0.5">{r.desc}</p>
+  1774→                                {isWatching && (
+  1775→                                  <div className="mt-1">
+  1776→                                    <div className="w-full h-1 bg-gray-800 rounded-full overflow-hidden">
+  1777→                                      <div className="h-full bg-cyan-500 rounded-full transition-all duration-1000" style={{ width: `${((30 - adTimer.remaining) / 30) * 100}%` }} />
+  1778→                                    </div>
+  1779→                                    <p className="text-[10px] text-cyan-400 mt-0.5">{adTimer.remaining}s...</p>
+  1780→                                  </div>
+  1781→                                )}
+  1782→                              </div>
+  1783→                              {isWatching ? (
+  1784→                                <div className="flex-shrink-0 text-xs text-cyan-400 font-mono animate-pulse w-[70px] text-center">
+  1785→                                  Waiting
+  1786→                                </div>
+  1787→                              ) : (
+  1788→                                <Button
+  1789→                                  size="sm"
+  1790→                                  disabled={isDisabled}
+  1791→                                  onClick={() => setAdTimer({ type: r.type, remaining: 30 })}
+  1792→                                  className={`flex-shrink-0 text-xs h-8 min-w-[70px] ${
+  1793→                                    isDisabled
+  1794→                                      ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
+  1795→                                      : 'bg-cyan-600 hover:bg-cyan-700 text-white'
+  1796→                                  }`}
+  1797→                                >
+  1798→                                  {isDisabled ? 'Wait' : 'Claim'}
+  1799→                                </Button>
+  1800→                              )}
+  1801→                            </div>
+  1802→                          );
+  1803→                        })}
+  1804→                        <p className="text-[10px] text-gray-600 text-center pt-1">One reward per 3 minutes</p>
+  1805→                      </CardContent>
+  1806→                    </Card>
+  1807→
+  1808→                    {/* Section 3: Crystal Exchange */}
+  1809→                    <Card className="bg-gray-900/40 border-gray-800/50">
+  1810→                      <CardHeader className="pb-2 pt-3 px-4">
+  1811→                        <div className="flex items-center justify-between">
+  1812→                          <CardTitle className="text-sm text-gray-300">💎 Crystal Exchange</CardTitle>
+  1813→                          <span className="text-[10px] text-gray-600">1:1 trade rate</span>
+  1814→                        </div>
+  1815→                      </CardHeader>
+  1816→                      <CardContent className="px-4 pb-3 space-y-2">
+  1817→                        {[
+  1818→                          { secs: 60, icon: '⚡', label: '1 Minute', sub: 'of auto income' },
+  1819→                          { secs: 300, icon: '🔥', label: '5 Minutes', sub: 'of auto income' },
+  1820→                          { secs: 1800, icon: '💫', label: '30 Minutes', sub: 'of auto income' },
+  1821→                          { secs: 7200, icon: '🌟', label: '2 Hours', sub: 'of auto income' },
+  1822→                        ].map(q => {
+  1823→                          const costLog = autoRateLog + Math.log10(q.secs);
+  1824→                          const myLog = toLogSafe(crystals) + crystalsExp;
+  1825→                          const canBuy = myLog >= costLog && autoRateLog > -Infinity;
+  1826→                          return (
+  1827→                            <div key={q.secs} className={`flex items-center gap-3 p-2.5 rounded-lg border transition-all ${canBuy ? 'bg-gray-800/30 border-transparent hover:border-amber-500/20' : 'bg-gray-800/20 border-transparent opacity-60'}`}>
+  1828→                              <div className="text-xl w-10 h-10 flex items-center justify-center bg-amber-900/20 rounded-lg flex-shrink-0">
+  1829→                                {q.icon}
+  1830→                              </div>
+  1831→                              <div className="flex-1 min-w-0">
+  1832→                                <span className="text-sm font-medium text-gray-200">Buy {q.label}</span>
+  1833→                                <p className="text-[10px] text-gray-500">{q.sub}</p>
+  1834→                              </div>
+  1835→                              <Button
+  1836→                                size="sm"
+  1837→                                disabled={!canBuy}
+  1838→                                onClick={() => { if (buyInstantCrystals(q.secs)) sfxBuy(); }}
+  1839→                                className={`flex-shrink-0 text-xs h-8 min-w-[80px] ${
+  1840→                                  canBuy
+  1841→                                    ? 'bg-amber-600 hover:bg-amber-700 text-white'
+  1842→                                    : 'bg-gray-800 text-gray-600 cursor-not-allowed'
+  1843→                                }`}
+  1844→                              >
+  1845→                                <span className="text-yellow-400 mr-1">💎</span>{fmtExpLog(costLog)}
+  1846→                              </Button>
+  1847→                            </div>
+  1848→                          );
+  1849→                        })}
+  1850→                      </CardContent>
+  1851→                    </Card>
+  1852→                  </div>
+  1853→                </ScrollArea>
+  1854→              </TabsContent>
+  1855→            </Tabs>
+  1856→          </div>
+  1857→        </div>
+  1858→
+  1859→        {/* ====== FOOTER ====== */}
+  1860→        <footer className="relative z-10 border-t border-gray-800/50 bg-gray-950/50 backdrop-blur-sm px-4 py-2 mt-auto">
+  1861→          <div className="flex items-center justify-between text-xs text-gray-600 max-w-5xl mx-auto">
+  1862→            <span>Crystal Clicker v1.0</span>
+  1863→            <div className="flex items-center gap-3">
+  1864→              <span className="text-gray-600" title="Save status">
+  1865→                💾 {saveAge}
+  1866→              </span>
+  1867→              <span className={autoRateLog > -Infinity ? 'cps-glow text-cyan-400' : ''}>
+  1868→                ⚡ {clicksPerSecond} cps
+  1869→              </span>
+  1870→              <span>🏆 {unlockedCount}/{achievements.length}</span>
+  1871→              {prestige > 0 && <span className="text-pink-500">✨ P{prestige}</span>}
+  1872→            </div>
+  1873→          </div>
+  1874→        </footer>
+  1875→
+  1876→        {/* ====== OFFLINE EARNINGS DIALOG ====== */}
+  1877→        <Dialog open={showOfflineBonus} onOpenChange={() => {}}>
+  1878→          <DialogContent className="bg-gray-900 border-gray-700 sm:max-w-md">
+  1879→            <DialogHeader>
+  1880→              <DialogTitle className="text-xl text-center text-green-300">
+  1881→                Welcome Back! 🌙
+  1882→              </DialogTitle>
+  1883→              <DialogDescription className="text-center text-gray-400">
+  1884→                You earned crystals while you were away
+  1885→              </DialogDescription>
+  1886→            </DialogHeader>
+  1887→            <div className="text-center py-4">
+  1888→              <div className="text-4xl font-bold text-gradient-green mb-2">
+  1889→                +{fmt(offlineEarned)}
+  1890→              </div>
+  1891→              <p className="text-sm text-gray-500">
+  1892→                Offline earnings (50% efficiency, 8hr max)
+  1893→              </p>
+  1894→            </div>
+  1895→            <DialogFooter className="flex-col gap-2 sm:flex-col">
+  1896→              <Button
+  1897→                className="w-full bg-green-600 hover:bg-green-700 text-white"
+  1898→                onClick={claimOfflineEarnings}
+  1899→              >
+  1900→                Claim Crystals 💎
+  1901→              </Button>
+  1902→              <Button
+  1903→                variant="ghost"
+  1904→                className="w-full text-gray-500 hover:text-gray-300"
+  1905→                onClick={dismissOfflineBonus}
+  1906→              >
+  1907→                Dismiss
+  1908→              </Button>
+  1909→            </DialogFooter>
+  1910→          </DialogContent>
+  1911→        </Dialog>
+  1912→
+  1913→        {/* ====== DAILY REWARD DIALOG ====== */}
+  1914→        <Dialog open={!!dailyReward} onOpenChange={() => undefined}>
+  1915→          <DialogContent className="bg-gray-900 border-yellow-700/50 sm:max-w-md">
+  1916→            <DialogHeader>
+  1917→              <DialogTitle className="text-xl text-center text-yellow-300">🎁 Daily Reward!</DialogTitle>
+  1918→              <DialogDescription className="text-center text-gray-400">Day {dailyReward?.day} of 7 — Streak: {dailyReward?.streak}</DialogDescription>
+  1919→            </DialogHeader>
+  1920→            <div className="py-4">
+  1921→              <div className="flex justify-center gap-1.5 mb-6">
+  1922→                {[1,2,3,4,5,6,7].map(d => (
+  1923→                  <div key={d} className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center text-xs font-bold transition-all ${
+  1924→                    (dailyReward?.day ?? 0) > d ? 'bg-yellow-600/40 text-yellow-300 border border-yellow-500/50'
+  1925→                    : (dailyReward?.day ?? 0) === d ? 'bg-yellow-500 text-black border-2 border-yellow-300 scale-110'
+  1926→                    : 'bg-gray-800/60 text-gray-600 border border-gray-700/50'}
+  1927→                  }`}>{d === 7 ? '🌟' : d}</div>
+  1928→                ))}
+  1929→              </div>
+  1930→              <div className="text-center">
+  1931→                <div className="text-3xl font-bold text-gradient-gold mb-2">+{dailyReward ? fmt(dailyReward.crystals) : '0'}</div>
+  1932→                <p className="text-sm text-gray-400">crystals</p>
+  1933→                {dailyReward && dailyReward.prestige > 0 && <p className="text-sm text-pink-400 mt-2 font-medium">+{dailyReward.prestige} Prestige Point{dailyReward.prestige > 1 ? 's' : ''} 🌟</p>}
+  1934→              </div>
+  1935→            </div>
+  1936→            <DialogFooter className="flex-col gap-2 sm:flex-col">
+  1937→              <Button className="w-full bg-gradient-to-r from-yellow-600 to-amber-600 hover:from-yellow-700 hover:to-amber-700 text-white font-medium" onClick={() => {
+  1938→                if (!dailyReward || !userId) return;
+  1939→                claimReward(dailyReward.crystals, dailyReward.prestige || undefined);
+  1940→                try { localStorage.setItem(`crystal_clicker_daily_${userId}`, JSON.stringify({ lastClaim: Date.now(), streak: dailyReward.streak })); } catch { /* ignore */ }
+  1941→                sfxMilestone(); setDailyReward(null);
+  1942→              }}>Claim Reward 🎁</Button>
+  1943→            </DialogFooter>
+  1944→          </DialogContent>
+  1945→        </Dialog>
+  1946→
+  1947→        {/* ====== LUCKY SPIN DIALOG ====== */}
+  1948→        <LuckySpin open={spinOpen} onClose={() => setSpinOpen(false)} onReward={(reward) => {
+  1949→          if (reward.type === 'crystals') { claimReward(reward.value); addLog('💎', reward.description, '#a855f7'); }
+  1950→          else if (reward.type === 'golden') { addLog('🌟', reward.description, '#fbbf24'); }
+  1951→          else { addLog('🎰', reward.description, '#22d3ee'); }
+  1952→          sfxMilestone();
+  1953→        }} crystals={crystals} crystalsExp={crystalsExp} autoRateLog={autoRateLog} />
+  1954→
+  1955→        {/* PREMIUM PURCHASE DIALOG */}
+  1956→        <Dialog open={!!premiumPurchaseDialog} onOpenChange={(open: boolean) => { if (!open) setPremiumPurchaseDialog(null); }}>
+  1957→          <DialogContent className="bg-gray-900 border-amber-500/30 sm:max-w-md">
+  1958→            <DialogHeader>
+  1959→              <DialogTitle className="text-xl text-center text-amber-300 flex items-center justify-center gap-2">
+  1960→                <Crown className="w-5 h-5" />
+  1961→                Purchase Premium Item
+  1962→              </DialogTitle>
+  1963→              <DialogDescription className="text-center text-gray-400">This is a one-time permanent purchase</DialogDescription>
+  1964→            </DialogHeader>
+  1965→            {premiumPurchaseDialog && (
+  1966→              <div className="py-4">
+  1967→                <div className="mx-auto w-20 h-20 rounded-2xl flex items-center justify-center text-4xl mb-4 bg-gray-800/60 border border-amber-500/30">
+  1968→                  {premiumPurchaseDialog.item.icon}
+  1969→                </div>
+  1970→                <p className="text-center text-lg font-bold text-amber-300">{premiumPurchaseDialog.item.name}</p>
+  1971→                <p className="text-center text-sm text-gray-400 mt-1">{premiumPurchaseDialog.item.description}</p>
+  1972→                <div className="mt-4 p-3 rounded-lg bg-gray-800/50 border border-gray-700/50">
+  1973→                  <p className="text-xs text-gray-500 mb-1">What you get:</p>
+  1974→                  <p className="text-sm text-gray-300">{premiumPurchaseDialog.item.perkDescription}</p>
+  1975→                </div>
+  1976→                <div className="mt-4 text-center">
+  1977→                  <span className="text-3xl font-bold text-white">{'$'}{premiumPurchaseDialog.item.price.toFixed(2)}</span>
+  1978→                  <p className="text-xs text-gray-500 mt-1">One-time purchase</p>
+  1979→                </div>
+  1980→              </div>
+  1981→            )}
+  1982→            <DialogFooter className="flex-col gap-2 sm:flex-col">
+  1983→              <Button
+  1984→                className="w-full font-medium bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 text-white"
+  1985→                onClick={() => { if (premiumPurchaseDialog) handlePremiumPurchase(premiumPurchaseDialog.item); }}
+  1986→                disabled={premiumPurchaseDialog?.purchasing}
+  1987→              >
+  1988→                {premiumPurchaseDialog?.purchasing
+  1989→                  ? <span className="flex items-center gap-2"><span className="animate-spin">⏳</span> Processing...</span>
+  1990→                  : <span>Purchase for {'$'}{premiumPurchaseDialog?.item.price.toFixed(2)}</span>}
+  1991→              </Button>
+  1992→              <Button variant="ghost" className="w-full text-gray-500 hover:text-gray-300" onClick={() => setPremiumPurchaseDialog(null)}>Cancel</Button>
+  1993→            </DialogFooter>
+  1994→          </DialogContent>
+  1995→        </Dialog>
+  1996→
+  1997→        {/* In-Game Legal Document Dialogs */}
+  1998→        <Dialog open={legalTosOpen} onOpenChange={setLegalTosOpen}>
+  1999→          <DialogContent className="sm:max-w-2xl max-h-[90vh] p-0 gap-0 overflow-hidden bg-[#12122a] border-white/10 text-white/90">
+  2000→            <DialogHeader className="px-6 pt-6 pb-4 shrink-0">
+  2001→              <div className="flex items-center gap-3 mb-1">
+  2002→                <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-purple-500/15 text-purple-400">
+  2003→                  <FileText className="w-5 h-5" />
+  2004→                </div>
+  2005→                <DialogTitle className="text-xl font-bold text-white">Terms of Service</DialogTitle>
+  2006→              </div>
+  2007→            </DialogHeader>
+  2008→            <Separator className="bg-white/10 shrink-0" />
+  2009→            <ScrollArea className="flex-1 max-h-[72vh]">
+  2010→              <div className="px-6 py-5 pr-4">
+  2011→                <pre className="text-[13px] text-white/55 leading-relaxed whitespace-pre-wrap font-sans m-0">
+  2012→                  {TERMS_OF_SERVICE}
+  2013→                </pre>
+  2014→              </div>
+  2015→            </ScrollArea>
+  2016→          </DialogContent>
+  2017→        </Dialog>
+  2018→
+  2019→        <Dialog open={legalPpOpen} onOpenChange={setLegalPpOpen}>
+  2020→          <DialogContent className="sm:max-w-2xl max-h-[90vh] p-0 gap-0 overflow-hidden bg-[#12122a] border-white/10 text-white/90">
+  2021→            <DialogHeader className="px-6 pt-6 pb-4 shrink-0">
+  2022→              <div className="flex items-center gap-3 mb-1">
+  2023→                <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-cyan-500/15 text-cyan-400">
+  2024→                  <ShieldCheck className="w-5 h-5" />
+  2025→                </div>
+  2026→                <DialogTitle className="text-xl font-bold text-white">Privacy Policy</DialogTitle>
+  2027→              </div>
+  2028→            </DialogHeader>
+  2029→            <Separator className="bg-white/10 shrink-0" />
+  2030→            <ScrollArea className="flex-1 max-h-[72vh]">
+  2031→              <div className="px-6 py-5 pr-4">
+  2032→                <pre className="text-[13px] text-white/55 leading-relaxed whitespace-pre-wrap font-sans m-0">
+  2033→                  {PRIVACY_POLICY}
+  2034→                </pre>
+  2035→              </div>
+  2036→            </ScrollArea>
+  2037→          </DialogContent>
+  2038→        </Dialog>
+  2039→      </div>
+  2040→    </TooltipProvider>
+  2041→  );
+  2042→}
+  2043→
+  2044→// ====== Stat Row Component ======
+  2045→function StatRow({ label, value, icon }: { label: string; value: string; icon: string }) {
+  2046→  return (
+  2047→    <div className="flex items-center justify-between">
+  2048→      <span className="text-xs text-gray-500 flex items-center gap-1.5">
+  2049→        <span>{icon}</span>
+  2050→        {label}
+  2051→      </span>
+  2052→      <span className="text-sm text-gray-300 font-medium">{value}</span>
+  2053→    </div>
+  2054→  );
+  2055→}

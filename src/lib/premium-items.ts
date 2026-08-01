@@ -19,13 +19,13 @@ export const PREMIUM_ITEMS: PremiumItem[] = [
   {
     id: 'auto_save_pro',
     name: 'Auto-Save Pro',
-    description: 'Never lose progress again. Auto-saves every 30 seconds.',
+    description: 'Never lose progress. Auto-saves every 30s instead of 5min.',
     icon: '💾',
     price: 0.99,
     category: 'qol',
     rarity: 'common',
     perk: 'auto_save_30s',
-    perkDescription: 'Auto-saves every 30s instead of manual only',
+    perkDescription: 'Auto-saves every 30s (default is 5min)',
   },
   {
     id: 'offline_master',

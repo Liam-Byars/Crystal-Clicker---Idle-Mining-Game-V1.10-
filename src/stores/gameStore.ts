@@ -183,6 +183,8 @@ export interface GameState {
     tripleAuto: number;    // timer ticks remaining
     doubleGolden: number;  // timer ticks remaining
     critBoost: number;     // timer ticks remaining
+    multBoost: number;     // timer ticks remaining — +50% all multipliers
+    luckyBoost: number;    // timer ticks remaining — 3x golden chance
     doubleAll: number;     // timer ticks remaining (from "ads")
   };
   lastSaveTime: number;   // QOL: timestamp of last save
@@ -991,7 +993,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     // Compute click damage in log10 space — uses log stats directly, never overflows
     const shopClickMult = (s.shopBoosts.doubleClick > 0 ? 2 : 1) * (s.shopBoosts.doubleAll > 0 ? 2 : 1);
     const shopAutoMult = (s.shopBoosts.tripleAuto > 0 ? 3 : 1) * (s.shopBoosts.doubleAll > 0 ? 2 : 1);
-    let valueLog = s.clickPowerLog + s.multiplierLog + Math.log10(comboMult) + Math.log10(prestMult) + Math.log10(puMult * shopClickMult) + Math.log10(evMult);
+    const shopMultBonus = s.shopBoosts.multBoost > 0 ? 0.5 : 0; // +50% multiplier in log space
+    let valueLog = s.clickPowerLog + s.multiplierLog + shopMultBonus + Math.log10(comboMult) + Math.log10(prestMult) + Math.log10(puMult * shopClickMult) + Math.log10(evMult);
 
     let isCrit = false;
     let effectiveCrit = s.critChance + (s.shopBoosts.critBoost > 0 ? 0.1 : 0);
@@ -1229,7 +1232,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       const puBonus = s.activePowerUp?.effect === 'tripleAuto' ? s.activePowerUp.value : 1;
       const evBonus = s.activeEvent?.effect === 'doubleAuto' ? s.activeEvent.value : 1;
       const shopAutoMult = (s.shopBoosts.tripleAuto > 0 ? 3 : 1) * (s.shopBoosts.doubleAll > 0 ? 2 : 1);
-      rateLog += Math.log10(puBonus * shopAutoMult) + Math.log10(evBonus);
+      const shopMultBonus = s.shopBoosts.multBoost > 0 ? 0.5 : 0; // +50% multiplier boost
+      rateLog += Math.log10(puBonus * shopAutoMult) + Math.log10(evBonus) + shopMultBonus;
       const prestMult = 1 + s.prestigePoints * 0.1;
       const incomeLog = rateLog + Math.log10(prestMult) + Math.log10(0.1); // 0.1 = 100ms tick
       // Add to crystals (use batched values as base if available, guard NaN)
@@ -1262,7 +1266,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     } else {
       let chance = 0.001;
       if (s.activeEvent?.effect === 'tripleGolden') chance *= s.activeEvent.value;
-      chance *= (s.goldenChance / 0.03) * (s.shopBoosts.doubleGolden > 0 ? 2 : 1);
+      chance *= (s.goldenChance / 0.03) * (s.shopBoosts.doubleGolden > 0 ? 2 : 1) * (s.shopBoosts.luckyBoost > 0 ? 3 : 1);
       // Premium: Golden Aura adds +5% base chance
       if (s.ownedPremiumItems.includes('golden_aura')) chance += 0.0005;
       if (Math.random() < chance) {
@@ -1477,14 +1481,14 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   buyShopBoost: (boostType) => {
     const s = get();
-    // Calculate cost based on auto-rate (log space): cost = 1hr of auto income
-    const costLog = s.autoRateLog + Math.log10(3600); // 1 hour worth
+    // Calculate cost based on auto-rate (log space): cost = 30min of auto income
+    const costLog = s.autoRateLog + Math.log10(1800); // 30 min worth
     const myLog = toLog(s.crystals) + s.crystalsExp;
     if (myLog < costLog) return false;
     // Subtract cost
     const newMyLog = logSub(myLog, costLog);
     const cR = splitLog(newMyLog);
-    const durMap: Record<string, number> = { doubleClick: 600, tripleAuto: 600, doubleGolden: 1200, critBoost: 600 };
+    const durMap: Record<string, number> = { doubleClick: 600, tripleAuto: 600, doubleGolden: 1200, critBoost: 600, multBoost: 900, luckyBoost: 1200 };
     const dur = durMap[boostType] ?? 600;
     const boosts = { ...s.shopBoosts, [boostType]: dur };
     set({ crystals: cR.value, crystalsExp: cR.exp, shopBoosts: boosts, crystalPulse: 3 });
@@ -1555,7 +1559,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         ...Object.values(AREA_UPGRADES).flat().map(u => ({ ...u })),
       ], achievements: buildAchievementConditions(),
       screenShake: false, crystalPulse: 0, activeTab: 'upgrades',
-      shopBoosts: { doubleClick: 0, tripleAuto: 0, doubleGolden: 0, critBoost: 0, doubleAll: 0 },
+      shopBoosts: { doubleClick: 0, tripleAuto: 0, doubleGolden: 0, critBoost: 0, multBoost: 0, luckyBoost: 0, doubleAll: 0 },
       lastSaveTime: Date.now(), adCooldown: 0,
       ownedPremiumItems: [],
     });
