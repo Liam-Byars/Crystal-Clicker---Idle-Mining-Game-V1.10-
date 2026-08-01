@@ -26,6 +26,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { LogOut, UserCircle, Volume2, VolumeX, LogIn, FileText, ShieldCheck, Crown, Sparkles, Star, Settings, Download, Keyboard } from 'lucide-react';
 import { PREMIUM_ITEMS, RARITY_COLORS, getFeaturedItems, getPremiumItemsByCategory } from '@/lib/premium-items';
 import { usePwaInstall } from '@/lib/use-pwa-install';
+import { haptic } from '@/lib/haptics';
+import { useNativePlatform, useNetworkStatus } from '@/lib/use-native-platform';
 
 // ====== Helpers ======
 function toLogSafe(n: number): number {
@@ -141,12 +143,12 @@ function playTone(freq: number, dur: number, type: OscillatorType = 'sine', vol 
   } catch { /* ignore audio errors */ }
 }
 
-function sfxClick() { playTone(800 + Math.random() * 200, 0.08, 'sine', 0.06); }
-function sfxCrit() { playTone(1200, 0.15, 'square', 0.1); playTone(1600, 0.1, 'sine', 0.08); }
-function sfxGolden() { playTone(1000, 0.1, 'sine', 0.1); playTone(1500, 0.15, 'sine', 0.08); playTone(2000, 0.2, 'sine', 0.06); }
-function sfxBuy() { playTone(600, 0.06, 'triangle', 0.06); }
-function sfxAchieve() { playTone(880, 0.15, 'sine', 0.1); playTone(1100, 0.2, 'sine', 0.08); }
-function sfxMilestone() { playTone(523, 0.15, 'sine', 0.1); playTone(659, 0.15, 'sine', 0.08); playTone(784, 0.2, 'sine', 0.06); }
+function sfxClick() { playTone(800 + Math.random() * 200, 0.08, 'sine', 0.06); haptic('click'); }
+function sfxCrit() { playTone(1200, 0.15, 'square', 0.1); playTone(1600, 0.1, 'sine', 0.08); haptic('crit'); }
+function sfxGolden() { playTone(1000, 0.1, 'sine', 0.1); playTone(1500, 0.15, 'sine', 0.08); playTone(2000, 0.2, 'sine', 0.06); haptic('golden'); }
+function sfxBuy() { playTone(600, 0.06, 'triangle', 0.06); haptic('buy'); }
+function sfxAchieve() { playTone(880, 0.15, 'sine', 0.1); playTone(1100, 0.2, 'sine', 0.08); haptic('achieve'); }
+function sfxMilestone() { playTone(523, 0.15, 'sine', 0.1); playTone(659, 0.15, 'sine', 0.08); playTone(784, 0.2, 'sine', 0.06); haptic('achieve'); }
 
 // ====== Color Maps for floating text ======
 const floatColors: Record<FloatingText['type'], string> = {
@@ -202,6 +204,8 @@ export default function GamePage() {
   const [premiumFilter, setPremiumFilter] = useState<string>('all');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const pwa = usePwaInstall();
+  const isNative = useNativePlatform();
+  const { connected: isOnline } = useNetworkStatus();
   const addLog = useCallback((icon: string, text: string, color: string) => {
     setActivityLog(prev => [...prev.slice(-49), {id: logIdRef.current++, icon, text, color, time: Date.now()}]);
   }, []);
@@ -1872,6 +1876,11 @@ export default function GamePage() {
           <div className="flex items-center justify-between text-xs text-gray-600 max-w-5xl mx-auto">
             <span>Crystal Clicker v1.0</span>
             <div className="flex items-center gap-3">
+              {isNative && (
+                <span className={isOnline ? 'text-green-500' : 'text-red-500'} title={isOnline ? 'Online' : 'Offline - check connection'}>
+                  {isOnline ? '📶' : '📵'}
+                </span>
+              )}
               <button onClick={() => setSettingsOpen(true)} className="text-gray-500 hover:text-gray-300 transition-colors" title="Settings">
               <Settings className="w-3.5 h-3.5" />
             </button>

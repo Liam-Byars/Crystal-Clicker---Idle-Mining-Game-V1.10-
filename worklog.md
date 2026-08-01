@@ -754,3 +754,34 @@ Stage Summary:
   4. Set up Expo Application Services (EAS) build
   5. Test on physical device via Expo Go
   6. Submit to App Store Connect + Google Play Console
+---
+Task ID: 1
+Agent: Main Agent
+Task: Set up Capacitor for iOS/Android App Store submission
+
+Work Log:
+- Installed @capacitor/core, @capacitor/cli, @capacitor/ios, @capacitor/android
+- Installed plugins: @capacitor/app, @capacitor/haptics, @capacitor/status-bar, @capacitor/network
+- Installed @capacitor/assets (dev) for icon generation
+- Created capacitor.config.ts with appId 'com.crystalclicker.app', server URL mode
+- Added iOS platform (npx cap add ios) - Xcode project at /ios/App
+- Added Android platform (npx cap add android) - Android project at /android
+- Configured iOS Info.plist: portrait-only orientation
+- Configured AndroidManifest.xml: portrait-only via screenOrientation, app label 'Crystal Clicker'
+- Added npm scripts: cap:sync, cap:ios, cap:android
+- Created /src/lib/haptics.ts - cross-platform haptic feedback (light/medium/heavy for click/buy/crit, success for golden/achieve)
+- Created /src/lib/use-native-platform.ts - useNativePlatform() and useNetworkStatus() hooks
+- Integrated haptic feedback into all 6 sfx functions in page.tsx (sfxClick, sfxCrit, sfxGolden, sfxBuy, sfxAchieve, sfxMilestone)
+- Added network status indicator (📶/📵) in footer, visible only on native platform
+- Added safe area inset padding (env(safe-area-inset-*)) in layout.tsx for iPhone notch/home indicator
+- Excluded ios/, android/, rn-app/ from ESLint
+- Lint passes clean, dev server running without errors
+
+Stage Summary:
+- Capacitor is fully configured and ready for App Store / Google Play submission
+- Haptic feedback integrated: clicks = light, buys = medium, crits = heavy, golden/achievements = success
+- Network status shown in footer on native builds
+- Safe area insets handled for iPhone notch/home indicator
+- Firebase Auth, save/load API, premium API all work as-is through Capacitor's WebView
+- To build for stores: deploy Next.js backend, update server.url in capacitor.config.ts, run `bun run cap:sync` then `bun run cap:ios` or `bun run cap:android`
+- App icons need to be generated: prepare a 1024x1024 source icon, then run `npx capacitor-assets generate`
