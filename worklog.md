@@ -619,7 +619,7 @@ Work Log:
   - Prestige Headstart: +0.5x multiplier per prestige level
   - Offline Master: 75% efficiency (was 50%), 16hr cap (was 8hr)
   - Double Daily: 2x daily reward crystals & prestige
-  - Auto-Save Pro: 10s auto-save interval (was 15s)
+  - Auto-Save Pro: Auto-saves every 30s (was 15s for everyone; now manual-only without purchase)
 - Built premium shop UI: filterable by category, featured items banner, rarity-styled cards, purchase confirmation dialog
 - Added Premium Perks section to Stats tab
 - Fixed $ sign JSX parsing issue (must use {'$'} in JSX)
