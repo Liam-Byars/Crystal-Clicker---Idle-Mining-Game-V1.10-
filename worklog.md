@@ -662,3 +662,21 @@ Stage Summary:
     - Duration map: multBoost=900 (90s), luckyBoost=1200 (2min)
     - Updated Stats tab to show new boost timers
     - Boost cost reduced from 1hr to 30min of auto income
+
+- **PWA support — works on iPhone & Android**
+  - Created `public/manifest.json` with standalone display, portrait orientation, purple theme
+  - Generated `public/icon-512.png` app icon via AI
+  - Updated `layout.tsx`: Viewport config (no zoom), theme-color, apple-mobile-web-app-capable, apple-touch-icon links
+  - Created `use-pwa-install.ts` hook: detects `beforeinstallprompt`, iOS detection, install/dismiss, standalone check via `useSyncExternalStore`
+  - PWA install banner: slides up after 30s on Android (with Install button), shows iOS-specific instructions on iPhone
+  - Install section also in Settings dialog for manual trigger
+
+- **QOL: Settings dialog (Esc key or footer gear icon)**
+  - Sound Effects toggle (toggles the `soundOn` module variable)
+  - Keyboard Shortcuts reference panel (1-6 tabs, Q buy qty, Ctrl+S save, W spin, Esc settings)
+  - Install App section (platform-aware: direct install on Android, instructions on iOS)
+  - Version info + session timer
+  - Settings button added to footer bar
+
+- **QOL: Keyboard shortcut — Esc**
+  - Toggles Settings dialog open/close

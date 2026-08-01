@@ -23,8 +23,9 @@ import { SignInScreen } from '@/components/sign-in-screen';
 import { TERMS_OF_SERVICE, PRIVACY_POLICY } from '@/lib/legal-content';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { LogOut, UserCircle, Volume2, VolumeX, LogIn, FileText, ShieldCheck, Crown, Sparkles, Star } from 'lucide-react';
+import { LogOut, UserCircle, Volume2, VolumeX, LogIn, FileText, ShieldCheck, Crown, Sparkles, Star, Settings, Download, Keyboard } from 'lucide-react';
 import { PREMIUM_ITEMS, RARITY_COLORS, getFeaturedItems, getPremiumItemsByCategory } from '@/lib/premium-items';
+import { usePwaInstall } from '@/lib/use-pwa-install';
 
 // ====== Helpers ======
 function toLogSafe(n: number): number {
@@ -199,6 +200,8 @@ export default function GamePage() {
   const [saveAge, setSaveAge] = useState('');
   const [premiumPurchaseDialog, setPremiumPurchaseDialog] = useState<{item: typeof PREMIUM_ITEMS[0]; purchasing: boolean} | null>(null);
   const [premiumFilter, setPremiumFilter] = useState<string>('all');
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const pwa = usePwaInstall();
   const addLog = useCallback((icon: string, text: string, color: string) => {
     setActivityLog(prev => [...prev.slice(-49), {id: logIdRef.current++, icon, text, color, time: Date.now()}]);
   }, []);
@@ -620,6 +623,10 @@ export default function GamePage() {
       if (tabMap[e.key]) {
         e.preventDefault();
         setActiveTab(tabMap[e.key]);
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setSettingsOpen(s => !s);
       }
     };
     window.addEventListener('keydown', handler);
@@ -1865,7 +1872,10 @@ export default function GamePage() {
           <div className="flex items-center justify-between text-xs text-gray-600 max-w-5xl mx-auto">
             <span>Crystal Clicker v1.0</span>
             <div className="flex items-center gap-3">
-              <span className="text-gray-600" title="Save status">
+              <button onClick={() => setSettingsOpen(true)} className="text-gray-500 hover:text-gray-300 transition-colors" title="Settings">
+              <Settings className="w-3.5 h-3.5" />
+            </button>
+            <span className="text-gray-600" title="Save status">
                 💾 {saveAge}
               </span>
               <span className={autoRateLog > -Infinity ? 'cps-glow text-cyan-400' : ''}>
@@ -2038,6 +2048,126 @@ export default function GamePage() {
                 </pre>
               </div>
             </ScrollArea>
+          </DialogContent>
+        </Dialog>
+
+        {/* ====== PWA INSTALL BANNER ====== */}
+        <AnimatePresence>
+          {pwa.showPrompt && pwa.canInstall && (
+            <motion.div
+              initial={{ y: 100, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 100, opacity: 0 }}
+              className="fixed bottom-16 left-3 right-3 sm:left-auto sm:right-4 sm:bottom-4 sm:w-80 z-50 bg-gray-900 border border-purple-500/30 rounded-xl p-3 shadow-lg shadow-purple-500/10"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-purple-600/20 flex items-center justify-center flex-shrink-0">
+                  <Download className="w-5 h-5 text-purple-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-200">Install Crystal Clicker</p>
+                  <p className="text-[11px] text-gray-500">Add to home screen for the best experience</p>
+                </div>
+                <Button size="sm" onClick={pwa.install} className="bg-purple-600 hover:bg-purple-700 text-white text-xs h-8 flex-shrink-0">
+                  Install
+                </Button>
+                <button onClick={pwa.dismiss} className="text-gray-600 hover:text-gray-400 ml-1">
+                  <span className="text-xs">✕</span>
+                </button>
+              </div>
+            </motion.div>
+          )}
+          {pwa.showPrompt && pwa.isIOS && !pwa.isInstalled && (
+            <motion.div
+              initial={{ y: 100, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 100, opacity: 0 }}
+              className="fixed bottom-16 left-3 right-3 sm:left-auto sm:right-4 sm:bottom-4 sm:w-80 z-50 bg-gray-900 border border-purple-500/30 rounded-xl p-3 shadow-lg shadow-purple-500/10"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-purple-600/20 flex items-center justify-center flex-shrink-0">
+                  <Download className="w-5 h-5 text-purple-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-200">Install on iPhone</p>
+                  <p className="text-[11px] text-gray-500">Tap Share, then "Add to Home Screen"</p>
+                </div>
+                <button onClick={pwa.dismiss} className="text-gray-600 hover:text-gray-400 ml-1">
+                  <span className="text-xs">✕</span>
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ====== SETTINGS DIALOG ====== */}
+        <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+          <DialogContent className="bg-gray-900 border-gray-700 sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-lg text-gray-200 flex items-center gap-2">
+                <Settings className="w-4 h-4" /> Settings
+              </DialogTitle>
+              <DialogDescription className="text-gray-500">Game preferences and information</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              {/* Sound */}
+              <div className="flex items-center justify-between p-3 rounded-lg bg-gray-800/50">
+                <div className="flex items-center gap-2">
+                  {soundOn ? <Volume2 className="w-4 h-4 text-gray-400" /> : <VolumeX className="w-4 h-4 text-gray-500" />}
+                  <div>
+                    <p className="text-sm text-gray-300">Sound Effects</p>
+                    <p className="text-[10px] text-gray-600">Click, purchase, and event sounds</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => { soundOn = !soundOn; setSettingsOpen(s => !s); }}
+                  className={`relative w-10 h-6 rounded-full transition-colors ${soundOn ? 'bg-purple-600' : 'bg-gray-700'}`}
+                >
+                  <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${soundOn ? 'left-5' : 'left-1'}`} />
+                </button>
+              </div>
+
+              {/* Keyboard Shortcuts */}
+              <div className="p-3 rounded-lg bg-gray-800/50">
+                <div className="flex items-center gap-2 mb-2">
+                  <Keyboard className="w-4 h-4 text-gray-400" />
+                  <p className="text-sm text-gray-300">Keyboard Shortcuts</p>
+                </div>
+                <div className="space-y-1 text-xs">
+                  <div className="flex justify-between"><span className="text-gray-500">Switch tabs</span><span className="text-gray-400 font-mono">1-6</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">Buy quantity</span><span className="text-gray-400 font-mono">Q</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">Quick save</span><span className="text-gray-400 font-mono">Ctrl+S</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">Lucky spin</span><span className="text-gray-400 font-mono">W</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">Settings</span><span className="text-gray-400 font-mono">Esc</span></div>
+                </div>
+              </div>
+
+              {/* Install App */}
+              {!pwa.isInstalled && (
+                <div className="p-3 rounded-lg bg-gray-800/50">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Download className="w-4 h-4 text-purple-400" />
+                    <p className="text-sm text-gray-300">Install App</p>
+                  </div>
+                  <p className="text-xs text-gray-500 mb-2">Install on your device for the best experience.</p>
+                  {pwa.canInstall ? (
+                    <Button size="sm" onClick={pwa.install} className="w-full bg-purple-600 hover:bg-purple-700 text-white text-xs">
+                      Install Now
+                    </Button>
+                  ) : pwa.isIOS ? (
+                    <p className="text-[11px] text-gray-400">Use the Share button, then "Add to Home Screen"</p>
+                  ) : (
+                    <p className="text-[11px] text-gray-400">Use your browser menu to install this app</p>
+                  )}
+                </div>
+              )}
+
+              {/* Version */}
+              <div className="text-center pt-2">
+                <p className="text-[10px] text-gray-700">Crystal Clicker v1.0</p>
+                <p className="text-[10px] text-gray-700">Session: {fmtTime(sessionTime)}</p>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
       </div>
