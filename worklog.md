@@ -680,3 +680,77 @@ Stage Summary:
 
 - **QOL: Keyboard shortcut — Esc**
   - Toggles Settings dialog open/close
+
+### Session 11 Work (Current)
+- **React Native conversion started — NOTHING deleted, all web files intact**
+
+**Architecture:**
+  - `/shared/` — Platform-independent game logic (8 files, compiles for both web and RN)
+  - `/rn-app/` — Full Expo React Native project (25+ files)
+  - `/src/` — Original Next.js web app (unchanged)
+  - RN app communicates with Next.js backend via HTTP APIs
+
+**Shared layer (`/shared/`):**
+  - `game/safe-math.ts` — Pure log10 math (copied, zero deps)
+  - `game/mine-generator.ts` — Area/upgrade data generation (copied, self-contained)
+  - `game/premium-items.ts` — Premium shop item definitions (copied, zero deps)
+  - `game/types.ts` — All game interfaces extracted: Upgrade, Achievement, FloatingText, PowerUp, GameEvent, Milestone, BuyQuantity, ActiveTab, ShopBoosts, ClickRipple, LogEntry, GameState
+  - `api/types.ts` — API request/response types (SaveRequest, LoadResponse, PremiumPurchaseRequest, etc.)
+  - All verified: zero imports of react/next/browser APIs
+
+**RN project (`/rn-app/`):**
+  - Expo 52 + expo-router 4 + React 18.3.1
+  - Dependencies: zustand, react-native-reanimated, gesture-handler, async-storage, secure-store
+  - `app.json` — iOS (com.crystalclicker.app) + Android config, dark UI, portrait
+  - `tsconfig.json` — Path aliases: `@shared/*` → `../shared/*`, `@/*` → `./src/*`
+
+**RN services:**
+  - `services/api.ts` — HTTP client for save/load/premium (configurable base URL)
+  - `services/storage.ts` — AsyncStorage wrapper (userId, local save, daily rewards)
+
+**RN game store (`stores/gameStore.ts`):**
+  - Full Zustand store (~1300 lines) adapted from web version
+  - ALL game mechanics preserved: click, combo, crit, golden, power-ups, events, auto-income, prestige, achievements, milestones, area unlocks, shop boosts, premium perks
+  - Removed: window, document, localStorage, AudioContext
+  - tick() function intact — RN caller sets up 100ms interval
+  - getSaveData()/loadSave() are pure data in/out
+
+**RN UI components:**
+  - `theme/colors.ts` — Dark purple theme tokens matching web
+  - `ui/Button.tsx` — 6 variants, 3 sizes, spring animations
+  - `ui/Card.tsx` — Dark translucent card
+  - `ui/Badge.tsx` — Pill labels
+  - `ui/ProgressBar.tsx` — Animated progress bar
+  - `ui/Modal.tsx` — Animated modal with fade+slide
+  - `ui/Tabs.tsx` — Bottom-fixed tab bar
+  - `ui/StatRow.tsx` — Key-value stat display
+
+**RN game components:**
+  - `game/FloatingText.tsx` — Reanimated float-up-and-fade damage numbers
+  - `game/CrystalArea.tsx` — Pressable crystal with gradient, golden overlay, combo display
+  - `game/UpgradeCard.tsx` — Compact upgrade row with buy button
+  - `game/UpgradeList.tsx` — Area tabs + buy quantity + grouped upgrade cards
+
+**RN main screen (`screens/GameScreen.tsx`, 1032 lines):**
+  - Full game loop: load → tick → save
+  - 5 tabs: Upgrades, Stats, Prestige, Shop, Settings
+  - Guest user auto-generation
+  - Event/power-up/achievement notification bars
+  - Manual save + reset with confirmation
+
+**Not yet converted (web-only):**
+  - World Map, Lucky Spin, Activity Log, Sign-In Screen, Legal dialogs
+  - Sound effects (needs react-native-sound)
+  - Achievement notification queue animation
+  - Premium shop with real purchases
+  - Offline earnings dialog
+  - Daily reward dialog
+  - PWA install prompt (not needed for native app)
+
+**Next steps for App Store:**
+  1. Install deps in rn-app: `cd rn-app && npm install`
+  2. Convert remaining components (world-map, lucky-spin, activity-log, sign-in)
+  3. Add sound via react-native-sound or expo-av
+  4. Set up Expo Application Services (EAS) build
+  5. Test on physical device via Expo Go
+  6. Submit to App Store Connect + Google Play Console

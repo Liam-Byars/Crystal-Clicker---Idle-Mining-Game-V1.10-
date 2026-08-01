@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "Crystal Clicker",
+    "slug": "crystal-clicker",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "backgroundColor": "#0a0a1a"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.crystalclicker.app",
+      "buildNumber": "1"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0a0a1a"
+      },
+      "package": "com.crystalclicker.app",
+      "versionCode": 1
+    },
+    "plugins": ["expo-router", "expo-secure-store"],
+    "scheme": "crystalclicker",
+    "extra": {
+      "apiBase": "YOUR_PRODUCTION_URL_HERE"
+    }
+  }
+}
