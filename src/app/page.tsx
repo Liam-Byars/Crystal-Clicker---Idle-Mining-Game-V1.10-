@@ -194,6 +194,8 @@ export default function GamePage() {
   const [spinOpen, setSpinOpen] = useState(false);
   const logIdRef = useRef(0);
   const [activityLog, setActivityLog] = useState<LogEntry[]>([]);
+  const [adTimer, setAdTimer] = useState<{type: string; remaining: number} | null>(null);
+  const [saveAge, setSaveAge] = useState('');
   const addLog = useCallback((icon: string, text: string, color: string) => {
     setActivityLog(prev => [...prev.slice(-49), {id: logIdRef.current++, icon, text, color, time: Date.now()}]);
   }, []);
@@ -247,6 +249,10 @@ export default function GamePage() {
   const totalCrits = useGameStore(s => s.totalCrits);
   const goldenClicks = useGameStore(s => s.goldenClicks);
   const totalEvents = useGameStore(s => s.totalEvents);
+  const shopBoosts = useGameStore(s => s.shopBoosts);
+  const adCooldown = useGameStore(s => s.adCooldown);
+  const lastSaveTime = useGameStore(s => s.lastSaveTime);
+  const bestSessionCps = useGameStore(s => s.bestSessionCps);
 
   const click = useGameStore(s => s.click);
   const clickGolden = useGameStore(s => s.clickGolden);
@@ -260,6 +266,9 @@ export default function GamePage() {
   const getSaveData = useGameStore(s => s.getSaveData);
   const loadSave = useGameStore(s => s.loadSave);
   const tick = useGameStore(s => s.tick);
+  const buyShopBoost = useGameStore(s => s.buyShopBoost);
+  const claimAdReward = useGameStore(s => s.claimAdReward);
+  const buyInstantCrystals = useGameStore(s => s.buyInstantCrystals);
 
   // ====== Derived ======
   const unlockedCount = achievements.filter(a => a.unlocked).length;
@@ -282,6 +291,37 @@ export default function GamePage() {
     const iv = setInterval(() => setSessionTime(Date.now() - sessionStartTime), 1000);
     return () => clearInterval(iv);
   }, [sessionStartTime]);
+
+  // ====== Save Age Updater ======
+  useEffect(() => {
+    const update = () => {
+      const ago = Date.now() - lastSaveTime;
+      if (ago < 60000) setSaveAge(`saved ${Math.max(1, Math.floor(ago / 1000))}s ago`);
+      else if (ago < 3600000) setSaveAge(`saved ${Math.floor(ago / 60000)}m ago`);
+      else setSaveAge(`saved ${Math.floor(ago / 3600000)}h ago`);
+    };
+    update();
+    const iv = setInterval(update, 5000);
+    return () => clearInterval(iv);
+  }, [lastSaveTime]);
+
+  // ====== Ad Timer ======
+  useEffect(() => {
+    if (!adTimer) return;
+    if (adTimer.remaining <= 0) {
+      claimAdReward(adTimer.type);
+      setAdTimer(null);
+      sfxMilestone();
+      return;
+    }
+    const iv = setInterval(() => {
+      setAdTimer(prev => {
+        if (!prev || prev.remaining <= 1) return null;
+        return { ...prev, remaining: prev.remaining - 1 };
+      });
+    }, 1000);
+    return () => clearInterval(iv);
+  }, [adTimer, claimAdReward]);
 
   // ====== Daily Reward Check ======
   const claimReward = useGameStore(s => s.claimReward);
@@ -338,6 +378,7 @@ export default function GamePage() {
         });
         await savePromise;
         setSaveStatus('saved');
+        useGameStore.setState({ lastSaveTime: Date.now() });
         setTimeout(() => setSaveStatus('idle'), 2000);
       } catch {
         setSaveStatus('error');
@@ -514,6 +555,44 @@ export default function GamePage() {
     const canBuy = n > 0;
     return { count: n, costLog, canBuy, label: n > 0 ? `${n}x ${fmtExpLog(costLog)}` : fmtExpLog(costLog) };
   }, []);
+
+  // ====== Keyboard Shortcuts ======
+  useEffect(() => {
+    if (!userId) return;
+    const handler = (e: KeyboardEvent) => {
+      // Skip if dialog is open
+      const dialogEl = document.querySelector('[role="dialog"]');
+      if (dialogEl && (dialogEl as HTMLElement).offsetParent !== null) return;
+      // Skip if user is typing in an input
+      if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return;
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        const rect = crystalRef.current?.getBoundingClientRect();
+        if (rect) {
+          const x = rect.width / 2;
+          const y = rect.height / 2;
+          if (goldenActive) {
+            clickGolden(x, y);
+            sfxGolden();
+          } else {
+            click(x, y);
+            if (Math.random() < critChance) sfxCrit(); else sfxClick();
+          }
+          if (audioCtx?.state === 'suspended') audioCtx.resume();
+        }
+      }
+      const tabMap: Record<string, 'upgrades' | 'map' | 'achievements' | 'stats' | 'prestige' | 'shop'> = {
+        '1': 'upgrades', '2': 'map', '3': 'achievements', '4': 'stats', '5': 'prestige', '6': 'shop',
+      };
+      if (tabMap[e.key]) {
+        e.preventDefault();
+        setActiveTab(tabMap[e.key]);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [userId, click, clickGolden, goldenActive, critChance, setActiveTab]);
 
   // ====== Render ======
   if (authLoading) {
@@ -1009,6 +1088,7 @@ export default function GamePage() {
                         body: JSON.stringify(payload),
                       });
                       setSaveStatus('saved');
+                      useGameStore.setState({ lastSaveTime: Date.now() });
                       setTimeout(() => setSaveStatus('idle'), 2000);
                     } catch {
                       setSaveStatus('error');
@@ -1047,13 +1127,14 @@ export default function GamePage() {
               onValueChange={(v) => setActiveTab(v as typeof activeTab)}
               className="flex-1 flex flex-col min-h-0"
             >
-              <TabsList className="bg-gray-900/60 border border-gray-800/50 w-full grid grid-cols-5 mb-3">
+              <TabsList className="bg-gray-900/60 border border-gray-800/50 w-full grid grid-cols-6 mb-3">
                 {[
                   { val: 'upgrades' as const, label: 'Upgrades', icon: '⬆️', cls: 'tab-glow-upgrades' },
                   { val: 'map' as const, label: 'Map', icon: '🗺️', cls: 'tab-glow-map' },
                   { val: 'achievements' as const, label: 'Achieve', icon: '🏆', cls: 'tab-glow-achievements' },
                   { val: 'stats' as const, label: 'Stats', icon: '📊', cls: 'tab-glow-stats' },
                   { val: 'prestige' as const, label: 'Prestige', icon: '🔄', cls: 'tab-glow-prestige' },
+                  { val: 'shop' as const, label: 'Shop', icon: '🛒', cls: 'tab-glow-prestige' },
                 ].map(t => (
                   <TabsTrigger
                     key={t.val}
@@ -1195,6 +1276,11 @@ export default function GamePage() {
                           <div className="flex-1 min-w-0">
                             <div className="text-sm font-medium text-gray-200 truncate">{a.name}</div>
                             <div className="text-xs text-gray-500 truncate">{a.description}</div>
+                            {!a.unlocked && (
+                              <div className="mt-1.5 h-1 bg-gray-800 rounded-full overflow-hidden">
+                                <div className="h-full bg-gray-700 rounded-full w-full opacity-40" />
+                              </div>
+                            )}
                           </div>
                           {a.unlocked && (
                             <Badge className="bg-amber-600/20 text-amber-400 border-amber-600/30 text-[10px]">
@@ -1218,6 +1304,7 @@ export default function GamePage() {
                         <CardTitle className="text-sm text-gray-300">Resources</CardTitle>
                       </CardHeader>
                       <CardContent className="px-4 pb-3 space-y-2">
+                        <StatRow label="Playtime" value={fmtTime(sessionTime)} icon="🕐" />
                         <StatRow label="Crystals" value={fmt(crystals, crystalsExp)} icon="💎" />
                         <StatRow label="Total Earned" value={fmt(totalEarned, totalEarnedExp)} icon="💰" />
                         <StatRow label="Click Power" value={fmtExpLog(clickPowerLog)} icon="⚔️" />
@@ -1236,6 +1323,7 @@ export default function GamePage() {
                         <StatRow label="Total Clicks" value={fmt(totalClicks)} icon="👆" />
                         <StatRow label="Session Clicks" value={fmt(sessionClicks)} icon="🖱️" />
                         <StatRow label="Click Speed" value={`${clicksPerSecond}/s`} icon="⚡" />
+                        <StatRow label="Best CPS" value={`${bestSessionCps}/s`} icon="🚀" />
                         <StatRow label="Max Combo" value={`${maxCombo}x`} icon="🔥" />
                         <StatRow label="Crit Chance" value={`${(critChance * 100).toFixed(1)}%`} icon="🎯" />
                         <StatRow label="Total Crits" value={fmt(totalCrits)} icon="💥" />
@@ -1254,6 +1342,17 @@ export default function GamePage() {
                         <StatRow label="Total Upgrades" value={String(totalUpgrades)} icon="⬆️" />
                         <StatRow label="Prestige Count" value={String(prestige)} icon="🔄" />
                         <StatRow label="Session Earned" value={fmt(sessionEarned)} icon="📈" />
+                        {Object.entries(shopBoosts).some(([, v]) => v > 0) && (
+                          <>
+                            <Separator className="bg-gray-700/30 my-1" />
+                            <div className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Active Boosts</div>
+                            {shopBoosts.doubleClick > 0 && <StatRow label="2x Click Power" value={`${Math.ceil(shopBoosts.doubleClick / 10)}s`} icon="⚡" />}
+                            {shopBoosts.tripleAuto > 0 && <StatRow label="3x Auto Rate" value={`${Math.ceil(shopBoosts.tripleAuto / 10)}s`} icon="🔥" />}
+                            {shopBoosts.doubleGolden > 0 && <StatRow label="2x Golden Chance" value={`${Math.ceil(shopBoosts.doubleGolden / 10)}s`} icon="🌟" />}
+                            {shopBoosts.critBoost > 0 && <StatRow label="+10% Crit Chance" value={`${Math.ceil(shopBoosts.critBoost / 10)}s`} icon="🎯" />}
+                            {shopBoosts.doubleAll > 0 && <StatRow label="2x All Income" value={`${Math.ceil(shopBoosts.doubleAll / 10)}s`} icon="📺" />}
+                          </>
+                        )}
                       </CardContent>
                     </Card>
 
@@ -1335,15 +1434,31 @@ export default function GamePage() {
                           <div className="flex justify-between text-sm">
                             <span className="text-gray-400">Points on Prestige</span>
                             <span className="text-yellow-300 font-bold">
-                              {totalEarned >= 1000
-                                ? `+${Math.floor(Math.sqrt(totalEarned / 1000))}`
-                                : 'Need 1,000 total'}
+                              {(() => {
+                                const effectiveLog = toLogSafe(totalEarned) + totalEarnedExp;
+                                const ptsLog = 0.5 * (effectiveLog - 3); // log10(sqrt(total/1000))
+                                if (effectiveLog < 3) return 'Need 1,000 total';
+                                const pts = ptsLog > 15 ? '1e15+' : String(Math.floor(Math.pow(10, ptsLog)));
+                                return `+${pts}`;
+                              })()}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-400">New Total Bonus</span>
+                            <span className="text-pink-200 font-medium">
+                              {(() => {
+                                const effectiveLog = toLogSafe(totalEarned) + totalEarnedExp;
+                                const ptsLog = 0.5 * (effectiveLog - 3);
+                                if (effectiveLog < 3) return '—';
+                                const newPts = ptsLog > 15 ? 1e15 : Math.floor(Math.pow(10, ptsLog));
+                                return `+${(prestigePoints + newPts) * 10}%`;
+                              })()}
                             </span>
                           </div>
                         </div>
                         <Button
                           className="w-full bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700 text-white font-medium"
-                          disabled={totalEarned < 1000}
+                          disabled={toLogSafe(totalEarned) + totalEarnedExp < 3}
                           onClick={() => {
                             if (confirm('Prestige will reset your crystals and upgrades. You keep achievements, prestige points, and golden/crit stats. Continue?')) {
                               performPrestige();
@@ -1351,7 +1466,7 @@ export default function GamePage() {
                             }
                           }}
                         >
-                          {totalEarned >= 1000 ? '🔄 Perform Prestige' : '🔒 Earn 1,000 total crystals first'}
+                          {toLogSafe(totalEarned) + totalEarnedExp >= 3 ? '🔄 Perform Prestige' : '🔒 Earn 1,000 total crystals first'}
                         </Button>
                       </CardContent>
                     </Card>
@@ -1382,6 +1497,152 @@ export default function GamePage() {
                   </div>
                 </ScrollArea>
               </TabsContent>
+
+              {/* ====== SHOP TAB ====== */}
+              <TabsContent value="shop" className="flex-1 min-h-0 mt-0">
+                <ScrollArea className="h-[calc(100vh-340px)] lg:h-[calc(100vh-320px)]">
+                  <div className="space-y-3 pr-3 pb-4">
+                    {/* Section 1: Boosts */}
+                    <Card className="bg-gray-900/40 border-gray-800/50">
+                      <CardHeader className="pb-2 pt-3 px-4">
+                        <CardTitle className="text-sm text-gray-300">⚡ Boosts</CardTitle>
+                      </CardHeader>
+                      <CardContent className="px-4 pb-3 space-y-2">
+                        {[
+                          { id: 'doubleClick', icon: '⚡', name: '2x Click Power', desc: 'Double your click power', dur: '60s' },
+                          { id: 'tripleAuto', icon: '🔥', name: '3x Auto Rate', desc: 'Triple your auto income', dur: '60s' },
+                          { id: 'doubleGolden', icon: '🌟', name: '2x Golden Chance', desc: 'Double golden crystal chance', dur: '120s' },
+                          { id: 'critBoost', icon: '🎯', name: '+10% Crit Chance', desc: 'Extra 10% critical hit chance', dur: '60s' },
+                        ].map(b => {
+                          const timer = shopBoosts[b.id as keyof typeof shopBoosts] as number;
+                          const isActive = timer > 0;
+                          const myLog = toLogSafe(crystals) + crystalsExp;
+                          const costLog = autoRateLog + Math.log10(3600);
+                          const canBuy = myLog >= costLog && !isActive;
+                          return (
+                            <div key={b.id} className="flex items-center gap-3 p-2 rounded-lg bg-gray-800/30">
+                              <div className="text-2xl w-9 h-9 flex items-center justify-center bg-gray-800/60 rounded-lg flex-shrink-0 relative">
+                                {b.icon}
+                                {isActive && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse" />}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-sm font-medium text-gray-200">{b.name}</span>
+                                  <span className="text-[10px] text-gray-500">{b.dur}</span>
+                                </div>
+                                <p className="text-xs text-gray-500">{b.desc}</p>
+                                <p className="text-[10px] text-gray-600 mt-0.5">Cost: {fmtExpLog(costLog)} (1hr auto income)</p>
+                                {isActive && <p className="text-[10px] text-green-400">⏱ {Math.ceil(timer / 10)}s remaining</p>}
+                              </div>
+                              <Button
+                                size="sm"
+                                disabled={!canBuy}
+                                onClick={() => { if (buyShopBoost(b.id)) sfxBuy(); }}
+                                className={`flex-shrink-0 text-xs h-8 min-w-[60px] ${
+                                  canBuy
+                                    ? 'bg-purple-600 hover:bg-purple-700 text-white'
+                                    : 'bg-gray-800 text-gray-600 cursor-not-allowed'
+                                }`}
+                              >
+                                {isActive ? 'Active' : 'Buy'}
+                              </Button>
+                            </div>
+                          );
+                        })}
+                      </CardContent>
+                    </Card>
+
+                    {/* Section 2: Free Rewards */}
+                    <Card className="bg-gray-900/40 border-gray-800/50">
+                      <CardHeader className="pb-2 pt-3 px-4">
+                        <CardTitle className="text-sm text-gray-300">📺 Free Rewards</CardTitle>
+                      </CardHeader>
+                      <CardContent className="px-4 pb-3 space-y-2">
+                        {adCooldown > 0 && (
+                          <p className="text-xs text-gray-500 mb-2">⏱ Cooldown: {Math.ceil(adCooldown / 10)}s</p>
+                        )}
+                        {[
+                          { type: 'doubleAll', icon: '📺', name: '2x All Income', desc: 'Double ALL income for 5 minutes', dur: '5 min' },
+                          { type: 'instantEarned', icon: '💰', name: '1% of Total Earned', desc: 'Instantly gain 1% of your lifetime earnings', dur: '' },
+                          { type: 'forceGolden', icon: '🌟', name: 'Guaranteed Golden', desc: 'Spawn a golden crystal immediately', dur: '' },
+                        ].map(r => {
+                          const isWatching = adTimer?.type === r.type;
+                          const isDisabled = adCooldown > 0 || isWatching;
+                          return (
+                            <div key={r.type} className="flex items-center gap-3 p-2 rounded-lg bg-gray-800/30">
+                              <div className="text-2xl w-9 h-9 flex items-center justify-center bg-gray-800/60 rounded-lg flex-shrink-0">
+                                {r.icon}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-sm font-medium text-gray-200">{r.name}</span>
+                                  {r.dur && <span className="text-[10px] text-gray-500">{r.dur}</span>}
+                                </div>
+                                <p className="text-xs text-gray-500">{r.desc}</p>
+                              </div>
+                              {isWatching ? (
+                                <div className="flex-shrink-0 text-xs text-cyan-400 font-mono w-[60px] text-center">
+                                  {adTimer.remaining}s
+                                </div>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  disabled={isDisabled}
+                                  onClick={() => setAdTimer({ type: r.type, remaining: 30 })}
+                                  className={`flex-shrink-0 text-xs h-8 min-w-[60px] ${
+                                    isDisabled
+                                      ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
+                                      : 'bg-cyan-600 hover:bg-cyan-700 text-white'
+                                  }`}
+                                >
+                                  Watch
+                                </Button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </CardContent>
+                    </Card>
+
+                    {/* Section 3: Quick Buy */}
+                    <Card className="bg-gray-900/40 border-gray-800/50">
+                      <CardHeader className="pb-2 pt-3 px-4">
+                        <CardTitle className="text-sm text-gray-300">💎 Quick Buy</CardTitle>
+                      </CardHeader>
+                      <CardContent className="px-4 pb-3 space-y-2">
+                        <p className="text-xs text-gray-500 mb-1">Buy instant crystal bursts at fair prices</p>
+                        {[
+                          { secs: 60, label: 'Buy 1min income' },
+                          { secs: 600, label: 'Buy 10min income' },
+                          { secs: 3600, label: 'Buy 1hr income' },
+                        ].map(q => {
+                          const costLog = autoRateLog + Math.log10(q.secs);
+                          const myLog = toLogSafe(crystals) + crystalsExp;
+                          const canBuy = myLog >= costLog && autoRateLog > -Infinity;
+                          return (
+                            <div key={q.secs} className="flex items-center justify-between p-2 rounded-lg bg-gray-800/30">
+                              <span className="text-sm text-gray-300">{q.label}</span>
+                              <Button
+                                size="sm"
+                                disabled={!canBuy}
+                                onClick={() => { if (buyInstantCrystals(q.secs)) sfxBuy(); }}
+                                className={`text-xs h-8 ${
+                                  canBuy
+                                    ? 'bg-amber-600 hover:bg-amber-700 text-white'
+                                    : 'bg-gray-800 text-gray-600 cursor-not-allowed'
+                                }`}
+                              >
+                                <span className="text-yellow-400 mr-1">💎</span>
+                                {fmtExpLog(costLog)}
+                              </Button>
+                            </div>
+                          );
+                        })}
+                      </CardContent>
+                    </Card>
+                  </div>
+                </ScrollArea>
+              </TabsContent>
             </Tabs>
           </div>
         </div>
@@ -1391,6 +1652,9 @@ export default function GamePage() {
           <div className="flex items-center justify-between text-xs text-gray-600 max-w-5xl mx-auto">
             <span>Crystal Clicker v1.0</span>
             <div className="flex items-center gap-3">
+              <span className="text-gray-600" title="Save status">
+                💾 {saveAge}
+              </span>
               <span className={autoRateLog > -Infinity ? 'cps-glow text-cyan-400' : ''}>
                 ⚡ {clicksPerSecond} cps
               </span>

@@ -2,7 +2,31 @@
 
 ## Current Project Status
 
-**Status: ✅ Fully Functional — 327 mines, AA-ZZ number formatting, search/filter map, 78 achievements.**
+**Status: ✅ Fully Functional — Shop tab, QOL features, NaN-safe math, log-space costs, golden crystal fix.**
+
+### Session 9 Work (Current)
+- **Fixed NaN crystal display bug (CRITICAL)**
+  - **Root cause:** `buyUpgrade` used manual log subtraction `Math.log10(1 - Math.pow(10, costLog - myLog))` which produces NaN when `myLog ≈ costLog` due to floating-point precision. NaN then propagated through the entire system.
+  - **Fix (safe-math.ts):** Added NaN/Infinity guards to `logAdd`, `logSub`, `splitLog`
+  - **Fix (gameStore.ts):** Replaced manual subtraction with `logSub()`, added NaN guards in tick flush, sanitized loadSave with `isFinite()` checks
+  - **Fix (save/route.ts):** Added server-side `safe()` function to prevent NaN from being written to DB
+- **Fixed golden crystal not using multiplier/prestige**
+  - **Root cause:** `goldenClickValue` was computed using `s.clickPower * s.multiplier` which are NEVER updated by `recalcStats` (only `clickPowerLog`/`multiplierLog` are). So golden was always worth ~10.
+  - **Fix:** Changed to log-space computation using `clickPowerLog + multiplierLog`, stored as log10 value, bumped to 100x base multiplier
+- **Fixed upgrade costs showing "10.00 EY"**
+  - **Root cause:** `getUpgradeCost()` used raw `baseCost * Math.pow(costMultiplier, level)` which overflows to Infinity. `fmt(Infinity)` = "10.00EY"
+  - **Fix:** All cost display now uses `getUpgradeCostLogSafe`/`getTotalCostNLogSafe` with `fmtExpLog`
+- **Added Shop tab (🛒)**
+  - **Boosts section:** 4 purchasable boosts (2x Click, 3x Auto, 2x Golden Chance, +10% Crit) costing 1hr auto income each
+  - **Free Rewards section:** 3 ad-style rewards with 30s timer (2x All 5min, 1% Total Earned, Guaranteed Golden) with 3min cooldown
+  - **Quick Buy section:** Instant crystal purchases (1min/10min/1hr of auto income)
+  - All boosts properly integrated into tick (click damage, auto income, golden spawn, crit chance)
+- **Added QOL features:**
+  - Keyboard shortcuts: Space to click, 1-6 for tabs
+  - Prestige calculator: now uses log-space math (works at any scale), shows post-prestige bonus
+  - Stats tab: added Playtime (HH:MM:SS) and Best CPS
+  - Footer: save indicator showing relative time since last save
+  - Achievement progress bars on locked achievements
 
 ### Session 8 Work (Current)
 - **Fixed floating text numbers doing weird things / not updating properly**

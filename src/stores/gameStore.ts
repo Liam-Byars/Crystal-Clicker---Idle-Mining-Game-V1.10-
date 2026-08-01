@@ -172,7 +172,18 @@ export interface GameState {
   // UI state
   screenShake: boolean;
   crystalPulse: number;
-  activeTab: 'upgrades' | 'achievements' | 'stats' | 'prestige' | 'map';
+  activeTab: 'upgrades' | 'achievements' | 'stats' | 'prestige' | 'map' | 'shop';
+
+  // QOL: Shop boosts
+  shopBoosts: {
+    doubleClick: number;   // timer ticks remaining
+    tripleAuto: number;    // timer ticks remaining
+    doubleGolden: number;  // timer ticks remaining
+    critBoost: number;     // timer ticks remaining
+    doubleAll: number;     // timer ticks remaining (from "ads")
+  };
+  lastSaveTime: number;   // QOL: timestamp of last save
+  adCooldown: number;      // QOL: cooldown ticks for "ad" rewards
 
   // Actions
   click: (x: number, y: number) => void;
@@ -189,7 +200,7 @@ export interface GameState {
   checkMilestones: () => void;
   addFloatingText: (x: number, y: number, value: number, type?: FloatingText['type'], valueLog?: number) => void;
   removeFloatingText: (id: number) => void;
-  setActiveTab: (tab: 'upgrades' | 'achievements' | 'stats' | 'prestige' | 'map') => void;
+  setActiveTab: (tab: 'upgrades' | 'achievements' | 'stats' | 'prestige' | 'map' | 'shop') => void;
   switchArea: (areaId: string) => void;
   checkAreaUnlocks: () => void;
   checkAchievements: () => void;
@@ -199,6 +210,9 @@ export interface GameState {
   claimOfflineEarnings: () => void;
   dismissOfflineBonus: () => void;
   claimReward: (amount: number, prestige?: number) => void;
+  buyShopBoost: (boostType: string) => boolean;
+  claimAdReward: (adType: string) => boolean;
+  buyInstantCrystals: (seconds: number) => boolean;
 }
 
 // ====== Floating text stack throttle & cleanup ======
@@ -940,6 +954,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   ],
   achievements: buildAchievementConditions(),
   screenShake: false, crystalPulse: 0, activeTab: 'upgrades',
+  shopBoosts: { doubleClick: 0, tripleAuto: 0, doubleGolden: 0, critBoost: 0, doubleAll: 0 },
+  lastSaveTime: Date.now(), adCooldown: 0,
 
   click: (x, y) => {
     const s = get(); const now = Date.now();
@@ -965,10 +981,13 @@ export const useGameStore = create<GameState>((set, get) => ({
     const evMult = s.activeEvent?.effect === 'doubleClick' ? s.activeEvent.value : 1;
 
     // Compute click damage in log10 space — uses log stats directly, never overflows
-    let valueLog = s.clickPowerLog + s.multiplierLog + Math.log10(comboMult) + Math.log10(prestMult) + Math.log10(puMult) + Math.log10(evMult);
+    const shopClickMult = (s.shopBoosts.doubleClick > 0 ? 2 : 1) * (s.shopBoosts.doubleAll > 0 ? 2 : 1);
+    const shopAutoMult = (s.shopBoosts.tripleAuto > 0 ? 3 : 1) * (s.shopBoosts.doubleAll > 0 ? 2 : 1);
+    let valueLog = s.clickPowerLog + s.multiplierLog + Math.log10(comboMult) + Math.log10(prestMult) + Math.log10(puMult * shopClickMult) + Math.log10(evMult);
 
     let isCrit = false;
-    if (Math.random() < s.critChance) { isCrit = true; valueLog += Math.log10(s.critMultiplier); }
+    const effectiveCritChance = Math.min(s.critChance + (s.shopBoosts.critBoost > 0 ? 0.1 : 0), 1);
+    if (Math.random() < effectiveCritChance) { isCrit = true; valueLog += Math.log10(s.critMultiplier); }
 
     const tt: FloatingText['type'] = isCrit ? 'crit' : newCombo > 1 ? 'combo' : 'normal';
 
@@ -1193,7 +1212,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       let rateLog = s.autoRateLog;
       const puBonus = s.activePowerUp?.effect === 'tripleAuto' ? s.activePowerUp.value : 1;
       const evBonus = s.activeEvent?.effect === 'doubleAuto' ? s.activeEvent.value : 1;
-      rateLog += Math.log10(puBonus) + Math.log10(evBonus);
+      const shopAutoMult = (s.shopBoosts.tripleAuto > 0 ? 3 : 1) * (s.shopBoosts.doubleAll > 0 ? 2 : 1);
+      rateLog += Math.log10(puBonus * shopAutoMult) + Math.log10(evBonus);
       const prestMult = 1 + s.prestigePoints * 0.1;
       const incomeLog = rateLog + Math.log10(prestMult) + Math.log10(0.1); // 0.1 = 100ms tick
       // Add to crystals (use batched values as base if available, guard NaN)
@@ -1226,7 +1246,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     } else {
       let chance = 0.001;
       if (s.activeEvent?.effect === 'tripleGolden') chance *= s.activeEvent.value;
-      chance *= (s.goldenChance / 0.03);
+      chance *= (s.goldenChance / 0.03) * (s.shopBoosts.doubleGolden > 0 ? 2 : 1);
       if (Math.random() < chance) {
         // Compute golden value in log space using actual effective stats
         const prestMult = 1 + s.prestigePoints * 0.1;
@@ -1287,6 +1307,15 @@ export const useGameStore = create<GameState>((set, get) => ({
       updates.notificationTimer = 30;
       updates.achievementQueue = rest;
     }
+
+    // Shop boost decay
+    const sb = { ...s.shopBoosts };
+    let sbChanged = false;
+    for (const k of Object.keys(sb) as (keyof typeof sb)[]) {
+      if (sb[k] > 0) { sb[k] -= 1; sbChanged = true; }
+    }
+    if (sbChanged) updates.shopBoosts = sb;
+    if (s.adCooldown > 0) updates.adCooldown = s.adCooldown - 1;
 
     // Click speed
     const now = Date.now();
@@ -1407,6 +1436,63 @@ export const useGameStore = create<GameState>((set, get) => ({
     set({ achievements: na, achievementQueue: q });
   },
 
+  buyShopBoost: (boostType) => {
+    const s = get();
+    // Calculate cost based on auto-rate (log space): cost = 1hr of auto income
+    const costLog = s.autoRateLog + Math.log10(3600); // 1 hour worth
+    const myLog = toLog(s.crystals) + s.crystalsExp;
+    if (myLog < costLog) return false;
+    // Subtract cost
+    const newMyLog = logSub(myLog, costLog);
+    const cR = splitLog(newMyLog);
+    const durMap: Record<string, number> = { doubleClick: 600, tripleAuto: 600, doubleGolden: 1200, critBoost: 600 };
+    const dur = durMap[boostType] ?? 600;
+    const boosts = { ...s.shopBoosts, [boostType]: dur };
+    set({ crystals: cR.value, crystalsExp: cR.exp, shopBoosts: boosts, crystalPulse: 3 });
+    return true;
+  },
+
+  claimAdReward: (adType) => {
+    const s = get();
+    if (s.adCooldown > 0) return false;
+    if (adType === 'doubleAll') {
+      const boosts = { ...s.shopBoosts, doubleAll: 3000 }; // 5 min at 100ms ticks
+      set({ shopBoosts: boosts, adCooldown: 1800, crystalPulse: 3 }); // 3 min cooldown
+      return true;
+    }
+    if (adType === 'instantEarned') {
+      // Give 1% of total earned
+      const teLog = toLog(s.totalEarned) + s.totalEarnedExp;
+      const bonusLog = teLog - 2; // 1% = -2 in log
+      if (bonusLog < 0) return false;
+      const cR = splitLog(logAdd(toLog(s.crystals) + s.crystalsExp, bonusLog));
+      set({ crystals: cR.value, crystalsExp: cR.exp, adCooldown: 1800, crystalPulse: 3 });
+      return true;
+    }
+    if (adType === 'forceGolden') {
+      if (s.goldenActive) return false;
+      const prestMult = 1 + s.prestigePoints * 0.1;
+      const goldenLog = s.clickPowerLog + s.multiplierLog + Math.log10(100) + Math.log10(prestMult);
+      set({ goldenActive: true, goldenTimer: 400, goldenClickValue: goldenLog, adCooldown: 1800, crystalPulse: 3 });
+      return true;
+    }
+    return false;
+  },
+
+  buyInstantCrystals: (seconds) => {
+    const s = get();
+    const costLog = s.autoRateLog + Math.log10(seconds);
+    const myLog = toLog(s.crystals) + s.crystalsExp;
+    if (myLog < costLog || s.autoRateLog <= -Infinity) return false;
+    const newMyLog = logSub(myLog, costLog);
+    const addLog2 = costLog; // add same amount
+    const finalLog = logAdd(newMyLog, addLog2);
+    const cR = splitLog(finalLog);
+    const teR = safeAdd(s.totalEarned, s.totalEarnedExp, Math.pow(10, addLog2));
+    set({ crystals: cR.value, crystalsExp: cR.exp, totalEarned: teR.value, totalEarnedExp: teR.exp, crystalPulse: 3 });
+    return true;
+  },
+
   resetGame: () => {
     for (const k of Object.keys(_stackPending)) delete _stackPending[k];
     _pendingCrystalsLog = -Infinity; _pendingTotalEarnedLog = -Infinity;
@@ -1430,6 +1516,8 @@ export const useGameStore = create<GameState>((set, get) => ({
         ...Object.values(AREA_UPGRADES).flat().map(u => ({ ...u })),
       ], achievements: buildAchievementConditions(),
       screenShake: false, crystalPulse: 0, activeTab: 'upgrades',
+      shopBoosts: { doubleClick: 0, tripleAuto: 0, doubleGolden: 0, critBoost: 0, doubleAll: 0 },
+      lastSaveTime: Date.now(), adCooldown: 0,
     });
   },
 
