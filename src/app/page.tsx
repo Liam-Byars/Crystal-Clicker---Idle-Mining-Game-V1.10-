@@ -389,9 +389,9 @@ export default function GamePage() {
     return () => clearInterval(iv);
   }, [userId]);
 
-  // ====== Auto-save (only with Auto-Save Pro, every 30s) ======
+  // ====== Auto-save (5min default, 30s with Auto-Save Pro) ======
   useEffect(() => {
-    if (!ownedPremiumItems.includes('auto_save_pro')) return;
+    const interval = ownedPremiumItems.includes('auto_save_pro') ? 30000 : 300000;
     const iv = setInterval(async () => {
       try {
         setSaveStatus('saving');
@@ -412,7 +412,7 @@ export default function GamePage() {
         setSaveStatus('error');
         setTimeout(() => setSaveStatus('idle'), 3000);
       }
-    }, 30000);
+    }, interval);
     return () => clearInterval(iv);
   }, [getSaveData, userId, ownedPremiumItems]);
 
