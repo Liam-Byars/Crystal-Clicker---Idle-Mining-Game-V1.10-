@@ -25,6 +25,15 @@ model Post {
   updatedAt DateTime @updatedAt
 }
 
+model PremiumPurchase {
+  id        String   @id @default(cuid())
+  userId    String
+  itemId    String
+  purchasedAt DateTime @default(now())
+
+  @@unique([userId, itemId])
+}
+
 model ClickerSave {
   id            String   @id @default(cuid())
   userId        String   @unique

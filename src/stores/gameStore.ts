@@ -169,6 +169,9 @@ export interface GameState {
   currentArea: string;
   unlockedAreas: string[];
 
+  // Premium shop
+  ownedPremiumItems: string[];
+
   // UI state
   screenShake: boolean;
   crystalPulse: number;
@@ -213,6 +216,9 @@ export interface GameState {
   buyShopBoost: (boostType: string) => boolean;
   claimAdReward: (adType: string) => boolean;
   buyInstantCrystals: (seconds: number) => boolean;
+  tick: () => void;
+  setPremiumItems: (items: string[]) => void;
+  hasPremiumPerk: (perk: string) => boolean;
 }
 
 // ====== Floating text stack throttle & cleanup ======
@@ -956,13 +962,15 @@ export const useGameStore = create<GameState>((set, get) => ({
   screenShake: false, crystalPulse: 0, activeTab: 'upgrades',
   shopBoosts: { doubleClick: 0, tripleAuto: 0, doubleGolden: 0, critBoost: 0, doubleAll: 0 },
   lastSaveTime: Date.now(), adCooldown: 0,
+  ownedPremiumItems: [],
 
   click: (x, y) => {
     const s = get(); const now = Date.now();
     const recent = [...s.clickTimestamps, now].filter(t => now - t < 1000);
     const prevCombo = s.combo;
     let newCombo = 1; let newMax = s.maxCombo;
-    if (now - s.lastClickTime < 500) newCombo = Math.min(s.combo + 1, 100);
+    const comboWindow = s.ownedPremiumItems.includes('combo_king') ? 1000 : 500;
+    if (now - s.lastClickTime < comboWindow) newCombo = Math.min(s.combo + 1, 100);
     if (newCombo > newMax) newMax = newCombo;
 
     // Combo milestone bonuses (computed in log space)
@@ -986,8 +994,11 @@ export const useGameStore = create<GameState>((set, get) => ({
     let valueLog = s.clickPowerLog + s.multiplierLog + Math.log10(comboMult) + Math.log10(prestMult) + Math.log10(puMult * shopClickMult) + Math.log10(evMult);
 
     let isCrit = false;
-    const effectiveCritChance = Math.min(s.critChance + (s.shopBoosts.critBoost > 0 ? 0.1 : 0), 1);
-    if (Math.random() < effectiveCritChance) { isCrit = true; valueLog += Math.log10(s.critMultiplier); }
+    let effectiveCrit = s.critChance + (s.shopBoosts.critBoost > 0 ? 0.1 : 0);
+    if (s.ownedPremiumItems.includes('crit_master')) effectiveCrit += 0.05;
+    const effectiveCritChance = Math.min(effectiveCrit, 1);
+    const effectiveCritMult = s.critMultiplier + (s.ownedPremiumItems.includes('crit_power') ? 1 : 0);
+    if (Math.random() < effectiveCritChance) { isCrit = true; valueLog += Math.log10(effectiveCritMult); }
 
     const tt: FloatingText['type'] = isCrit ? 'crit' : newCombo > 1 ? 'combo' : 'normal';
 
@@ -1005,8 +1016,9 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     // Only set visual state that MUST update immediately (combo, ripples, shake)
     const newRippleId = s.rippleId + 1;
+    const comboTicks = s.ownedPremiumItems.includes('combo_king') ? 120 : 60;
     set({
-      combo: newCombo, comboTimer: 60, maxCombo: newMax, lastClickTime: now,
+      combo: newCombo, comboTimer: comboTicks, maxCombo: newMax, lastClickTime: now,
       screenShake: isCrit || newCombo >= 10,
       crystalPulse: isCrit ? 3 : newCombo >= 5 ? 2 : 1,
       clickTimestamps: recent, clicksPerSecond: recent.length,
@@ -1070,12 +1082,16 @@ export const useGameStore = create<GameState>((set, get) => ({
     const effectiveLog = toLog(s.totalEarned) + s.totalEarnedExp;
     if (effectiveLog < 3) return; // need at least 1000 total
     // pts = floor(sqrt(total/1000)), in log: log(pts) = 0.5 * (effectiveLog - 3)
-    const ptsLog = 0.5 * (effectiveLog - 3);
+    let ptsLog = 0.5 * (effectiveLog - 3);
+    // Premium: Prestige Champion gives +25% more points
+    if (s.ownedPremiumItems.includes('prestige_champion')) ptsLog += Math.log10(1.25);
     const pts = ptsLog > 15 ? Math.floor(Math.pow(10, 15)) : Math.floor(Math.sqrt(
       (s.totalEarnedExp > 0 ? Math.min(Math.pow(10, SAFE_LOG), s.totalEarned) : s.totalEarned) / 1000
     ));
+    // Premium: Prestige Headstart gives +0.5x multiplier per prestige
+    const startMultLog = s.ownedPremiumItems.includes('prestige_start') ? (s.prestige + 1) * 0.5 : 0;
     set({
-      crystals: 0, crystalsExp: 0, totalClicks: 0, totalEarned: 0, totalEarnedExp: 0, clickPower: 1, clickPowerLog: 0, multiplier: 1, multiplierLog: 0, autoRate: 0, autoRateLog: -Infinity,
+      crystals: 0, crystalsExp: 0, totalClicks: 0, totalEarned: 0, totalEarnedExp: 0, clickPower: 1, clickPowerLog: startMultLog, multiplier: 1, multiplierLog: startMultLog, autoRate: 0, autoRateLog: -Infinity,
       prestige: s.prestige + 1, prestigePoints: s.prestigePoints + pts,
       combo: 0, comboTimer: 0, maxCombo: 0,
       goldenClicks: 0, goldenChance: 0.03, critChance: 0.05, totalCrits: 0,
@@ -1247,14 +1263,37 @@ export const useGameStore = create<GameState>((set, get) => ({
       let chance = 0.001;
       if (s.activeEvent?.effect === 'tripleGolden') chance *= s.activeEvent.value;
       chance *= (s.goldenChance / 0.03) * (s.shopBoosts.doubleGolden > 0 ? 2 : 1);
+      // Premium: Golden Aura adds +5% base chance
+      if (s.ownedPremiumItems.includes('golden_aura')) chance += 0.0005;
       if (Math.random() < chance) {
         // Compute golden value in log space using actual effective stats
         const prestMult = 1 + s.prestigePoints * 0.1;
-        const goldenLog = s.clickPowerLog + s.multiplierLog + Math.log10(100) + Math.log10(prestMult);
+        // Premium: Golden Power changes 100x to 200x
+        const goldenBase = s.ownedPremiumItems.includes('golden_power') ? 200 : 100;
+        const goldenLog = s.clickPowerLog + s.multiplierLog + Math.log10(goldenBase) + Math.log10(prestMult);
         updates.goldenActive = true;
         updates.goldenTimer = 400;
         updates.goldenClickValue = goldenLog;
       }
+    }
+
+    // Premium: Auto-Golden auto-collect after 150 ticks (15s)
+    if (s.goldenActive && s.ownedPremiumItems.includes('auto_golden') && (updates.goldenTimer ?? s.goldenTimer) <= 150) {
+      const gLog = s.goldenClickValue; // no 2x bonus for auto-collect
+      const curC = updates.crystals ?? s.crystals;
+      const curCE = updates.crystalsExp ?? s.crystalsExp;
+      const curTE = updates.totalEarned ?? s.totalEarned;
+      const curTEE = updates.totalEarnedExp ?? s.totalEarnedExp;
+      if (isFinite(curC) && isFinite(curCE) && isFinite(curTE) && isFinite(curTEE) && isFinite(gLog)) {
+        const cR = splitLog(logAdd(toLog(curC) + curCE, gLog));
+        const teR = splitLog(logAdd(toLog(curTE) + curTEE, gLog));
+        updates.crystals = cR.value; updates.crystalsExp = cR.exp;
+        updates.totalEarned = teR.value; updates.totalEarnedExp = teR.exp;
+      }
+      updates.goldenActive = false;
+      updates.goldenTimer = 0;
+      updates.goldenClicks = s.goldenClicks + 1;
+      updates.crystalPulse = 3;
     }
 
     // Event timer
@@ -1518,8 +1557,13 @@ export const useGameStore = create<GameState>((set, get) => ({
       screenShake: false, crystalPulse: 0, activeTab: 'upgrades',
       shopBoosts: { doubleClick: 0, tripleAuto: 0, doubleGolden: 0, critBoost: 0, doubleAll: 0 },
       lastSaveTime: Date.now(), adCooldown: 0,
+      ownedPremiumItems: [],
     });
   },
+
+  setPremiumItems: (items) => set({ ownedPremiumItems: items }),
+
+  hasPremiumPerk: (perk) => get().ownedPremiumItems.includes(perk),
 
   claimOfflineEarnings: () => {
     const s = get(); if (s.offlineEarned <= 0) return;
@@ -1572,8 +1616,12 @@ export const useGameStore = create<GameState>((set, get) => ({
     const lastOnline = (data.lastOnlineTime as number) || Date.now();
     const elapsed = Date.now() - lastOnline;
     const prestigeMult = 1 + (data.prestige as number || 0) * 0.1;
-    const offlineEarned = stats.autoRate > 0 && elapsed >= 60000
-      ? Math.round(stats.autoRate * prestigeMult * (Math.min(elapsed, 8 * 3600000) / 1000) * 0.5 * 100) / 100
+    // Premium: Offline Master gives 75% efficiency and 16hr cap
+    const hasOfflineBoost = Array.isArray(data.ownedPremiumItems) && (data.ownedPremiumItems as string[]).includes('offline_master');
+    const offlineEff = hasOfflineBoost ? 0.75 : 0.5;
+    const offlineMaxMs = hasOfflineBoost ? 16 * 3600000 : 8 * 3600000;
+    const offlineEarned = stats.autoRateLog > -Infinity && elapsed >= 60000
+      ? Math.round(Math.pow(10, stats.autoRateLog) * prestigeMult * (Math.min(elapsed, offlineMaxMs) / 1000) * offlineEff * 100) / 100
       : 0;
     const currentArea = (data.currentArea as string) || 'naica';
     const unlockedAreas = (data.unlockedAreas as string[]) || ['naica'];
@@ -1601,6 +1649,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       upgrades, achievements, lastOnlineTime: Date.now(),
       offlineEarned, showOfflineBonus: offlineEarned > 0,
       currentArea, unlockedAreas,
+      ownedPremiumItems: Array.isArray(data.ownedPremiumItems) ? data.ownedPremiumItems as string[] : [],
     });
     get().checkAreaUnlocks();
   },

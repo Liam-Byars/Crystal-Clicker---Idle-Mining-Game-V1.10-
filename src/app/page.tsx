@@ -23,7 +23,8 @@ import { SignInScreen } from '@/components/sign-in-screen';
 import { TERMS_OF_SERVICE, PRIVACY_POLICY } from '@/lib/legal-content';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { LogOut, UserCircle, Volume2, VolumeX, LogIn, FileText, ShieldCheck } from 'lucide-react';
+import { LogOut, UserCircle, Volume2, VolumeX, LogIn, FileText, ShieldCheck, Crown, Sparkles, Star } from 'lucide-react';
+import { PREMIUM_ITEMS, RARITY_COLORS, getFeaturedItems, getPremiumItemsByCategory } from '@/lib/premium-items';
 
 // ====== Helpers ======
 function toLogSafe(n: number): number {
@@ -196,6 +197,8 @@ export default function GamePage() {
   const [activityLog, setActivityLog] = useState<LogEntry[]>([]);
   const [adTimer, setAdTimer] = useState<{type: string; remaining: number} | null>(null);
   const [saveAge, setSaveAge] = useState('');
+  const [premiumPurchaseDialog, setPremiumPurchaseDialog] = useState<{item: typeof PREMIUM_ITEMS[0]; purchasing: boolean} | null>(null);
+  const [premiumFilter, setPremiumFilter] = useState<string>('all');
   const addLog = useCallback((icon: string, text: string, color: string) => {
     setActivityLog(prev => [...prev.slice(-49), {id: logIdRef.current++, icon, text, color, time: Date.now()}]);
   }, []);
@@ -269,6 +272,8 @@ export default function GamePage() {
   const buyShopBoost = useGameStore(s => s.buyShopBoost);
   const claimAdReward = useGameStore(s => s.claimAdReward);
   const buyInstantCrystals = useGameStore(s => s.buyInstantCrystals);
+  const ownedPremiumItems = useGameStore(s => s.ownedPremiumItems);
+  const setPremiumItems = useGameStore(s => s.setPremiumItems);
 
   // ====== Derived ======
   const unlockedCount = achievements.filter(a => a.unlocked).length;
@@ -291,6 +296,27 @@ export default function GamePage() {
     const iv = setInterval(() => setSessionTime(Date.now() - sessionStartTime), 1000);
     return () => clearInterval(iv);
   }, [sessionStartTime]);
+
+  // ====== Premium Purchase Handler ======
+  const handlePremiumPurchase = async (item: typeof PREMIUM_ITEMS[0]) => {
+    if (!userId || ownedPremiumItems.includes(item.id)) return;
+    setPremiumPurchaseDialog({ item, purchasing: true });
+    try {
+      const res = await fetch('/api/clicker/premium', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, itemId: item.id }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        const newItems = [...ownedPremiumItems, item.id];
+        setPremiumItems(newItems);
+        addLog('💎', `Purchased ${item.name}!`, '#f59e0b');
+        sfxMilestone();
+      }
+    } catch { /* ignore */ }
+    setPremiumPurchaseDialog(null);
+  };
 
   // ====== Save Age Updater ======
   useEffect(() => {
@@ -342,7 +368,8 @@ export default function GamePage() {
         const cycle = Math.floor((streak - 1) / 7);
         const cycleMult = Math.pow(2, cycle);
         const REWARDS = [1000, 5000, 25000, 100000, 500000, 2500000, 10000000];
-        setDailyReward({ day: dayInCycle, crystals: REWARDS[dayInCycle - 1] * cycleMult, prestige: dayInCycle === 7 ? 1 * (cycle + 1) : 0, cycle, streak });
+        const dailyMult = useGameStore.getState().ownedPremiumItems.includes('double_daily') ? 2 : 1;
+        setDailyReward({ day: dayInCycle, crystals: REWARDS[dayInCycle - 1] * cycleMult * dailyMult, prestige: dayInCycle === 7 ? Math.ceil(1 * (cycle + 1) * dailyMult) : 0, cycle, streak });
       } catch { /* ignore */ }
     }, 2500);
     return () => clearTimeout(timer);
@@ -362,8 +389,9 @@ export default function GamePage() {
     return () => clearInterval(iv);
   }, [userId]);
 
-  // ====== Auto-save (15s) ======
+  // ====== Auto-save (15s default, 10s with Auto-Save Pro) ======
   useEffect(() => {
+    const interval = ownedPremiumItems.includes('auto_save_pro') ? 10000 : 15000;
     const iv = setInterval(async () => {
       try {
         setSaveStatus('saving');
@@ -384,9 +412,9 @@ export default function GamePage() {
         setSaveStatus('error');
         setTimeout(() => setSaveStatus('idle'), 3000);
       }
-    }, 15000);
+    }, interval);
     return () => clearInterval(iv);
-  }, [getSaveData, userId]);
+  }, [getSaveData, userId, ownedPremiumItems]);
 
   // ====== Load Save on Mount ======
   useEffect(() => {
@@ -407,6 +435,10 @@ export default function GamePage() {
             const json = await res.json();
             if (json.data && (json.data as Record<string, unknown>).crystals !== undefined) {
               serverData = json.data as Record<string, unknown>;
+            }
+            // Load premium items from server
+            if (json.ownedPremiumItems && Array.isArray(json.ownedPremiumItems)) {
+              setPremiumItems(json.ownedPremiumItems);
             }
           }
         } catch { /* ignore */ }
@@ -1353,6 +1385,23 @@ export default function GamePage() {
                             {shopBoosts.doubleAll > 0 && <StatRow label="2x All Income" value={`${Math.ceil(shopBoosts.doubleAll / 10)}s`} icon="📺" />}
                           </>
                         )}
+                        {ownedPremiumItems.length > 0 && (
+                          <>
+                            <Separator className="bg-amber-700/20 my-1" />
+                            <div className="text-[10px] uppercase tracking-wider text-amber-500/60 font-semibold flex items-center gap-1"><Crown className="w-3 h-3" /> Premium Perks</div>
+                            {ownedPremiumItems.includes('auto_save_pro') && <StatRow label="Auto-Save Pro" value="Active" icon="💾" />}
+                            {ownedPremiumItems.includes('offline_master') && <StatRow label="Offline Master" value="75% eff / 16hr" icon="🌙" />}
+                            {ownedPremiumItems.includes('double_daily') && <StatRow label="Double Daily" value="2x rewards" icon="📅" />}
+                            {ownedPremiumItems.includes('golden_aura') && <StatRow label="Golden Aura" value="+5% chance" icon="✨" />}
+                            {ownedPremiumItems.includes('auto_golden') && <StatRow label="Auto-Golden" value="Auto 15s" icon="🧲" />}
+                            {ownedPremiumItems.includes('golden_power') && <StatRow label="Golden Power" value="200x base" icon="🌟" />}
+                            {ownedPremiumItems.includes('prestige_champion') && <StatRow label="Prestige Champ" value="+25% pts" icon="👑" />}
+                            {ownedPremiumItems.includes('prestige_start') && <StatRow label="Prestige Start" value="+0.5x/lvl" icon="🚀" />}
+                            {ownedPremiumItems.includes('combo_king') && <StatRow label="Combo King" value="2x window" icon="🔥" />}
+                            {ownedPremiumItems.includes('crit_master') && <StatRow label="Crit Master" value="+5% chance" icon="💎" />}
+                            {ownedPremiumItems.includes('crit_power') && <StatRow label="Devastating" value="+1x mult" icon="⚡" />}
+                          </>
+                        )}
                       </CardContent>
                     </Card>
 
@@ -1502,6 +1551,135 @@ export default function GamePage() {
               <TabsContent value="shop" className="flex-1 min-h-0 mt-0">
                 <ScrollArea className="h-[calc(100vh-340px)] lg:h-[calc(100vh-320px)]">
                   <div className="space-y-3 pr-3 pb-4">
+                    {/* Section 0: Premium Shop — Real Money Items */}
+                    <Card className="bg-gradient-to-b from-amber-950/30 to-gray-900/40 border-amber-500/20">
+                      <CardHeader className="pb-2 pt-3 px-4">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-sm text-amber-300 flex items-center gap-2">
+                            <Crown className="w-4 h-4" /> Premium Shop
+                          </CardTitle>
+                          <span className="text-[10px] text-amber-500/60">Permanent Upgrades</span>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="px-4 pb-3">
+                        {/* Filter tabs */}
+                        <div className="flex gap-1 mb-3 overflow-x-auto pb-1">
+                          {['all', 'efficiency', 'golden', 'prestige', 'combat', 'qol'].map(cat => (
+                            <button
+                              key={cat}
+                              onClick={() => setPremiumFilter(cat)}
+                              className={`px-2.5 py-1 rounded-md text-[11px] font-medium whitespace-nowrap transition-all ${
+                                premiumFilter === cat
+                                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                  : 'bg-gray-800/40 text-gray-500 border border-transparent hover:text-gray-400'
+                              }`}
+                            >
+                              {cat === 'all' ? '💎 All' : cat === 'efficiency' ? '⚡ Efficiency' : cat === 'golden' ? '✨ Golden' : cat === 'prestige' ? '👑 Prestige' : cat === 'combat' ? '⚔️ Combat' : '🔧 QOL'}
+                              {cat !== 'all' && (
+                                <span className="ml-1 text-gray-600">{getPremiumItemsByCategory(cat).length}</span>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* Featured items banner */}
+                        {premiumFilter === 'all' && (
+                          <div className="mb-3 p-2.5 rounded-lg bg-gradient-to-r from-amber-900/20 via-yellow-900/20 to-amber-900/20 border border-amber-500/10">
+                            <p className="text-[10px] text-amber-400/60 mb-2 font-medium uppercase tracking-wider">⭐ Featured</p>
+                            <div className="flex gap-2 overflow-x-auto pb-1">
+                              {getFeaturedItems().map(item => {
+                                const owned = ownedPremiumItems.includes(item.id);
+                                const rarity = RARITY_COLORS[item.rarity];
+                                return (
+                                  <button
+                                    key={item.id}
+                                    onClick={() => !owned && setPremiumPurchaseDialog({ item, purchasing: false })}
+                                    className={`flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-lg border transition-all ${
+                                      owned
+                                        ? 'bg-green-900/20 border-green-500/20 cursor-default'
+                                        : `${rarity.bg} ${rarity.border} hover:scale-[1.02] cursor-pointer ${rarity.glow}`
+                                    }`}
+                                  >
+                                    <span className="text-xl">{item.icon}</span>
+                                    <div className="text-left">
+                                      <p className={`text-xs font-medium ${owned ? 'text-green-400' : rarity.text}`}>{item.name}</p>
+                                      <p className="text-[10px] text-gray-500">{owned ? '✓ Owned' : '$' + item.price.toFixed(2)}</p>
+                                    </div>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* All premium items grid */}
+                        <div className="space-y-2">
+                          {PREMIUM_ITEMS
+                            .filter(item => premiumFilter === 'all' || item.category === premiumFilter)
+                            .map(item => {
+                              const owned = ownedPremiumItems.includes(item.id);
+                              const rarity = RARITY_COLORS[item.rarity];
+                              return (
+                                <div
+                                  key={item.id}
+                                  className={`flex items-center gap-3 p-2.5 rounded-lg border transition-all ${
+                                    owned
+                                      ? 'bg-green-900/10 border-green-500/15'
+                                      : `${rarity.bg} ${rarity.border} hover:border-opacity-60`
+                                  }`}
+                                >
+                                  <div className={`text-2xl w-10 h-10 flex items-center justify-center rounded-lg flex-shrink-0 relative ${
+                                    owned ? 'bg-green-900/30' : 'bg-gray-800/60'
+                                  }`}>
+                                    {item.icon}
+                                    {!owned && item.rarity !== 'common' && (
+                                      <span className={`absolute -top-1 -right-1 px-1 py-0 rounded text-[8px] font-bold ${
+                                        item.rarity === 'rare' ? 'bg-blue-500/80 text-white'
+                                        : item.rarity === 'epic' ? 'bg-purple-500/80 text-white'
+                                        : 'bg-amber-500/80 text-black'
+                                      }`}>{rarity.label}</span>
+                                    )}
+                                    {owned && <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full flex items-center justify-center text-[7px]">✓</span>}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className={`text-sm font-medium ${owned ? 'text-green-400' : rarity.text}`}>{item.name}</span>
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-0.5">{item.description}</p>
+                                    <p className="text-[10px] text-gray-600 mt-0.5">{item.perkDescription}</p>
+                                  </div>
+                                  <div className="flex-shrink-0 text-right">
+                                    {owned ? (
+                                      <span className="text-xs text-green-500 font-medium px-3 py-1.5 rounded-md bg-green-900/20">Owned ✓</span>
+                                    ) : (
+                                      <Button
+                                        size="sm"
+                                        onClick={() => setPremiumPurchaseDialog({ item, purchasing: false })}
+                                        className={`text-xs h-8 min-w-[70px] font-medium ${
+                                          item.rarity === 'legendary'
+                                            ? 'bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-700 hover:to-yellow-700 text-black'
+                                            : item.rarity === 'epic'
+                                            ? 'bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 text-white'
+                                            : item.rarity === 'rare'
+                                            ? 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white'
+                                            : 'bg-gray-600 hover:bg-gray-500 text-white'
+                                        }`}
+                                      >
+                                        <span className="mr-1">💎</span>{'$'}{item.price.toFixed(2)}
+                                      </Button>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                        </div>
+
+                        {ownedPremiumItems.length > 0 && (
+                          <p className="text-[10px] text-gray-600 mt-2 text-center">{ownedPremiumItems.length} of {PREMIUM_ITEMS.length} premium items owned</p>
+                        )}
+                      </CardContent>
+                    </Card>
+
                     {/* Section 1: Boosts */}
                     <Card className="bg-gray-900/40 border-gray-800/50">
                       <CardHeader className="pb-2 pt-3 px-4">
@@ -1742,6 +1920,48 @@ export default function GamePage() {
           else { addLog('🎰', reward.description, '#22d3ee'); }
           sfxMilestone();
         }} crystals={crystals} crystalsExp={crystalsExp} autoRateLog={autoRateLog} />
+
+        {/* PREMIUM PURCHASE DIALOG */}
+        <Dialog open={!!premiumPurchaseDialog} onOpenChange={(open: boolean) => { if (!open) setPremiumPurchaseDialog(null); }}>
+          <DialogContent className="bg-gray-900 border-amber-500/30 sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-xl text-center text-amber-300 flex items-center justify-center gap-2">
+                <Crown className="w-5 h-5" />
+                Purchase Premium Item
+              </DialogTitle>
+              <DialogDescription className="text-center text-gray-400">This is a one-time permanent purchase</DialogDescription>
+            </DialogHeader>
+            {premiumPurchaseDialog && (
+              <div className="py-4">
+                <div className="mx-auto w-20 h-20 rounded-2xl flex items-center justify-center text-4xl mb-4 bg-gray-800/60 border border-amber-500/30">
+                  {premiumPurchaseDialog.item.icon}
+                </div>
+                <p className="text-center text-lg font-bold text-amber-300">{premiumPurchaseDialog.item.name}</p>
+                <p className="text-center text-sm text-gray-400 mt-1">{premiumPurchaseDialog.item.description}</p>
+                <div className="mt-4 p-3 rounded-lg bg-gray-800/50 border border-gray-700/50">
+                  <p className="text-xs text-gray-500 mb-1">What you get:</p>
+                  <p className="text-sm text-gray-300">{premiumPurchaseDialog.item.perkDescription}</p>
+                </div>
+                <div className="mt-4 text-center">
+                  <span className="text-3xl font-bold text-white">{'$'}{premiumPurchaseDialog.item.price.toFixed(2)}</span>
+                  <p className="text-xs text-gray-500 mt-1">One-time purchase</p>
+                </div>
+              </div>
+            )}
+            <DialogFooter className="flex-col gap-2 sm:flex-col">
+              <Button
+                className="w-full font-medium bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 text-white"
+                onClick={() => { if (premiumPurchaseDialog) handlePremiumPurchase(premiumPurchaseDialog.item); }}
+                disabled={premiumPurchaseDialog?.purchasing}
+              >
+                {premiumPurchaseDialog?.purchasing
+                  ? <span className="flex items-center gap-2"><span className="animate-spin">⏳</span> Processing...</span>
+                  : <span>Purchase for {'$'}{premiumPurchaseDialog?.item.price.toFixed(2)}</span>}
+              </Button>
+              <Button variant="ghost" className="w-full text-gray-500 hover:text-gray-300" onClick={() => setPremiumPurchaseDialog(null)}>Cancel</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* In-Game Legal Document Dialogs */}
         <Dialog open={legalTosOpen} onOpenChange={setLegalTosOpen}>

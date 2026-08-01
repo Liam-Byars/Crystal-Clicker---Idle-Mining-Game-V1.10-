@@ -11,10 +11,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'userId is required' }, { status: 400 });
     }
 
+    // Also load premium items in parallel
+    const premiumPurchases = db.premiumPurchase.findMany({
+      where: { userId },
+      select: { itemId: true },
+    }).catch(() => []);
+
     // Try to load from both sources in parallel
-    const [sqliteSave, firestoreData] = await Promise.all([
+    const [sqliteSave, firestoreData, premiumItems] = await Promise.all([
       db.clickerSave.findUnique({ where: { userId } }).catch(() => null),
       isFirestoreConfigured ? firestoreLoad(userId).catch(() => null) : Promise.resolve(null),
+      premiumPurchases,
     ]);
 
     // Parse SQLite save
@@ -57,7 +64,7 @@ export async function GET(request: NextRequest) {
       data = fsTime > sqlTime ? firestoreData : sqliteData;
     }
 
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ success: true, data, ownedPremiumItems: premiumItems.map(p => p.itemId) });
   } catch (error) {
     console.error('Load error:', error);
     return NextResponse.json({ success: false, error: 'Failed to load' }, { status: 500 });
