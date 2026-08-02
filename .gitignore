@@ -15,6 +15,9 @@ db/
 .env.local
 .env.*.local
 
+# Firebase service account (private key - NEVER commit)
+firebase-service-account.json
+
 # Build artifacts
 dist/
 build/
