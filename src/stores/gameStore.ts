@@ -962,7 +962,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   ],
   achievements: buildAchievementConditions(),
   screenShake: false, crystalPulse: 0, activeTab: 'upgrades',
-  shopBoosts: { doubleClick: 0, tripleAuto: 0, doubleGolden: 0, critBoost: 0, doubleAll: 0 },
+  shopBoosts: { doubleClick: 0, tripleAuto: 0, doubleGolden: 0, critBoost: 0, multBoost: 0, luckyBoost: 0, doubleAll: 0 },
   lastSaveTime: Date.now(), adCooldown: 0,
   ownedPremiumItems: [],
 

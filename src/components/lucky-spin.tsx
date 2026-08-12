@@ -73,7 +73,7 @@ export function LuckySpin({ open, onClose, onReward, autoRateLog, crystals, crys
   const [cooldownMs, setCooldownMs] = useState(() => hasSpunToday() ? getTimeUntilMidnight() : 0);
   const [result, setResult] = useState<{ prize: SpinPrize; reward: ReturnType<SpinPrize['getReward']> } | null>(null);
   const wheelRef = useRef<HTMLDivElement>(null);
-  const cooldownIv = useRef<ReturnType<typeof setInterval>>();
+  const cooldownIv = useRef<ReturnType<typeof setInterval>>(undefined);
 
   // Tick the cooldown down every second
   useEffect(() => {

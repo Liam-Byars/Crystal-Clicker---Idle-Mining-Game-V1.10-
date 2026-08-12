@@ -80,10 +80,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Google session persisted — verify with Firebase
+    // Google session persisted — verify with Firebase (with 3s timeout to prevent infinite loading)
     if (persisted?.mode === 'google' && isFirebaseConfigured && auth) {
-      const isGooglePersisted = true;
+      let settled = false;
+      const finish = (s: AuthState) => {
+        if (settled) return;
+        settled = true;
+        setState(s);
+      };
+      // Timeout: if Firebase can't connect within 3 seconds, clear session and show sign-in
+      const timer = setTimeout(() => {
+        clearPersistedAuth();
+        finish({ user: null, loading: false, isGuest: false, userId: null, displayName: null, photoURL: null });
+      }, 3000);
       const unsubscribe = auth.onAuthStateChanged((firebaseUser) => {
+        clearTimeout(timer);
         if (firebaseUser) {
           persistAuth({
             mode: 'google',
@@ -91,7 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             displayName: firebaseUser.displayName || undefined,
             photoURL: firebaseUser.photoURL || undefined,
           });
-          setState({
+          finish({
             user: firebaseUser, loading: false, isGuest: false,
             userId: firebaseUser.uid, displayName: firebaseUser.displayName,
             photoURL: firebaseUser.photoURL,
@@ -99,10 +110,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } else {
           // Google session expired — clear and show sign-in
           clearPersistedAuth();
-          setState({ user: null, loading: false, isGuest: false, userId: null, displayName: null, photoURL: null });
+          finish({ user: null, loading: false, isGuest: false, userId: null, displayName: null, photoURL: null });
         }
       });
-      return () => unsubscribe();
+      return () => { clearTimeout(timer); unsubscribe(); };
     }
 
     // Google session persisted but Firebase not configured — clear it

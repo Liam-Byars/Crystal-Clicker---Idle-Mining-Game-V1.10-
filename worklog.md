@@ -4,7 +4,26 @@
 
 **Status: ✅ Fully Functional — Shop tab, QOL features, NaN-safe math, log-space costs, golden crystal fix.**
 
-### Session 9 Work (Current)
+### Session 10 Work (Current)
+- **Fixed auth loading stuck (preview panel issue)**
+  - **Root cause:** Firebase `onAuthStateChanged()` can hang indefinitely if it can't reach Google servers (sandboxed/restricted network environments). This kept `authLoading = true` forever, showing only a loading spinner.
+  - **Fix (auth-context.tsx):** Added 3-second timeout for Firebase auth check. If Firebase doesn't respond within 3s, the Google session is cleared and the sign-in screen shows.
+- **Fixed missing shopBoosts initial values (TypeScript error)**
+  - **Root cause:** `shopBoosts` interface has `multBoost` and `luckyBoost` fields, but the initial state in gameStore only had 5 of 7 fields.
+  - **Fix:** Added `multBoost: 0, luckyBoost: 0` to the initial `shopBoosts` object.
+- **Fixed lucky-spin useRef type error**
+  - Changed `useRef<ReturnType<typeof setInterval>>()` to `useRef<ReturnType<typeof setInterval>>(undefined)` to satisfy TypeScript strict mode.
+- **Investigated 0.1 crystal click bug**
+  - Thoroughly traced the entire click → tick → display pipeline.
+  - With no upgrades: `clickPowerLog=0`, `multiplierLog=0`, `valueLog=0`, `displayValue=10^0=1`.
+  - Floating text uses `fmt(1)` → `"1.0"`. Crystal counter uses `fmt(1, 0)` → `"1.0"`.
+  - **Conclusion:** Math is correct. The 0.1 value may have been from a cached/old version or a misread. No code bug found.
+- **Capacitor setup files present** (from previous session)
+  - `capacitor.config.ts`, `src/lib/haptics.ts`, `src/lib/use-native-platform.ts`
+  - iOS and Android native projects in `ios/` and `android/` directories
+  - PWA install support via `src/lib/use-pwa-install.ts`
+
+### Session 9 Work
 - **Fixed NaN crystal display bug (CRITICAL)**
   - **Root cause:** `buyUpgrade` used manual log subtraction `Math.log10(1 - Math.pow(10, costLog - myLog))` which produces NaN when `myLog ≈ costLog` due to floating-point precision. NaN then propagated through the entire system.
   - **Fix (safe-math.ts):** Added NaN/Infinity guards to `logAdd`, `logSub`, `splitLog`
