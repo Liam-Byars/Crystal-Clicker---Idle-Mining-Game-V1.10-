@@ -6,9 +6,9 @@ node_modules/
 out/
 
 # Database
+db/
 *.db
 *.db-journal
-db/
 
 # Environment variables
 .env
@@ -17,6 +17,16 @@ db/
 
 # Firebase service account (private key - NEVER commit)
 firebase-service-account.json
+upload/*.json
+
+# Z.ai sandbox files
+skills/
+shared/
+scripts/
+mini-services/
+start-dev.sh
+keep-alive.sh
+package-lock.json
 
 # Build artifacts
 dist/
@@ -35,8 +45,6 @@ Thumbs.db
 
 # Logs
 *.log
-dev.log
-server.log
 
 # Capacitor native build artifacts (generated, don't commit)
 ios/App/App/public/
@@ -47,8 +55,18 @@ ios/App/Pods/
 android/.gradle/
 android/app/.cxx/
 
-# Temp/tool results
+# Sandbox/dev-only files (never commit)
+.zscripts/
+Caddyfile
+agent-ctx/
 tool-results/
-
-# RN app (old attempt, excluded)
+download/
+upload/
+examples/
 rn-app/
+worklog.md
+*.docx
+
+# Screenshots in root
+*.png
+*.webp
