@@ -1,5 +1,7 @@
 'use client';
 
+const GAME_VERSION = 'v1.11';
+
 import React, { useEffect, useCallback, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useShallow } from 'zustand/react/shallow';
@@ -1888,7 +1890,7 @@ export default function GamePage() {
         {/* ====== FOOTER ====== */}
         <footer className="relative z-10 border-t border-gray-800/50 bg-gray-950/50 backdrop-blur-sm px-4 py-2 mt-auto">
           <div className="flex items-center justify-between text-xs text-gray-600 max-w-5xl mx-auto">
-            <span>Crystal Clicker v1.0</span>
+            <span>Crystal Clicker {GAME_VERSION}</span>
             <div className="flex items-center gap-3">
               {isNative && (
                 <span className={isOnline ? 'text-green-500' : 'text-red-500'} title={isOnline ? 'Online' : 'Offline - check connection'}>
@@ -2187,7 +2189,7 @@ export default function GamePage() {
 
               {/* Version */}
               <div className="text-center pt-2">
-                <p className="text-[10px] text-gray-700">Crystal Clicker v1.0</p>
+                <p className="text-[10px] text-gray-700">Crystal Clicker {GAME_VERSION}</p>
                 <p className="text-[10px] text-gray-700">Session: {fmtTime(sessionTime)}</p>
               </div>
             </div>
