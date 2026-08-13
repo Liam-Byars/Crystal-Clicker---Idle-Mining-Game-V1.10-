@@ -14,9 +14,10 @@ interface AuthState {
 }
 
 interface AuthContextType extends AuthState {
-  signInWithGoogle: () => Promise<{ success: boolean; error?: string }>;
+  signInWithGoogle: (forceAccountPicker?: boolean) => Promise<{ success: boolean; error?: string }>;
   playAsGuest: () => void;
   logout: () => Promise<void>;
+  switchAccount: () => Promise<{ success: boolean; error?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -125,7 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setState({ user: null, loading: false, isGuest: false, userId: null, displayName: null, photoURL: null });
   }, []);
 
-  const signInWithGoogle = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
+  const signInWithGoogle = useCallback(async (forceAccountPicker = false): Promise<{ success: boolean; error?: string }> => {
     if (!isFirebaseConfigured || !auth || !googleProvider) {
       return { success: false, error: 'Firebase is not configured. Please add your Firebase config to .env.local' };
     }
@@ -141,6 +142,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } catch { /* ignore */ }
       }
 
+      // Force Google to show account picker instead of auto-selecting last account
+      if (forceAccountPicker) {
+        googleProvider.setCustomParameters({ prompt: 'select_account' });
+      }
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
       persistAuth({
@@ -189,9 +194,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const switchAccount = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
+    // Sign out first, then re-open Google popup with account picker
+    if (auth) {
+      try { await signOut(auth); } catch { /* ignore */ }
+    }
+    clearPersistedAuth();
+    setState({
+      user: null, loading: false, isGuest: false,
+      userId: null, displayName: null, photoURL: null,
+    });
+    // Now sign in with forced account picker
+    return signInWithGoogle(true);
+  }, [signInWithGoogle]);
+
   return (
     <AuthContext.Provider
-      value={{ ...state, signInWithGoogle, playAsGuest, logout }}
+      value={{ ...state, signInWithGoogle, playAsGuest, logout, switchAccount }}
     >
       {children}
     </AuthContext.Provider>

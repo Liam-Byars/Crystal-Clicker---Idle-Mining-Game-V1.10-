@@ -824,3 +824,21 @@ Stage Summary:
 - Preview panel issue was simply the sign-in screen showing (expected behavior for fresh session)
 - Floating text "1.0" → "1" formatting fix applied
 - Game fully functional: auth, clicking, upgrades, tabs, daily rewards all verified via agent-browser
+
+---
+Task ID: 12
+Agent: Main Agent
+Task: Add Switch Account feature for Google users
+
+Work Log:
+- Added `switchAccount()` method to auth-context.tsx that signs out of Firebase, clears persisted auth, then re-signs in with `googleProvider.setCustomParameters({ prompt: 'select_account' })` to force Google's account picker
+- Modified `signInWithGoogle` to accept optional `forceAccountPicker` parameter
+- Added `switchAccount` to AuthContextType interface and provider value
+- Added "Switch Account" dropdown menu item in page.tsx user menu (visible only for Google users, not guests)
+- Verified lint passes clean
+- Verified via agent-browser: guest session shows correct menu items, Google users will see "Switch Account"
+
+Stage Summary:
+- Switch Account button appears in the user dropdown (⚙️ icon) when logged in with Google
+- Clicking it signs out, then opens Google's account picker so you can pick a different account
+- Guests see "Sign in with Google" instead (existing behavior preserved)

@@ -211,7 +211,7 @@ export default function GamePage() {
   }, []);
 
   // ====== Auth ======
-  const { user, loading: authLoading, isGuest, logout, signInWithGoogle, userId, displayName, photoURL } = useAuth();
+  const { user, loading: authLoading, isGuest, logout, signInWithGoogle, switchAccount, userId, displayName, photoURL } = useAuth();
 
   // ====== Store Selectors (useShallow for all!) ======
   const crystals = useGameStore(s => s.crystals);
@@ -725,6 +725,20 @@ export default function GamePage() {
                   >
                     <LogIn className="w-4 h-4 mr-2" />
                     Sign in with Google
+                  </DropdownMenuItem>
+                )}
+                {!isGuest && (
+                  <DropdownMenuItem
+                    className="text-white/60 focus:text-white/80 focus:bg-white/5 cursor-pointer"
+                    onClick={async () => {
+                      const result = await switchAccount();
+                      if (!result.success) {
+                        addLog('❌', `Switch account failed: ${result.error}`, '#ef4444');
+                      }
+                    }}
+                  >
+                    <LogIn className="w-4 h-4 mr-2" />
+                    Switch Account
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem
