@@ -804,3 +804,23 @@ Stage Summary:
 - Firebase Auth, save/load API, premium API all work as-is through Capacitor's WebView
 - To build for stores: deploy Next.js backend, update server.url in capacitor.config.ts, run `bun run cap:sync` then `bun run cap:ios` or `bun run cap:android`
 - App icons need to be generated: prepare a 1024x1024 source icon, then run `npx capacitor-assets generate`
+
+---
+Task ID: 11
+Agent: Main Agent (session continuation)
+Task: Investigate preview panel showing only logo and 0.1 click display
+
+Work Log:
+- Checked dev server logs — server running fine (200 responses), Firebase JWT error is expected (falls back to SQLite)
+- Used agent-browser to verify preview panel was showing SignInScreen (not broken)
+- Clicked "Play as Guest" — game loaded fully with daily reward dialog
+- Verified clicking crystal works correctly — gives 1 crystal per click
+- Found floating text displayed "1.0" instead of "1" due to `fmt()` using `toFixed(1)` for n < 10
+- Fixed `fmt()` in page.tsx line 81: added integer check before applying toFixed(1)
+- Verified fix: floating text now shows "1" for whole numbers
+- User confirmed the 0.1 was likely from combo display, not a bug
+
+Stage Summary:
+- Preview panel issue was simply the sign-in screen showing (expected behavior for fresh session)
+- Floating text "1.0" → "1" formatting fix applied
+- Game fully functional: auth, clicking, upgrades, tabs, daily rewards all verified via agent-browser

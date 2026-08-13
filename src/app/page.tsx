@@ -78,7 +78,7 @@ function fmt(n: number, exp = 0): string {
   if (n < 0) return '-' + fmt(-n, exp);
   if (!isFinite(n)) return fmtExpLog(exp + 400);
   if (exp > 0) return fmtExpLog(Math.log10(n) + exp);
-  if (n < 1000) return n < 10 ? n.toFixed(1) : Math.floor(n).toString();
+  if (n < 1000) { if (n === Math.floor(n)) return Math.floor(n).toString(); return n < 10 ? n.toFixed(1) : Math.floor(n).toString(); }
   if (n < 1e6) return (n / 1e3).toFixed(1) + 'K';
   if (n < 1e9) return (n / 1e6).toFixed(2) + 'M';
   if (n < 1e12) return (n / 1e9).toFixed(2) + 'B';
