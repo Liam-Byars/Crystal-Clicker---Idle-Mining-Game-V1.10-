@@ -1,6 +1,6 @@
 'use client';
 
-const GAME_VERSION = 'v1.12.1';
+const GAME_VERSION = 'v1.13';
 
 import React, { useEffect, useCallback, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -163,6 +163,53 @@ const floatColors: Record<FloatingText['type'], string> = {
   offline: '#34d399',
   milestone: '#fbbf24',
 };
+
+// ====== Damage Log Component ======
+const DAMAGE_TYPES: FloatingText['type'][] = ['milestone', 'golden', 'crit', 'normal', 'combo'];
+const DAMAGE_PREFIX: Partial<Record<FloatingText['type'], string>> = {
+  crit: '💥 ',
+  golden: '🌟 ',
+  combo: '🔥 ',
+};
+
+function DamageLog({ floatingTexts }: { floatingTexts: FloatingText[] }) {
+  return (
+    <div className="mt-3 h-20 flex flex-col items-center justify-end gap-0.5 pointer-events-none select-none">
+      {DAMAGE_TYPES.map(type => {
+        const ft = [...floatingTexts].reverse().find(f => f.type === type);
+        if (!ft) return null;
+        const age = Date.now() - ft.createdAt;
+        const opacity = age > 3000 ? Math.max(0, 1 - (age - 3000) / 1000) : 1;
+        if (opacity <= 0) return null;
+        let displayStr: string;
+        if (ft.type === 'milestone') {
+          displayStr = ft.valueLog != null && ft.valueLog > 15
+            ? `🎉 +${fmtExpLog(ft.valueLog)} COMBO BONUS!`
+            : `🎉 +${fmt(ft.value)} COMBO BONUS!`;
+        } else {
+          displayStr = ft.valueLog != null && ft.valueLog > 15
+            ? fmtExpLog(ft.valueLog)
+            : fmt(ft.value);
+        }
+        const prefix = DAMAGE_PREFIX[type] || '';
+        return (
+          <div
+            key={`${type}-${ft.id}`}
+            className="font-bold text-base tabular-nums"
+            style={{
+              color: floatColors[type],
+              textShadow: '0 0 6px currentColor',
+              opacity,
+              transition: 'opacity 0.5s ease-out',
+            }}
+          >
+            {prefix}{displayStr}{ft.count > 1 && <span className="text-sm opacity-80 ml-0.5">x{ft.count}</span>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 // ====== Upgrade Category Helpers ======
 const effectLabels: Record<Upgrade['effect'], string> = {
@@ -1044,41 +1091,8 @@ export default function GamePage() {
               </motion.div>
             )}
 
-            {/* Floating Texts - Stacked by type (golden/crit/normal) */}
-            <div className="absolute inset-0 pointer-events-none overflow-hidden">
-              {floatingTexts.map(ft => {
-                const yOffset = ft.type === 'golden' ? -50 : ft.type === 'crit' ? 0 : 50;
-                const age = Date.now() - ft.createdAt;
-                // Stay fully visible for 10s, then fade over 2s
-                const opacity = age > 10000 ? Math.max(0, 1 - (age - 10000) / 2000) : 1;
-                // Use valueLog for precise display of huge numbers
-                const displayStr = ft.type === 'milestone'
-                  ? '🎉 MILESTONE!'
-                  : (ft.valueLog != null && ft.valueLog > 15
-                    ? fmtExpLog(ft.valueLog)
-                    : fmt(ft.value));
-                return (
-                <div
-                  key={ft.id}
-                  className="absolute font-bold text-lg pointer-events-none select-none"
-                  style={{
-                    color: floatColors[ft.type],
-                    left: 0,
-                    top: ft.y + yOffset,
-                    transform: `translateX(${ft.x}px)`,
-                    textShadow: '0 0 8px currentColor',
-                    opacity,
-                    transition: 'opacity 0.3s ease-out',
-                  }}
-                >
-                  {ft.type === 'milestone'
-                    ? displayStr
-                    : <>{displayStr}{ft.count > 1 && <span className="text-sm opacity-80 ml-0.5">×{ft.count}</span>}</>
-                  }
-                </div>
-                );
-              })}
-            </div>
+            {/* Floating Texts - Fixed damage log below crystal */}
+            <DamageLog floatingTexts={floatingTexts} />
 
             {/* Quick Stats Below Crystal */}
             <div className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-gray-400">
