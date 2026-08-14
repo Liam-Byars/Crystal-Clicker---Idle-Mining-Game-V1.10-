@@ -1,6 +1,6 @@
 'use client';
 
-const GAME_VERSION = 'v1.11';
+const GAME_VERSION = 'v1.12';
 
 import React, { useEffect, useCallback, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';

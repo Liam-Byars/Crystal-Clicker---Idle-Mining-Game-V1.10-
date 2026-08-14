@@ -5,10 +5,8 @@ const config: CapacitorConfig = {
   appName: 'Crystal Clicker',
   webDir: 'public', // placeholder — we use server url
   server: {
-    // ⚠️ CHANGE THIS to your deployed Next.js URL when ready to build
-    // e.g. "https://crystal-clicker.vercel.app"
-    url: 'http://localhost:3000',
-    cleartext: true, // allows HTTP for local dev; set false in production with HTTPS
+    url: 'https://crystal-clicker-idle-mining-game-v1.vercel.app',
+    cleartext: false,
     androidScheme: 'https',
   },
   plugins: {
