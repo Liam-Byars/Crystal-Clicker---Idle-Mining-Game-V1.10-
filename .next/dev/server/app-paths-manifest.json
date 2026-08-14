@@ -1,0 +1,5 @@
+{
+  "/api/clicker/load/route": "app/api/clicker/load/route.js",
+  "/api/clicker/save/route": "app/api/clicker/save/route.js",
+  "/page": "app/page.js"
+}
