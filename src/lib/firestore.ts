@@ -12,6 +12,15 @@ let jwtClient: JWT | null = null;
 let tokenCache: { token: string; expires: number } | null = null;
 
 function getServiceAccount(): Record<string, string> | null {
+  // Check environment variables first (for Vercel / deployed environments)
+  if (process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
+    return {
+      client_email: process.env.FIREBASE_CLIENT_EMAIL,
+      private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+    };
+  }
+
+  // Fallback: read from file (local dev)
   const paths = [
     process.env.FIREBASE_SERVICE_ACCOUNT_PATH,
     join(process.cwd(), 'firebase-service-account.json'),
